@@ -13,6 +13,8 @@ const AppDataSource = new DataSource({
   database: process.env.NX_DB_DATABASE,
   entities: [],
   migrations: ['apps/backend/src/migrations/*.js'],
+  // migrations: ['apps/backend/src/migrations/*.ts'], // use this line instead of the above when running migrations locally,
+  // then switch back to the above before pushing to github so that it works on the deployment server
   // Setting synchronize: true shouldn't be used in production - otherwise you can lose production data
   synchronize: false,
   namingStrategy: new PluralNamingStrategy(),
