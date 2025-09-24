@@ -5,6 +5,7 @@ import {
   Post,
   Request,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
 import { SignInDto } from './dtos/sign-in.dto';
@@ -20,9 +21,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { ConfirmPasswordDto } from './dtos/confirm-password.dto';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 
 @ApiTags('Auth')
 @Controller('auth')
+@UseInterceptors(CurrentUserInterceptor)
 export class AuthController {
   constructor(
     private authService: AuthService,
