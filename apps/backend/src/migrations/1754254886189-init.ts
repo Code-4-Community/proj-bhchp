@@ -76,6 +76,27 @@ export class Init1754254886189 implements MigrationInterface {
                 CONSTRAINT "FK_learner_app_id" FOREIGN KEY ("app_id") REFERENCES "application"("appId") ON DELETE CASCADE
             )`,
     );
+
+    await queryRunner.query(
+      `INSERT INTO "admin" ("name", "email") 
+      VALUES ('Yumi Chow', 'yumi@example.com');`,
+    );
+
+    await queryRunner.query(
+      `INSERT INTO "discipline" ("name", "admin_ids") VALUES
+      ('Nursing', ARRAY[1]);`,
+    );
+
+    await queryRunner.query(
+      `INSERT INTO "application" 
+      ("phone", "school", "daysAvailable", "weeklyHours", "experienceType", "interest", "license", "appStatus", "isInternational", "isLearner", "referredEmail", "referred") VALUES
+      ('123-456-7890', 'Harvard Medical School', 'Mon, Wed, Fri', 10, 'MD', 'Nursing', 'RN12345', 'App submitted', false, true, 'referrer@example.com', false)`,
+    );
+
+    await queryRunner.query(
+      `INSERT INTO "learner" ("app_id", "name", "startDate", "endDate") VALUES
+      (1, 'Alice Smith', '2024-09-01', '2024-12-15')`,
+    );
   }
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "learner"`);
