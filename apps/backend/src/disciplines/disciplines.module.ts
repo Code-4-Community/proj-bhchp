@@ -11,4 +11,4 @@ import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor
   controllers: [DisciplinesController],
   providers: [DisciplinesService, JwtStrategy, CurrentUserInterceptor],
 })
-export class ReviewsModule {}
+export class DiscplinesModule {}
