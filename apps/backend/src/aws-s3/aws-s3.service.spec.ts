@@ -1,11 +1,12 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { AWSS3Service } from './aws-s3.service';
-import { mockClient } from 'aws-sdk-client-mock';
-import axios from 'axios';
 import * as dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
+
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { AWSS3Service } from './aws-s3.service';
+import { mockClient } from 'aws-sdk-client-mock';
+import axios from 'axios';
 
 const s3Mock = mockClient(S3Client);
 
@@ -60,6 +61,7 @@ describe('AWSS3Service', () => {
 
   // take off ".skip" to run this test but do so sparingly
   it('should actually upload a file to S3 (integration)', async () => {
+    s3Mock.restore();
     const fileContent = `integration-test-content-${Date.now()}`;
     const buffer = Buffer.from(fileContent);
     const fileName = `integration-test-${Date.now()}.txt`;
