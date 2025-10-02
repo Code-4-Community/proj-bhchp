@@ -42,3 +42,7 @@ Thumbs.db
 *.env
 *.env.*
 !example.env
+*.lock
+package-lock.json
+yarn.lock
+yarn.lock
