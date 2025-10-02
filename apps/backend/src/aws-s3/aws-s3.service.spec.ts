@@ -60,7 +60,7 @@ describe('AWSS3Service', () => {
   });
 
   // take off ".skip" to run this test but do so sparingly
-  it('should actually upload a file to S3 (integration)', async () => {
+  it.skip('should actually upload a file to S3 (integration)', async () => {
     s3Mock.restore();
     const fileContent = `integration-test-content-${Date.now()}`;
     const buffer = Buffer.from(fileContent);
