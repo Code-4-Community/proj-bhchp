@@ -1,0 +1,62 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
+import {
+  AdminsService,
+  CreateAdminDto,
+  UpdateAdminDto,
+} from './admins.service';
+import { Admin } from './admin.entity';
+import { Site } from './types';
+
+@Controller('admins')
+export class AdminsController {
+  constructor(private readonly adminsService: AdminsService) {}
+
+  @Post()
+  async create(@Body() createAdminDto: CreateAdminDto): Promise<Admin> {
+    return await this.adminsService.create(createAdminDto);
+  }
+
+  @Get()
+  async findAll(@Query('site') site?: Site): Promise<Admin[]> {
+    if (site) {
+      return await this.adminsService.findBySite(site);
+    }
+    return await this.adminsService.findAll();
+  }
+
+  @Get(':id')
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<Admin> {
+    return await this.adminsService.findOne(id);
+  }
+
+  @Get('email/:email')
+  async findByEmail(@Param('email') email: string): Promise<Admin | null> {
+    return await this.adminsService.findByEmail(email);
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateAdminDto: UpdateAdminDto,
+  ): Promise<Admin> {
+    return await this.adminsService.update(id, updateAdminDto);
+  }
+
+  @Delete(':id')
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ message: string }> {
+    await this.adminsService.remove(id);
+    return { message: `Admin with ID ${id} has been deleted` };
+  }
+}
