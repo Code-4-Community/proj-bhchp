@@ -76,41 +76,6 @@ export class Init1754254886189 implements MigrationInterface {
                 CONSTRAINT "FK_learner_app_id" FOREIGN KEY ("app_id") REFERENCES "application"("appId") ON DELETE CASCADE
             )`,
     );
-
-    await queryRunner.query(
-      `INSERT INTO "admin" ("name", "email") VALUES
-      ('Alice Smith', 'alice@example.com'),
-      ('Yumi Chow', 'yumi@example.com'),
-      ('Hannah Brown', 'hannah@example.com'),
-      ('Owen Prince', 'owen@example.com'),
-      ('Alissa Hunt', 'alissa@example.com');`,
-    );
-
-    await queryRunner.query(
-      `INSERT INTO "discipline" ("name", "admin_ids") VALUES
-      ('Nursing', ARRAY[0]),
-      ('HarmReduction', ARRAY[1]),
-      ('WomensHealth', ARRAY[2]);`,
-    );
-
-    await queryRunner.query(
-      `INSERT INTO "application" 
-      ("phone", "school", "daysAvailable", "weeklyHours", "experienceType", "interest", "license", "appStatus", "isInternational", "isLearner", "referredEmail", "referred") VALUES
-      ('123-456-7890', 'Harvard Medical School', 'Mon, Wed, Fri', 10, 'MD', 'Nursing', 'RN12345', 'App submitted', false, true, 'referrer@example.com', false),
-      ('143-412-7491', 'Johns Hopkins', 'Tue, Thu', 15, 'PhD', 'HarmReduction', NULL, 'in review', true, false, NULL, false),
-      ('555-555-5555', 'Stanford Medicine', 'Mon-Fri', 40, 'NP', 'WomensHealth', 'NP54321', 'forms sent', false, true, 'mentor@example.com', true),
-      ('222-333-4444', 'Mayo Clinic', 'Sat, Sun', 8, 'BS', 'Nursing', NULL, 'accepted', false, false, NULL, false),
-      ('777-888-9999', 'Other', 'Flexible', 20, 'PA', 'HarmReduction', 'PA99999', 'rejected', true, false, 'network@example.com', true);`,
-    );
-
-    await queryRunner.query(
-      `INSERT INTO "learner" ("app_id", "name", "startDate", "endDate") VALUES
-      (1, 'Alice Smith', '2024-09-01', '2024-12-15'),
-      (2, 'Yumi Chow', '2024-10-01', '2025-03-01'),
-      (3, 'Hannah Brown', '2024-11-15', '2025-05-30'),
-      (4, 'Owen Prince', '2025-01-10', '2025-06-15'),
-      (5, 'Alissa Hunt', '2025-02-01', '2025-08-01');`,
-    );
   }
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "learner"`);
