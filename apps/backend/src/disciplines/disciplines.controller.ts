@@ -1,12 +1,27 @@
-import { Controller, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Request,
+  UnauthorizedException,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { DisciplinesService } from './disciplines.service';
 
 @Controller('disciplines')
-@UseInterceptors(CurrentUserInterceptor)
-@UseGuards(AuthGuard('jwt'))
 export class DisciplinesController {
   constructor(private disciplinesService: DisciplinesService) {}
-  // TODO: fill out with actual API endpoints
+
+  @Get('/all')
+  async getFullName(): Promise<string[]> {
+    return this.disciplinesService.findAllDisciplines();
+  }
 }

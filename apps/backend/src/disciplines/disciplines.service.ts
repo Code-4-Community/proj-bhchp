@@ -10,5 +10,9 @@ export class DisciplinesService {
     private disciplinesRepository: Repository<Discipline>,
   ) {}
 
-  // TODO: fill out with actual methods
+  async findAllDisciplines(): Promise<string[]> {
+    const disciplines = await this.disciplinesRepository.find();
+    console.log(disciplines);
+    return disciplines.map((discipline) => discipline.name);
+  }
 }
