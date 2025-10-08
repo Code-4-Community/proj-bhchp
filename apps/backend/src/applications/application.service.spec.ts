@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { NotFoundException } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
@@ -97,6 +98,20 @@ describe('ApplicationsService', () => {
 
       expect(repository.findOne).toHaveBeenCalledWith({ where: { appId: 1 } });
       expect(result).toEqual(mockApplication);
+    });
+
+    it('should throw NotFoundException when application is not found', async () => {
+      const nonExistentId = 999;
+
+      mockRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findById(nonExistentId)).rejects.toThrow(
+        new NotFoundException(`Application with ID ${nonExistentId} not found`),
+      );
+
+      expect(repository.findOne).toHaveBeenCalledWith({
+        where: { appId: nonExistentId },
+      });
     });
   });
 
