@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { PluralNamingStrategy } from './strategies/plural-naming.strategy';
 import * as dotenv from 'dotenv';
+import { Application } from './applications/application.entity';
 import { Discipline } from './disciplines/disciplines.entity';
 
 dotenv.config();
@@ -12,7 +13,7 @@ const AppDataSource = new DataSource({
   username: process.env.NX_DB_USERNAME,
   password: process.env.NX_DB_PASSWORD,
   database: process.env.NX_DB_DATABASE,
-  entities: [Discipline],
+  entities: [Application, Discipline],
   migrations: ['apps/backend/src/migrations/*.js'],
   // migrations: ['apps/backend/src/migrations/*.ts'], // use this line instead of the above when running migrations locally,
   // then switch back to the above before pushing to github so that it works on the deployment server

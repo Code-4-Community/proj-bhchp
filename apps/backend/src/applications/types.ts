@@ -1,27 +1,33 @@
 export enum AppStatus {
-  APP_SUBMITTED = 'APP_SUBMITTED',
-  IN_REVIEW = 'IN_REVIEW',
-  FORMS_SENT = 'FORMS_SENT',
-  ACCEPTED = 'ACCEPTED',
-  REJECTED = 'REJECTED',
+  APP_SUBMITTED = 'App submitted',
+  IN_REVIEW = 'In review',
+  FORMS_SENT = 'Forms sent',
+  ACCEPTED = 'Accepted',
+  REJECTED = 'Rejected',
 }
 
 export enum ExperienceType {
-  // Dummy values, replace with actual experience types
-  VOLUNTEER = 'VOLUNTEER',
+  BS = 'BS',
+  MS = 'MS',
+  PHD = 'PhD',
+  MD = 'MD',
+  MD_PHD = 'MD PhD',
+  RN = 'RN',
+  NP = 'NP',
+  PA = 'PA',
+  OTHER = 'Other',
 }
 
-export enum Interest {
-  // Dummy values, replace with actual interests
-  PHARMACY = 'Pharmacy',
-  TECHNOLOGY = 'Technology',
-  FINANCE = 'Finance',
-  HEALTH = 'Health',
-  EDUCATION = 'Education',
+export enum InterestArea {
+  NURSING = 'Nursing',
+  HARM_REDUCTION = 'HarmReduction',
+  WOMENS_HEALTH = 'WomensHealth',
 }
 
 export enum School {
-  // Dummy values, replace with actual schools
   HARVARD_MEDICAL_SCHOOL = 'Harvard Medical School',
   JOHNS_HOPKINS = 'Johns Hopkins',
+  STANFORD_MEDICINE = 'Stanford Medicine',
+  MAYO_CLINIC = 'Mayo Clinic',
+  OTHER = 'Other',
 }
