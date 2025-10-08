@@ -29,12 +29,28 @@ export class Init1754254886189 implements MigrationInterface {
     );
 
     await queryRunner.query(
+      `CREATE TYPE "public"."admins_site_enum" AS ENUM('fenway', 'site_a')`,
+    );
+
+    await queryRunner.query(
       `CREATE TABLE "admin" (
                 "id" SERIAL NOT NULL, 
                 "name" character varying NOT NULL, 
                 "email" character varying NOT NULL UNIQUE, 
                 CONSTRAINT "PK_admin_id" PRIMARY KEY ("id")
             )`,
+    );
+
+    await queryRunner.query(
+      `CREATE TABLE "admins" (
+            "id" SERIAL NOT NULL, 
+            "name" character varying NOT NULL, 
+            "email" character varying NOT NULL UNIQUE,
+            "site" "public"."admins_site_enum" NOT NULL,
+            "createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "PK_admins_id" PRIMARY KEY ("id")
+        )`,
     );
 
     await queryRunner.query(
@@ -77,16 +93,19 @@ export class Init1754254886189 implements MigrationInterface {
             )`,
     );
   }
+
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE "learner"`);
     await queryRunner.query(`DROP TABLE "application"`);
     await queryRunner.query(`DROP TABLE "discipline"`);
+    await queryRunner.query(`DROP TABLE "admins"`);
     await queryRunner.query(`DROP TABLE "admin"`);
     await queryRunner.query(`DROP TYPE "public"."interest_area_enum"`);
     await queryRunner.query(`DROP TYPE "public"."experience_type_enum"`);
     await queryRunner.query(`DROP TYPE "public"."school_enum"`);
     await queryRunner.query(`DROP TYPE "public"."app_status_enum"`);
     await queryRunner.query(`DROP TYPE "public"."site_enum"`);
+    await queryRunner.query(`DROP TYPE "public"."admins_site_enum"`);
     await queryRunner.query(`DROP TYPE "public"."commit_length_enum"`);
   }
 }

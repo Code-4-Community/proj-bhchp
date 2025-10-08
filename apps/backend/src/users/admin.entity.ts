@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Site } from './types';
 
 @Entity('admins')
@@ -18,17 +24,9 @@ export class Admin {
   })
   site: Site;
 
-  // Automatically sets the timestamp when the record is created.
-  // Useful for tracking when an admin was added to the system.
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
-  // Automatically updates the timestamp whenever the record is modified.
-  // Helps in auditing changes or knowing the last time the admin's data was updated.
-  @Column({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP',
-    onUpdate: 'CURRENT_TIMESTAMP',
-  })
+  @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
 }

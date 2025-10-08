@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   ParseIntPipe,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   AdminsService,
@@ -16,8 +17,10 @@ import {
 } from './admins.service';
 import { Admin } from './admin.entity';
 import { Site } from './types';
+import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 
 @Controller('admins')
+@UseInterceptors(CurrentUserInterceptor) // Apply authentication to all routes
 export class AdminsController {
   constructor(private readonly adminsService: AdminsService) {}
 
