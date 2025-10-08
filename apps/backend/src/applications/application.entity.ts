@@ -1,49 +1,48 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
-import type { AppStatus, ExperienceType, Interest, School } from './types';
+import { AppStatus, ExperienceType, InterestArea, School } from './types';
 
-@Entity()
+@Entity('application')
 export class Application {
-  @Column({ primary: true })
-  appId: number;
+  @PrimaryGeneratedColumn()
+  appId!: number;
 
-  @Column()
-  appStatus: AppStatus;
+  @Column({ type: 'enum', enum: AppStatus, default: AppStatus.APP_SUBMITTED })
+  appStatus!: AppStatus;
 
-  @Column()
-  daysAvailable: string;
+  @Column({ type: 'varchar' })
+  daysAvailable!: string;
 
-  @Column()
-  experienceType: ExperienceType;
+  @Column({ type: 'enum', enum: ExperienceType })
+  experienceType!: ExperienceType;
 
-  // Array of S3 file URLs
-  @Column()
-  fileUploads: string[];
+  @Column('text', { array: true, default: [] })
+  fileUploads!: string[];
 
-  @Column()
-  interest: Interest;
+  @Column({ type: 'enum', enum: InterestArea })
+  interest!: InterestArea;
 
-  @Column()
-  license: string;
+  @Column({ type: 'varchar' })
+  license!: string;
 
-  @Column()
-  isInternational: boolean;
+  @Column({ type: 'boolean', default: false })
+  isInternational!: boolean;
 
-  @Column()
-  isLearner: boolean;
+  @Column({ type: 'boolean', default: false })
+  isLearner!: boolean;
 
-  @Column()
-  phone: string;
+  @Column({ type: 'varchar' })
+  phone!: string;
 
-  @Column()
-  school: School;
+  @Column({ type: 'enum', enum: School })
+  school!: School;
 
-  @Column()
-  referred: boolean;
+  @Column({ type: 'boolean', default: false, nullable: true })
+  referred?: boolean;
 
-  @Column()
-  referredEmail: string;
+  @Column({ type: 'varchar', nullable: true })
+  referredEmail?: string;
 
-  @Column()
-  weeklyHours: number;
+  @Column({ type: 'int' })
+  weeklyHours!: number;
 }

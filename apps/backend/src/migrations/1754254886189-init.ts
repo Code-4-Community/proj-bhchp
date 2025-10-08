@@ -13,7 +13,7 @@ export class Init1754254886189 implements MigrationInterface {
     );
 
     await queryRunner.query(
-      `CREATE TYPE "public"."app_status_enum" AS ENUM('App submitted', 'in review', 'forms sent', 'accepted', 'rejected')`,
+      `CREATE TYPE "public"."app_status_enum" AS ENUM('App submitted', 'In review', 'Forms sent', 'Accepted', 'Rejected')`,
     );
 
     await queryRunner.query(
@@ -55,12 +55,13 @@ export class Init1754254886189 implements MigrationInterface {
                 "weeklyHours" integer NOT NULL, 
                 "experienceType" "public"."experience_type_enum" NOT NULL, 
                 "interest" "public"."interest_area_enum" NOT NULL, 
-                "license" character varying, 
+                "license" character varying NOT NULL, 
                 "appStatus" "public"."app_status_enum" NOT NULL DEFAULT 'App submitted', 
                 "isInternational" boolean NOT NULL DEFAULT false, 
                 "isLearner" boolean NOT NULL DEFAULT false, 
                 "referredEmail" character varying, 
-                "referred" boolean NOT NULL DEFAULT false, 
+                "referred" boolean DEFAULT false, 
+                "fileUploads" text[] NOT NULL DEFAULT '{}', 
                 CONSTRAINT "PK_application_appId" PRIMARY KEY ("appId")
             )`,
     );
