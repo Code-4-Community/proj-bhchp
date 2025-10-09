@@ -1,4 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
+import { Site } from '../users/types';
 
 export class Init1754254886189 implements MigrationInterface {
   name = 'Init1754254886189';
@@ -28,8 +29,12 @@ export class Init1754254886189 implements MigrationInterface {
       `CREATE TYPE "public"."interest_area_enum" AS ENUM('Nursing', 'HarmReduction', 'WomensHealth')`,
     );
 
+    // Use Site enum values dynamically
+    const siteValues = Object.values(Site)
+      .map((site) => `'${site}'`)
+      .join(', ');
     await queryRunner.query(
-      `CREATE TYPE "public"."admins_site_enum" AS ENUM('fenway', 'site_a')`,
+      `CREATE TYPE "public"."admins_site_enum" AS ENUM(${siteValues})`,
     );
 
     await queryRunner.query(
