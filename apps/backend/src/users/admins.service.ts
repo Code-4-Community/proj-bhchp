@@ -10,10 +10,8 @@ export interface CreateAdminDto {
   site: Site;
 }
 
-export interface UpdateAdminDto {
-  name?: string;
-  email?: string;
-  site?: Site;
+export interface UpdateAdminEmailDto {
+  email: string;
 }
 
 @Injectable()
@@ -48,9 +46,12 @@ export class AdminsService {
     return await this.adminRepository.find({ where: { site } });
   }
 
-  async update(id: number, updateAdminDto: UpdateAdminDto): Promise<Admin> {
+  async updateEmail(
+    id: number,
+    updateEmailDto: UpdateAdminEmailDto,
+  ): Promise<Admin> {
     const admin = await this.findOne(id);
-    Object.assign(admin, updateAdminDto);
+    admin.email = updateEmailDto.email;
     return await this.adminRepository.save(admin);
   }
 

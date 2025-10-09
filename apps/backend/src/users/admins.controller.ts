@@ -13,7 +13,7 @@ import {
 import {
   AdminsService,
   CreateAdminDto,
-  UpdateAdminDto,
+  UpdateAdminEmailDto,
 } from './admins.service';
 import { Admin } from './admin.entity';
 import { Site } from './types';
@@ -47,12 +47,12 @@ export class AdminsController {
     return await this.adminsService.findByEmail(email);
   }
 
-  @Patch(':id')
-  async update(
+  @Patch(':id/email')
+  async updateEmail(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateAdminDto: UpdateAdminDto,
+    @Body() updateEmailDto: UpdateAdminEmailDto,
   ): Promise<Admin> {
-    return await this.adminsService.update(id, updateAdminDto);
+    return await this.adminsService.updateEmail(id, updateEmailDto);
   }
 
   @Delete(':id')

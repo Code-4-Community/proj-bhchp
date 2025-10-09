@@ -5,7 +5,7 @@ import { NotFoundException } from '@nestjs/common';
 import {
   AdminsService,
   CreateAdminDto,
-  UpdateAdminDto,
+  UpdateAdminEmailDto,
 } from './admins.service';
 import { Admin } from './admin.entity';
 import { Site } from './types';
@@ -169,56 +169,53 @@ describe('AdminsService', () => {
     });
   });
 
-  describe('update', () => {
-    it('should update and return the admin', async () => {
-      const updateAdminDto: UpdateAdminDto = {
-        name: 'John Updated',
-        site: Site.SITE_A,
+  describe('updateEmail', () => {
+    it('should update admin email and return the admin', async () => {
+      const updateEmailDto: UpdateAdminEmailDto = {
+        email: 'newemail@example.com',
       };
 
-      const updatedAdmin = { ...mockAdmin, ...updateAdminDto };
+      const updatedAdmin = { ...mockAdmin, email: 'newemail@example.com' };
 
-      // Mock findOne (called by update method)
       mockRepository.findOne.mockResolvedValue(mockAdmin);
       mockRepository.save.mockResolvedValue(updatedAdmin);
 
-      const result = await service.update(1, updateAdminDto);
+      const result = await service.updateEmail(1, updateEmailDto);
 
       expect(mockRepository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(mockRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining(updateAdminDto),
+        expect.objectContaining({ email: 'newemail@example.com' }),
       );
-      expect(result).toEqual(updatedAdmin);
+      expect(result.email).toBe('newemail@example.com');
+      expect(result.name).toBe(mockAdmin.name); // Should remain unchanged
+      expect(result.site).toBe(mockAdmin.site); // Should remain unchanged
     });
 
-    it('should throw NotFoundException when admin not found for update', async () => {
-      const updateAdminDto: UpdateAdminDto = {
-        name: 'John Updated',
+    it('should throw NotFoundException when admin not found for email update', async () => {
+      const updateEmailDto: UpdateAdminEmailDto = {
+        email: 'newemail@example.com',
       };
 
       mockRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.update(999, updateAdminDto)).rejects.toThrow(
+      await expect(service.updateEmail(999, updateEmailDto)).rejects.toThrow(
         new NotFoundException('Admin with ID 999 not found'),
       );
     });
 
-    it('should handle partial updates', async () => {
-      const updateAdminDto: UpdateAdminDto = {
-        name: 'John Updated',
-        // site and email not provided
+    it('should handle email validation', async () => {
+      const updateEmailDto: UpdateAdminEmailDto = {
+        email: 'valid@example.com',
       };
 
-      const updatedAdmin = { ...mockAdmin, name: 'John Updated' };
+      const updatedAdmin = { ...mockAdmin, email: 'valid@example.com' };
 
       mockRepository.findOne.mockResolvedValue(mockAdmin);
       mockRepository.save.mockResolvedValue(updatedAdmin);
 
-      const result = await service.update(1, updateAdminDto);
+      const result = await service.updateEmail(1, updateEmailDto);
 
-      expect(result.name).toBe('John Updated');
-      expect(result.email).toBe(mockAdmin.email); // Should remain unchanged
-      expect(result.site).toBe(mockAdmin.site); // Should remain unchanged
+      expect(result.email).toBe('valid@example.com');
     });
   });
 
@@ -257,17 +254,17 @@ describe('AdminsService', () => {
       expect(result).toBeNull();
     });
 
-    it('should handle concurrent updates gracefully', async () => {
-      const updateDto: UpdateAdminDto = { name: 'Updated Name' };
+    it('should handle email update with same email', async () => {
+      const updateEmailDto: UpdateAdminEmailDto = {
+        email: 'john@example.com', // Same as current email
+      };
 
       mockRepository.findOne.mockResolvedValue(mockAdmin);
-      mockRepository.save.mockRejectedValue(
-        new Error('Concurrent modification'),
-      );
+      mockRepository.save.mockResolvedValue(mockAdmin);
 
-      await expect(service.update(1, updateDto)).rejects.toThrow(
-        'Concurrent modification',
-      );
+      const result = await service.updateEmail(1, updateEmailDto);
+
+      expect(result.email).toBe('john@example.com');
     });
   });
 });
