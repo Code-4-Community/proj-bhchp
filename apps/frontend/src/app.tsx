@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 
 import apiClient from '@api/apiClient';
 import Root from '@containers/root';
@@ -23,7 +24,11 @@ export const App: React.FC = () => {
     apiClient.getHello().then((res) => console.log(res));
   }, []);
 
-  return <RouterProvider router={router} />;
+  return (
+    <ChakraProvider value={defaultSystem}>
+      <RouterProvider router={router} />
+    </ChakraProvider>
+  );
 };
 
 export default App;
