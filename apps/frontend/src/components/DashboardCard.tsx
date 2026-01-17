@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, Flex, Text, Box, Image } from '@chakra-ui/react';
 
+/* change */
 export type DashboardCardProps = {
   className?: string;
   description: string;
