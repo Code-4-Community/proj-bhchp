@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from 'axios';
+import { getIdToken } from '../auth/cognito';
 
 export interface AvailabilityFields {
   mondayAvailability: string;
@@ -37,6 +38,19 @@ export class ApiClient {
 
   constructor() {
     this.axiosInstance = axios.create({ baseURL: defaultBaseUrl });
+
+    this.axiosInstance.interceptors.request.use(async (config) => {
+      const idToken = await getIdToken();
+
+      if (idToken) {
+        config.headers = config.headers ?? {};
+        (
+          config.headers as Record<string, string>
+        ).Authorization = `Bearer ${idToken}`;
+      }
+
+      return config;
+    });
   }
 
   public async getHello(): Promise<string> {
