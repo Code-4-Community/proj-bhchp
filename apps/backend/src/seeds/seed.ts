@@ -40,7 +40,7 @@ const CANDIDATE_INFO_SEED: CandidateInfo[] = [
   },
   {
     appId: 2,
-    email: 'johndoe@gmail.com',
+    email: 'standard@c4cneu.com',
   },
   {
     appId: 3,
@@ -74,7 +74,7 @@ const USER_SEED: User[] = [
     userType: UserType.STANDARD,
   },
   {
-    email: 'johndoe@gmail.com',
+    email: 'standard@c4cneu.com',
     firstName: 'john',
     lastName: 'doe',
     userType: UserType.STANDARD,
@@ -136,7 +136,7 @@ const APPLICATION_SEED: Application[] = [
     license: 'n/a',
     applicantType: ApplicantType.LEARNER,
     phone: '123-456-7890',
-    email: 'johndoe@gmail.com',
+    email: 'standard@c4cneu.com',
     discipline: DISCIPLINE_VALUES.RN,
     referred: false,
     weeklyHours: 20,
