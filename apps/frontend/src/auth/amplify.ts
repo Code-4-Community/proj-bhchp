@@ -1,5 +1,7 @@
 import { Amplify } from 'aws-amplify';
 
+// Amplify is configured once at app startup so every auth call shares the same
+// Cognito user pool and app client settings.
 const userPoolId = import.meta.env.VITE_COGNITO_USER_POOL_ID;
 const region = import.meta.env.VITE_COGNITO_REGION;
 const userPoolClientId = import.meta.env.VITE_COGNITO_APP_CLIENT_ID;
@@ -25,6 +27,8 @@ export const configureAmplify = (): void => {
     return;
   }
 
+  // Fail fast here so developers see a clear error if the frontend env file is
+  // missing Cognito settings instead of getting a vague auth failure later.
   assertAmplifyEnv();
 
   const resolvedUserPoolId = userPoolId as string;

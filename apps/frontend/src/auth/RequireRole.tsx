@@ -6,22 +6,22 @@ import { getCurrentSessionUserType } from './current-session-user-type';
 import { UserType } from '@api/types';
 
 type RequireRoleProps = {
-  allowedRoles: UserType[];
+  allowedUserTypes: UserType[];
 };
 
-const landingForRole = (role: UserType): string => {
-  return role === UserType.ADMIN
+const landingForUserType = (userType: UserType): string => {
+  return userType === UserType.ADMIN
     ? '/admin/landing'
     : '/candidate/view-application';
 };
 
-const RequireRole: React.FC<RequireRoleProps> = ({ allowedRoles }) => {
+const RequireRole: React.FC<RequireRoleProps> = ({ allowedUserTypes }) => {
   const [checked, setChecked] = useState(false);
-  const [role, setRole] = useState<UserType | null>(null);
+  const [userType, setUserType] = useState<UserType | null>(null);
 
   useEffect(() => {
     getCurrentSessionUserType()
-      .then((r) => setRole(r))
+      .then((resolvedUserType) => setUserType(resolvedUserType))
       .finally(() => setChecked(true));
   }, []);
 
@@ -38,12 +38,12 @@ const RequireRole: React.FC<RequireRoleProps> = ({ allowedRoles }) => {
     );
   }
 
-  if (!role) {
+  if (!userType) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(role)) {
-    return <Navigate to={landingForRole(role)} replace />;
+  if (!allowedUserTypes.includes(userType)) {
+    return <Navigate to={landingForUserType(userType)} replace />;
   }
 
   return <Outlet />;

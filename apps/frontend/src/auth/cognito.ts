@@ -7,6 +7,8 @@ import {
 } from 'aws-amplify/auth';
 import { clearCurrentSessionUserType } from './session';
 
+// These helpers wrap Amplify's lower-level auth methods so the rest of the app
+// does not need to know about Cognito-specific calls or token retrieval.
 export const signInWithEmailPassword = async (
   username: string,
   password: string,
@@ -44,6 +46,7 @@ export const signUpWithEmailPassword = async (
 };
 
 export const getIdToken = async (): Promise<string | undefined> => {
+  // The ID token is what the frontend sends to protected backend endpoints.
   const session = await fetchAuthSession();
   const idToken = session.tokens?.idToken?.toString();
   if (idToken) {

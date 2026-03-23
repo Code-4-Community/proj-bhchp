@@ -29,6 +29,8 @@ export class AuthService {
   private readonly clientSecret: string;
 
   constructor() {
+    // The backend talks directly to Cognito for admin operations such as
+    // sign-up, password reset, and token exchange.
     const accessKeyId =
       process.env.AWS_ACCESS_KEY_ID ?? process.env.NX_AWS_ACCESS_KEY;
     const secretAccessKey =
@@ -49,8 +51,9 @@ export class AuthService {
   }
 
   /**
-   * Computes the secret hash to authenticate this backend to Cognito.
-   * The hash key is the Cognito client secret; the message is username + client ID.
+   * Computes Cognito's `SECRET_HASH` value for app clients that have a secret.
+   * Cognito expects this on server-side auth calls so it can verify the app
+   * client that is making the request.
    * @param username Value which depends on the command.
    *                 See: https://docs.aws.amazon.com/cognito/latest/developerguide/signing-up-users-in-your-app.html#cognito-user-pools-computing-secret-hash
    * @returns The HMAC digest for the given username.
@@ -63,6 +66,9 @@ export class AuthService {
   }
 
   async getUser(userSub: string): Promise<AttributeType[]> {
+    // This is used only by server-side auth flows. The JWT strategy already
+    // authenticated the user; this lookup translates a Cognito `sub` into the
+    // user's profile attributes.
     const listUsersCommand = new ListUsersCommand({
       UserPoolId: CognitoAuthConfig.userPoolId,
       Filter: `sub = "${userSub}"`,
@@ -74,7 +80,9 @@ export class AuthService {
   }
 
   /**
-   * Creates a user in the external auth provider (AWS Cognito).
+   * Creates a user in Cognito.
+   * The backend stores the app-specific role separately in the database, so
+   * Cognito only needs the identity attributes used for sign-in.
    * @param signUpDto Object containing the necessary fields to create a new user.
    * @returns Whether the user was confirmed as created in the external auth provider.
    * @throws {Error} If the external auth client throws an error.
@@ -108,7 +116,8 @@ export class AuthService {
   }
 
   /**
-   * Verifies a user by email and verification code with the external auth provider (AWS Cognito).
+   * Completes Cognito's confirmation step after sign-up.
+   * This is the point where a newly created user becomes eligible to sign in.
    * @param email The email of the user to verify.
    * @param verificationCode The code required to verify the user with the external auth provider.
    * @throws {Error} If the external auth provider throws an error.
@@ -125,7 +134,9 @@ export class AuthService {
   }
 
   /**
-   * Signs an existing user into the application using the external auth provider.
+   * Signs a user in using Cognito's admin auth flow.
+   * Cognito returns raw session tokens here; the frontend later uses the ID
+   * token to call protected API routes and resolve the app-specific user role.
    * @param signInDto Object containing the necessary fields to sign in a user.
    * @returns SignInResponseDto with session tokens for the user.
    * @throws {Error} If the external auth provider throws an error.
@@ -152,12 +163,15 @@ export class AuthService {
   }
 
   /**
-   * Refreshes a user's session token with the external auth provider.
+   * Refreshes a user's Cognito session.
+   * The backend re-signs the request because the user pool app client may
+   * require a `SECRET_HASH`.
    * @param refreshDto Object containing the necessary fields to refresh the token.
    * @returns SignInResponseDto with the new (refreshed) session tokens for the user.
    * @throws {Error} If the external auth provider throws an error.
    *
-   * Note: Refresh token hash uses a user's sub (unique ID), not their username (typically their email).
+   * Note: Refresh token hash uses a user's sub (unique ID), not their username
+   * (typically their email).
    */
   async refreshToken({
     refreshToken,
@@ -183,7 +197,9 @@ export class AuthService {
   }
 
   /**
-   * Initiates the forgot-password flow with the external auth provider.
+   * Starts Cognito's forgot-password flow.
+   * Cognito sends a verification code to the user; the frontend uses that code
+   * with `confirmForgotPassword` to finish the reset.
    * @param body The email address of the user who forgot their password.
    * @throws {Error} If the external auth provider throws an error.
    *
@@ -200,7 +216,8 @@ export class AuthService {
   }
 
   /**
-   * Confirms a forgotten password with the external auth provider.
+   * Completes the password reset started by `forgotPassword`.
+   * Cognito needs the email, code, and new password to update the account.
    * @param body Object containing the necessary fields (email, confirmation code, new password) to confirm.
    * @throws {Error} If the external auth provider throws an error.
    *
@@ -223,7 +240,9 @@ export class AuthService {
   }
 
   /**
-   * Deletes a user by email in the external auth provider.
+   * Deletes a user from Cognito.
+   * The application database may keep its own user record, so deletion flows
+   * often need to coordinate Cognito and the local user table separately.
    * @param body The email address of the user to delete.
    * @throws {Error} If the repository or external auth provider throws an error.
    *

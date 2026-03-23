@@ -30,7 +30,9 @@ export const App: React.FC = () => {
           <Route element={<RequireAuth />}>
             <Route path="/" element={<RoleHomeRedirect />} />
 
-            <Route element={<RequireRole allowedRoles={[UserType.ADMIN]} />}>
+            <Route
+              element={<RequireRole allowedUserTypes={[UserType.ADMIN]} />}
+            >
               <Route path="admin" element={<Outlet />}>
                 <Route path="landing" element={<AdminLanding />} />
                 <Route
@@ -41,7 +43,9 @@ export const App: React.FC = () => {
               </Route>
             </Route>
 
-            <Route element={<RequireRole allowedRoles={[UserType.STANDARD]} />}>
+            <Route
+              element={<RequireRole allowedUserTypes={[UserType.STANDARD]} />}
+            >
               <Route path="candidate" element={<Outlet />}>
                 <Route path="view-application" />
                 <Route path="upload-forms" />

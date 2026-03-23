@@ -10,13 +10,13 @@ const RoleHomeRedirect: React.FC = () => {
 
   useEffect(() => {
     getCurrentSessionUserType()
-      .then((role) => {
-        if (!role) {
+      .then((userType) => {
+        if (!userType) {
           setTo('/login');
           return;
         }
         setTo(
-          role === UserType.ADMIN
+          userType === UserType.ADMIN
             ? '/admin/landing'
             : '/candidate/view-application',
         );

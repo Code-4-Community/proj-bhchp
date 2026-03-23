@@ -25,15 +25,15 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const landingForRole = (role: UserType): string => {
-    return role === UserType.ADMIN
+  const landingForUserType = (userType: UserType): string => {
+    return userType === UserType.ADMIN
       ? '/admin/landing'
       : '/candidate/view-application';
   };
 
   useEffect(() => {
-    // If the user is already signed in and we can resolve a backend userType,
-    // send them to the appropriate landing page.
+    // If an existing session already has a backend userType cached, send the user
+    // straight to the correct landing page instead of showing the login form.
     console.debug('[ui] Login mount: checking existing session userType');
     getCurrentSessionUserType()
       .then((userType) => {
@@ -41,7 +41,7 @@ const Login: React.FC = () => {
           userType,
         });
         if (userType) {
-          navigate(landingForRole(userType), { replace: true });
+          navigate(landingForUserType(userType), { replace: true });
         }
       })
       .catch((err) => {
@@ -59,6 +59,8 @@ const Login: React.FC = () => {
       console.debug('[ui] Login: attempting signIn', { email });
       await signInWithEmailPassword(email.trim(), password);
       console.debug('[ui] Login: signIn succeeded, fetching backend userType');
+      // Cognito confirms the identity here; the backend determines whether
+      // that identity maps to an ADMIN or STANDARD user in this app.
       const userType = await fetchAndStoreCurrentSessionUserType();
 
       console.debug(

@@ -11,6 +11,9 @@ import {
 const defaultBaseUrl =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
 
+// Shared HTTP client for the app.
+// A request interceptor attaches the Cognito ID token to every protected call
+// so the backend can authenticate the request before loading application data.
 export class ApiClient {
   private axiosInstance: AxiosInstance;
 
@@ -32,6 +35,7 @@ export class ApiClient {
       }
 
       if (idToken) {
+        // NestJS reads this header in the JWT strategy.
         config.headers = config.headers ?? {};
         (
           config.headers as Record<string, string>

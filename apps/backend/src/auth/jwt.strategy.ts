@@ -6,7 +6,8 @@ import { Logger } from '@nestjs/common';
 
 import CognitoAuthConfig from './aws-exports';
 
-// TODO: Clarify what this is
+// Passport strategy that validates Cognito JWTs before protected routes run.
+// Once a token passes this strategy, request.user contains the decoded claims.
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   private readonly logger = new Logger(JwtStrategy.name);
@@ -24,6 +25,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const cognitoAuthority = `https://cognito-idp.${CognitoAuthConfig.region}.amazonaws.com/${CognitoAuthConfig.userPoolId}`;
 
+    // These settings tell Passport which tokens to trust and where to fetch
+    // the public keys that Cognito uses to sign JWTs.
     Logger.log(
       `Configuring JWT strategy for issuer ${cognitoAuthority} and client ${CognitoAuthConfig.clientId}`,
       JwtStrategy.name,
@@ -45,6 +48,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload) {
+    // `validate` runs only after Passport has already verified the JWT
+    // signature and issuer. We keep only the fields the rest of the app uses.
     this.logger.debug(
       `Validated JWT payload: sub=${payload?.sub ?? 'unknown'}, token_use=${
         payload?.token_use ?? 'unknown'

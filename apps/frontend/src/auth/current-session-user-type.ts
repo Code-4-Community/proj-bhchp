@@ -9,6 +9,8 @@ import {
   setCurrentSessionUserType,
 } from './session';
 
+// After Cognito sign-in, the frontend asks the backend for the user's app
+// record so route guards can use the app's own ADMIN/STANDARD role data.
 export const fetchAndStoreCurrentSessionUserType =
   async (): Promise<UserType | null> => {
     console.debug(
@@ -26,6 +28,8 @@ export const fetchAndStoreCurrentSessionUserType =
     }
 
     console.debug('[auth] calling backend to fetch user by email', { email });
+    // The backend is the source of truth for app roles; we cache the result in
+    // session storage for the current browser tab session.
     const user = await apiClient.getUserByEmail(email);
     console.debug('[auth] backend returned user', {
       email,
@@ -36,6 +40,8 @@ export const fetchAndStoreCurrentSessionUserType =
   };
 
 export const getCurrentSessionUserType = async (): Promise<UserType | null> => {
+  // Prefer the cached role first so route guards do not call the backend on
+  // every render.
   const storedUserType = getCurrentSessionUserTypeFromStorage();
   if (storedUserType) {
     return storedUserType;

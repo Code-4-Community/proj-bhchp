@@ -14,6 +14,8 @@ export class CurrentUserInterceptor implements NestInterceptor {
   constructor(private usersService: UsersService) {}
 
   async intercept(context: ExecutionContext, handler: CallHandler) {
+    // At this point JWT auth has already succeeded. This interceptor upgrades
+    // the lightweight Cognito payload into the app's database-backed user.
     const request = context.switchToHttp().getRequest();
 
     if (!request.user) {
@@ -23,6 +25,8 @@ export class CurrentUserInterceptor implements NestInterceptor {
       return handler.handle();
     }
 
+    // The JWT strategy exposes the Cognito email claim, which is enough to
+    // locate the local user profile without asking Cognito for extra metadata.
     const userEmail = request.user.email;
 
     if (!userEmail) {
