@@ -29,12 +29,20 @@ export class AuthService {
   private readonly clientSecret: string;
 
   constructor() {
+    const accessKeyId =
+      process.env.AWS_ACCESS_KEY_ID ?? process.env.NX_AWS_ACCESS_KEY;
+    const secretAccessKey =
+      process.env.AWS_SECRET_ACCESS_KEY ?? process.env.NX_AWS_SECRET_ACCESS_KEY;
+
     this.providerClient = new CognitoIdentityProviderClient({
       region: CognitoAuthConfig.region,
-      credentials: {
-        accessKeyId: process.env.NX_AWS_ACCESS_KEY,
-        secretAccessKey: process.env.NX_AWS_SECRET_ACCESS_KEY,
-      },
+      credentials:
+        accessKeyId && secretAccessKey
+          ? {
+              accessKeyId,
+              secretAccessKey,
+            }
+          : undefined,
     });
 
     this.clientSecret = process.env.COGNITO_CLIENT_SECRET;

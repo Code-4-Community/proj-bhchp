@@ -5,6 +5,8 @@ import {
   Param,
   UseGuards,
   UseInterceptors,
+  Headers,
+  Logger,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -23,6 +25,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 @UseGuards(AuthGuard('jwt'))
 @UseInterceptors(CurrentUserInterceptor)
 export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
+
   constructor(private usersService: UsersService) {}
 
   /**
@@ -31,9 +35,29 @@ export class UsersController {
    * @returns The user with the corresponding email or null if not found.
    */
   @Get('email/:email')
-  async getUser(@Param('email') email: string): Promise<User | null> {
+  async getUser(
+    @Param('email') email: string,
+    @Headers('authorization') authorization?: string,
+  ): Promise<User | null> {
     const decoded = decodeURIComponent(email);
-    return this.usersService.findOne(decoded);
+    this.logger.log(
+      `GET /users/email/${decoded} called. Authorization present: ${
+        authorization ? 'yes' : 'no'
+      }`,
+    );
+
+    try {
+      const user = await this.usersService.findOne(decoded);
+      if (user) {
+        this.logger.log(`Found user for ${decoded}: userType=${user.userType}`);
+      } else {
+        this.logger.log(`No user found for ${decoded}`);
+      }
+      return user;
+    } catch (err: unknown) {
+      this.logger.error(`Error fetching user for ${decoded}: ${String(err)}`);
+      throw err;
+    }
   }
 
   /**

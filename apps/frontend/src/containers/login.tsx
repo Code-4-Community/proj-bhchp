@@ -8,19 +8,16 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
-import { signInWithEmailPassword } from '../auth/cognito';
-import { isAuthenticated } from '../auth/cognito';
-
-type LocationState = {
-  from?: {
-    pathname?: string;
-  };
-};
+import { signInWithEmailPassword, signOutUser } from '../auth/cognito';
+import {
+  fetchAndStoreCurrentSessionUserType,
+  getCurrentSessionUserType,
+} from '../auth/current-session-user-type';
+import { UserType } from '@api/types';
 
 const Login: React.FC = () => {
-  const location = useLocation();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -28,14 +25,28 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const redirectPath =
-    (location.state as LocationState | null)?.from?.pathname ?? '/';
+  const landingForRole = (role: UserType): string => {
+    return role === UserType.ADMIN
+      ? '/admin/landing'
+      : '/candidate/view-application';
+  };
 
   useEffect(() => {
-    // If the user is already authenticated, send them to the admin landing page
-    isAuthenticated().then((authed) => {
-      if (authed) navigate('/', { replace: true });
-    });
+    // If the user is already signed in and we can resolve a backend userType,
+    // send them to the appropriate landing page.
+    console.debug('[ui] Login mount: checking existing session userType');
+    getCurrentSessionUserType()
+      .then((userType) => {
+        console.debug('[ui] Login: getCurrentSessionUserType result', {
+          userType,
+        });
+        if (userType) {
+          navigate(landingForRole(userType), { replace: true });
+        }
+      })
+      .catch((err) => {
+        console.error('[ui] Login: error checking session userType', err);
+      });
   }, [navigate]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -45,8 +56,23 @@ const Login: React.FC = () => {
     setError(null);
 
     try {
+      console.debug('[ui] Login: attempting signIn', { email });
       await signInWithEmailPassword(email.trim(), password);
-      navigate(redirectPath, { replace: true });
+      console.debug('[ui] Login: signIn succeeded, fetching backend userType');
+      const userType = await fetchAndStoreCurrentSessionUserType();
+
+      console.debug(
+        '[ui] Login: fetchAndStoreCurrentSessionUserType returned',
+        { userType },
+      );
+
+      if (!userType) {
+        await signOutUser();
+        setError('Unable to determine the account type for this user.');
+        return;
+      }
+
+      navigate('/', { replace: true });
     } catch (err: unknown) {
       const message =
         err instanceof Error

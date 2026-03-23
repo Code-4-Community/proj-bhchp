@@ -160,3 +160,10 @@ export enum UserType {
   ADMIN = 'ADMIN',
   STANDARD = 'STANDARD',
 }
+
+export interface User {
+  email: string;
+  firstName: string;
+  lastName: string;
+  userType: UserType;
+}

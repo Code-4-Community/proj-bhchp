@@ -1,35 +1,56 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+} from 'react-router-dom';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 
-import apiClient from '@api/apiClient';
 import AdminLanding from '@containers/AdminLanding';
 import AdminViewApplication from '@containers/AdminViewApplication';
+import Login from '@containers/login';
+import Signup from '@containers/signup';
+import NotFound from '@containers/404';
+import RequireAuth from './auth/RequireAuth';
+import RequireRole from './auth/RequireRole';
+import RoleHomeRedirect from './auth/RoleHomeRedirect';
+import Logout from '@containers/logout';
+import { UserType } from '@api/types';
 
 export const App: React.FC = () => {
-  useEffect(() => {
-    apiClient.getHello().then((res) => console.log(res));
-  }, []);
-
-  // Note: the / to /admin/landing redirect is temporary convenience for development
   return (
     <ChakraProvider value={defaultSystem}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/admin/landing" replace />} />
-          <Route path="/admin">
-            <Route path="/admin/landing" element={<AdminLanding />} />
-            <Route
-              path="/admin/view-application/:appId"
-              element={<AdminViewApplication />}
-            />
-            <Route path="/admin/settings" />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/logout" element={<Logout />} />
+
+          <Route element={<RequireAuth />}>
+            <Route path="/" element={<RoleHomeRedirect />} />
+
+            <Route element={<RequireRole allowedRoles={[UserType.ADMIN]} />}>
+              <Route path="admin" element={<Outlet />}>
+                <Route path="landing" element={<AdminLanding />} />
+                <Route
+                  path="view-application/:appId"
+                  element={<AdminViewApplication />}
+                />
+                <Route path="settings" />
+              </Route>
+            </Route>
+
+            <Route element={<RequireRole allowedRoles={[UserType.STANDARD]} />}>
+              <Route path="candidate" element={<Outlet />}>
+                <Route path="view-application" />
+                <Route path="upload-forms" />
+                <Route path="settings" />
+              </Route>
+            </Route>
           </Route>
-          <Route path="/candidate">
-            <Route path="/candidate/view-application" />
-            <Route path="/candidate/upload-forms" />
-            <Route path="/candidate/settings" />
-          </Route>
+
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </ChakraProvider>

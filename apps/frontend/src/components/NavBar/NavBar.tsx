@@ -33,7 +33,7 @@ export default function NavBar({ logo, userType }: NavBarProps) {
         <Flex direction="column" width="100%" paddingTop="16px">
           {userType === UserType.ADMIN && (
             <NavbarItem
-              href="#dashboard"
+              href="/admin/landing"
               label="Dashboard"
               icon={<FaHouse />}
             />

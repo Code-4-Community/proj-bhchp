@@ -20,7 +20,7 @@ import { UserType } from '../users/types';
 
 const ADMIN_INFO_SEED = [
   {
-    email: 'indie.kitt@northeastern.edu',
+    email: 'superadmin@c4cneu.com',
     discipline: DISCIPLINE_VALUES.RN,
   },
   {
@@ -50,7 +50,7 @@ const CANDIDATE_INFO_SEED: CandidateInfo[] = [
 
 const USER_SEED: User[] = [
   {
-    email: 'indie.kitt@northeastern.edu',
+    email: 'superadmin@c4cneu.com',
     firstName: 'indie',
     lastName: 'kitt',
     userType: UserType.ADMIN,
@@ -188,7 +188,7 @@ const APPLICATION_SEED: Application[] = [
 
 const LEARNER_INFO_SEED: LearnerInfo[] = [
   {
-    appId: 1,
+    appId: 2,
     school: School.HARVARD_MEDICAL_SCHOOL,
     isSupervisorApplying: false,
     isLegalAdult: true,
@@ -196,7 +196,7 @@ const LEARNER_INFO_SEED: LearnerInfo[] = [
 ];
 const VOLUNTEER_INFO_SEED: VolunteerInfo[] = [
   {
-    appId: 2,
+    appId: 1,
     license: '1234567890',
   },
   {

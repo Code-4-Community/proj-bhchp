@@ -4,6 +4,7 @@ import {
   Application,
   AvailabilityFields,
   LearnerInfo,
+  User,
   VolunteerInfo,
 } from './types';
 
@@ -19,6 +20,17 @@ export class ApiClient {
     this.axiosInstance.interceptors.request.use(async (config) => {
       const idToken = await getIdToken();
 
+      // Log request metadata for debugging the signin -> backend user fetch flow
+      try {
+        console.debug('[api] Request', {
+          method: config.method,
+          url: config.url,
+          hasAuth: !!idToken,
+        });
+      } catch {
+        // swallow logging errors
+      }
+
       if (idToken) {
         config.headers = config.headers ?? {};
         (
@@ -28,6 +40,41 @@ export class ApiClient {
 
       return config;
     });
+
+    // Response interceptor to log responses for the user lookup path
+    this.axiosInstance.interceptors.response.use(
+      (response) => {
+        try {
+          const url = response.config.url ?? '';
+          if (url.includes('/api/users/email')) {
+            console.debug('[api] Response for getUserByEmail', {
+              url,
+              status: response.status,
+              // Avoid printing full user object in logs in case of sensitive fields; print userType when available
+              userType: response.data?.userType,
+            });
+          }
+        } catch {
+          /* noop */
+        }
+
+        return response;
+      },
+      (error) => {
+        try {
+          const cfg = error?.config;
+          if (cfg?.url && cfg.url.includes('/api/users/email')) {
+            console.error('[api] Error response for getUserByEmail', {
+              url: cfg.url,
+              message: error?.message,
+            });
+          }
+        } catch {
+          /* noop */
+        }
+        return Promise.reject(error);
+      },
+    );
   }
 
   public async getHello(): Promise<string> {
@@ -40,6 +87,12 @@ export class ApiClient {
 
   public async getVolunteerInfo(appId: number): Promise<VolunteerInfo> {
     return this.get(`/api/volunteer_info/${appId}`) as Promise<VolunteerInfo>;
+  }
+
+  public async getUserByEmail(email: string): Promise<User> {
+    return this.get(
+      `/api/users/email/${encodeURIComponent(email)}`,
+    ) as Promise<User>;
   }
 
   public async getLearnerInfo(appId: number): Promise<LearnerInfo> {
