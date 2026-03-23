@@ -3,8 +3,6 @@ import {
   Body,
   Controller,
   Post,
-  Request,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 
@@ -17,7 +15,6 @@ import { DeleteUserDto } from './dtos/delete-user.dto';
 import { User } from '../users/user.entity';
 import { SignInResponseDto } from './dtos/sign-in-response.dto';
 import { RefreshTokenDto } from './dtos/refresh-token.dto';
-import { AuthGuard } from '@nestjs/passport';
 import { ConfirmPasswordDto } from './dtos/confirm-password.dto';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { ApiTags } from '@nestjs/swagger';

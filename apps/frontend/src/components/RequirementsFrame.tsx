@@ -1,9 +1,13 @@
 import { Box, Heading, Text } from '@chakra-ui/react';
 
-const STUDENT_REQUIREMENTS_PLACEHOLDER = 'PLACEHOLDER INFO HERE';
-const INSTRUCTOR_CONTACT_INFO_PLACEHOLDER = 'PLACEHOLDER INFO HERE';
+interface RequirementsFrameProps {
+  course_requirements: string;
+  instructor_contact_info: string;
+}
 
-export const RequirementsFrame: React.FC = () => {
+export const RequirementsFrame: React.FC<{
+  frameProps: RequirementsFrameProps;
+}> = ({ frameProps }) => {
   return (
     <Box borderWidth="1px" borderRadius="lg" p={6} bg="white">
       <Heading as="h2" size="md" mb={4}>
@@ -22,7 +26,7 @@ export const RequirementsFrame: React.FC = () => {
           p={3}
           overflow="auto"
         >
-          <Text fontSize="sm">{STUDENT_REQUIREMENTS_PLACEHOLDER}</Text>
+          <Text fontSize="sm">{frameProps.course_requirements}</Text>
         </Box>
       </Box>
 
@@ -38,7 +42,7 @@ export const RequirementsFrame: React.FC = () => {
           p={3}
           overflow="auto"
         >
-          <Text fontSize="sm">{INSTRUCTOR_CONTACT_INFO_PLACEHOLDER}</Text>
+          <Text fontSize="sm">{frameProps.instructor_contact_info}</Text>
         </Box>
       </Box>
     </Box>

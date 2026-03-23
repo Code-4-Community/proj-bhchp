@@ -9,7 +9,6 @@ import {
   Delete,
 } from '@nestjs/common';
 import { CandidateInfoService } from './candidate-info.service';
-import { AuthGuard } from '@nestjs/passport';
 import { CandidateInfo } from './candidate-info.entity';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { CreateCandidateInfoDto } from './dto/candidate-info.dto';

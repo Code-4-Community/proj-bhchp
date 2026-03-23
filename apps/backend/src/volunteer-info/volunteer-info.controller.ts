@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { VolunteerInfo } from './volunteer-info.entity';
 import { ApiTags } from '@nestjs/swagger';
 import { VolunteerInfoService } from './volunteer-info.service';

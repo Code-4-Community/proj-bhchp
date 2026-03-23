@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
 /**
  * Defines the expected shape of data for confirming a user's new password

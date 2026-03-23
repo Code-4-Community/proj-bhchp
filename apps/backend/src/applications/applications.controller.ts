@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  Request,
 } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
@@ -28,12 +27,11 @@ export class ApplicationsController {
 
   /**
    * Exposes an endpoint to return all applications.
-   * @param req The request object from the caller (frontend). Currently not used.
    * @returns A promise of the list of all available applications.
    * @throws {Error} which is unchanged from what repository throws.
    */
   @Get()
-  async getAllApplications(@Request() req): Promise<Application[]> {
+  async getAllApplications(): Promise<Application[]> {
     return await this.applicationsService.findAll();
   }
 
@@ -49,7 +47,6 @@ export class ApplicationsController {
   @Get('by-discipline')
   async getApplicationsByDiscipline(
     @Query('discipline') discipline: string,
-    @Request() req,
   ): Promise<Application[]> {
     return await this.applicationsService.findByDiscipline(discipline);
   }
@@ -66,7 +63,6 @@ export class ApplicationsController {
   @Get('/:appId')
   async getApplicationById(
     @Param('appId', ParseIntPipe) appId: number,
-    @Request() req,
   ): Promise<Application> {
     return await this.applicationsService.findById(appId);
   }
@@ -81,7 +77,6 @@ export class ApplicationsController {
   @Post()
   async createApplication(
     @Body() createApplicationDto: CreateApplicationDto,
-    @Request() req,
   ): Promise<Application> {
     return await this.applicationsService.create(createApplicationDto);
   }
@@ -100,7 +95,6 @@ export class ApplicationsController {
   async updateApplicationStatus(
     @Param('appId', ParseIntPipe) appId: number,
     @Body() updateStatusDto: UpdateApplicationStatusDto,
-    @Request() req,
   ): Promise<Application> {
     return await this.applicationsService.update(appId, {
       appStatus: updateStatusDto.appStatus,
@@ -121,7 +115,6 @@ export class ApplicationsController {
   async updateApplicationDiscipline(
     @Param('appId', ParseIntPipe) appId: number,
     @Body() updateDisciplineDto: UpdateApplicationDisciplineDto,
-    @Request() req,
   ): Promise<Application> {
     return await this.applicationsService.update(appId, {
       discipline: updateDisciplineDto.discipline,
@@ -140,7 +133,6 @@ export class ApplicationsController {
   async updateApplicationAvailability(
     @Param('appId', ParseIntPipe) appId: number,
     @Body() updateAvailabilityDto: UpdateApplicationAvailabilityDto,
-    @Request() req,
   ): Promise<Application> {
     return await this.applicationsService.update(appId, updateAvailabilityDto);
   }
@@ -158,7 +150,6 @@ export class ApplicationsController {
   async updateApplicationProposedStartDate(
     @Param('appId', ParseIntPipe) appId: number,
     @Body('proposedStartDate') startDate: string,
-    @Request() req,
   ): Promise<Application> {
     return await this.applicationsService.updateProposedStartDate(
       appId,
@@ -179,7 +170,6 @@ export class ApplicationsController {
   async updateApplicationActualStartDate(
     @Param('appId', ParseIntPipe) appId: number,
     @Body('actualStartDate') startDate: string,
-    @Request() req,
   ): Promise<Application> {
     return await this.applicationsService.updateActualStartDate(
       appId,
@@ -200,7 +190,6 @@ export class ApplicationsController {
   async updateApplicationEndDate(
     @Param('appId', ParseIntPipe) appId: number,
     @Body('endDate') endDate: string,
-    @Request() req,
   ): Promise<Application> {
     return await this.applicationsService.updateEndDate(
       appId,
@@ -220,7 +209,6 @@ export class ApplicationsController {
   @Delete('/:appId')
   async deleteApplication(
     @Param('appId', ParseIntPipe) appId: number,
-    @Request() req,
   ): Promise<void> {
     await this.applicationsService.delete(appId);
   }

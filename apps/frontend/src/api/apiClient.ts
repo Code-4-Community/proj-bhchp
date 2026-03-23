@@ -1,34 +1,11 @@
 import axios, { type AxiosInstance } from 'axios';
 import { getIdToken } from '../auth/cognito';
-
-export interface AvailabilityFields {
-  mondayAvailability: string;
-  tuesdayAvailability: string;
-  wednesdayAvailability: string;
-  thursdayAvailability: string;
-  fridayAvailability: string;
-  saturdayAvailability: string;
-}
-
-export interface Application extends AvailabilityFields {
-  appId: number;
-  email: string;
-  discipline: string;
-  appStatus: string;
-  experienceType: string;
-  interest: string[];
-  license: string;
-  phone: string;
-  applicantType: string;
-  school: string;
-  weeklyHours: number;
-  pronouns: string;
-  resume: string;
-  coverLetter: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  emergencyContactRelationship: string;
-}
+import {
+  Application,
+  AvailabilityFields,
+  LearnerInfo,
+  VolunteerInfo,
+} from './types';
 
 const defaultBaseUrl =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
@@ -59,6 +36,14 @@ export class ApiClient {
 
   public async getApplication(appId: number): Promise<Application> {
     return this.get(`/api/applications/${appId}`) as Promise<Application>;
+  }
+
+  public async getVolunteerInfo(appId: number): Promise<VolunteerInfo> {
+    return this.get(`/api/volunteer_info/${appId}`) as Promise<VolunteerInfo>;
+  }
+
+  public async getLearnerInfo(appId: number): Promise<LearnerInfo> {
+    return this.get(`/api/learner_info/${appId}`) as Promise<LearnerInfo>;
   }
 
   public async updateAvailability(

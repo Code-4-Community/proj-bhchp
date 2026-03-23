@@ -1,17 +1,17 @@
 import React from 'react';
 import { Box, Heading, Flex, Link, Text } from '@chakra-ui/react';
 import NavbarItem from './NavBarItem';
-import SearchBar from './SearchBar';
-import { FaHouse } from 'react-icons/fa6';
-import { FaBell } from 'react-icons/fa';
+import { FaHouse, FaPerson, FaRegFile } from 'react-icons/fa6';
 import { IoIosSettings } from 'react-icons/io';
 import { CgProfile } from 'react-icons/cg';
+import { UserType } from '@api/types';
 
 export type NavBarProps = {
   logo: React.ReactNode;
+  userType: UserType;
 };
 
-export default function NavBar({ logo }: NavBarProps) {
+export default function NavBar({ logo, userType }: NavBarProps) {
   return (
     <Box
       display="flex"
@@ -30,14 +30,24 @@ export default function NavBar({ logo }: NavBarProps) {
             {logo}
           </Heading>
         </Flex>
-        <SearchBar />
         <Flex direction="column" width="100%" paddingTop="16px">
-          <NavbarItem href="#dashboard" label="Dashboard" icon={<FaHouse />} />
-          <NavbarItem
-            href="#notifications"
-            label="Notifications"
-            icon={<FaBell />}
-          />
+          {userType === UserType.ADMIN && (
+            <NavbarItem
+              href="#dashboard"
+              label="Dashboard"
+              icon={<FaHouse />}
+            />
+          )}
+          {userType === UserType.STANDARD && (
+            <NavbarItem
+              href="#myapplication"
+              label="My Application"
+              icon={<FaPerson />}
+            />
+          )}
+          {userType === UserType.STANDARD && (
+            <NavbarItem href="#myforms" label="My Forms" icon={<FaRegFile />} />
+          )}
           <NavbarItem
             href="#settings"
             label="Settings"

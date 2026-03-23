@@ -8,7 +8,7 @@ import {
   IsOptional,
   Matches,
 } from 'class-validator';
-import { ExperienceType, InterestArea, School } from '../types';
+import { School } from '../types';
 
 /**
  * Defines the expected shape of data for creating a learner info

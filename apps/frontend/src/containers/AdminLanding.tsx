@@ -11,9 +11,9 @@ import PageTransitionButton from '@components/PageTransitionButton';
 import Searchbar from '@components/TableSearchBar';
 import PageCounter from '@components/PageCounter';
 import ApplicationTable from '@components/ApplicationTable';
-import AvailabilityTable from '@components/AvailabilityTable';
+import { UserType } from '@api/types';
 
-const Root: React.FC = () => {
+const AdminLanding: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
 
@@ -22,7 +22,7 @@ const Root: React.FC = () => {
   }
   return (
     <div className="flex flex-row h-screen">
-      <NavBar logo={'BHCHP'} />
+      <NavBar logo={'BHCHP'} userType={UserType.ADMIN} />
       <Box
         id="main-content"
         p="10"
@@ -106,4 +106,4 @@ const Root: React.FC = () => {
   );
 };
 
-export default Root;
+export default AdminLanding;

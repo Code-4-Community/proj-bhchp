@@ -5,7 +5,6 @@ interface QuestionFrameProps {
   answers: string[];
 }
 
-// TODO: Add options from shared source, currently hardcoded
 export const QuestionFrame: React.FC<{ frameProps: QuestionFrameProps }> = ({
   frameProps,
 }) => {

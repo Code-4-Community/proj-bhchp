@@ -97,7 +97,6 @@ describe('ApplicationsController', () => {
 
       const result = await controller.getApplicationsByDiscipline(
         DISCIPLINE_VALUES.RN,
-        {},
       );
 
       expect(result).toEqual(mockApplications);
@@ -113,7 +112,6 @@ describe('ApplicationsController', () => {
 
       const result = await controller.getApplicationsByDiscipline(
         DISCIPLINE_VALUES.RN,
-        {},
       );
 
       expect(result).toEqual([]);
@@ -133,7 +131,7 @@ describe('ApplicationsController', () => {
         .mockRejectedValue(new BadRequestException(errorMessage));
 
       await expect(
-        controller.getApplicationsByDiscipline(invalidDiscipline, {}),
+        controller.getApplicationsByDiscipline(invalidDiscipline),
       ).rejects.toThrow(BadRequestException);
 
       expect(mockApplicationsService.findByDiscipline).toHaveBeenCalledWith(
@@ -149,7 +147,7 @@ describe('ApplicationsController', () => {
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.getApplicationsByDiscipline(DISCIPLINE_VALUES.RN, {}),
+        controller.getApplicationsByDiscipline(DISCIPLINE_VALUES.RN),
       ).rejects.toThrow(errorMessage);
 
       expect(mockApplicationsService.findByDiscipline).toHaveBeenCalledWith(
@@ -165,7 +163,7 @@ describe('ApplicationsController', () => {
           .spyOn(mockApplicationsService, 'findByDiscipline')
           .mockResolvedValue([]);
 
-        await controller.getApplicationsByDiscipline(discipline, {});
+        await controller.getApplicationsByDiscipline(discipline);
 
         expect(mockApplicationsService.findByDiscipline).toHaveBeenCalledWith(
           discipline,
@@ -198,7 +196,6 @@ describe('ApplicationsController', () => {
       const result = await controller.updateApplicationDiscipline(
         1,
         updateDisciplineDto,
-        {},
       );
 
       expect(result).toEqual(updatedApplication);
@@ -225,7 +222,6 @@ describe('ApplicationsController', () => {
       const result = await controller.updateApplicationDiscipline(
         1,
         updateDisciplineDto,
-        {},
       );
 
       expect(result.discipline).toBe(requestedDiscipline);
@@ -248,11 +244,7 @@ describe('ApplicationsController', () => {
         .spyOn(mockApplicationsService, 'update')
         .mockResolvedValue(updatedApplication);
 
-      await controller.updateApplicationDiscipline(
-        appId,
-        updateDisciplineDto,
-        {},
-      );
+      await controller.updateApplicationDiscipline(appId, updateDisciplineDto);
 
       expect(mockApplicationsService.update).toHaveBeenCalledWith(appId, {
         discipline: DISCIPLINE_VALUES.RN,
@@ -277,7 +269,6 @@ describe('ApplicationsController', () => {
       await controller.updateApplicationAvailability(
         appId,
         updateAvailabilityDto,
-        {},
       );
 
       expect(mockApplicationsService.update).toHaveBeenCalledWith(appId, {
@@ -301,7 +292,6 @@ describe('ApplicationsController', () => {
       const result = await controller.updateApplicationProposedStartDate(
         1,
         updatedStartDate,
-        {},
       );
 
       expect(result).toEqual(updatedApplication);
@@ -317,7 +307,7 @@ describe('ApplicationsController', () => {
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.updateApplicationProposedStartDate(1, updatedStartDate, {}),
+        controller.updateApplicationProposedStartDate(1, updatedStartDate),
       ).rejects.toThrow(errorMessage);
     });
   });
@@ -336,7 +326,6 @@ describe('ApplicationsController', () => {
       const result = await controller.updateApplicationActualStartDate(
         1,
         updatedStartDate,
-        {},
       );
 
       expect(result).toEqual(updatedApplication);
@@ -352,7 +341,7 @@ describe('ApplicationsController', () => {
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.updateApplicationActualStartDate(1, updatedStartDate, {}),
+        controller.updateApplicationActualStartDate(1, updatedStartDate),
       ).rejects.toThrow(errorMessage);
     });
   });
@@ -372,7 +361,6 @@ describe('ApplicationsController', () => {
       const result = await controller.updateApplicationEndDate(
         1,
         updatedEndDate,
-        {},
       );
 
       expect(result).toEqual(updatedApplication);
@@ -389,7 +377,7 @@ describe('ApplicationsController', () => {
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.updateApplicationEndDate(1, updatedEndDate, {}),
+        controller.updateApplicationEndDate(1, updatedEndDate),
       ).rejects.toThrow(errorMessage);
     });
   });

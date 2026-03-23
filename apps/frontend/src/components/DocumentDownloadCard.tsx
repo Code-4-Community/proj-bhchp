@@ -63,13 +63,15 @@ export default function DocumentDownloadCard({
       alignItems="center"
       justifyContent="flex-start"
       aspectRatio="1"
-      maxW="320px"
-      padding="14px 22px"
-      gap="48px"
-      borderRadius="30px"
+      maxW="260px"
+      padding="13px 18px"
+      gap="40px"
+      borderRadius="24px"
       bg={bg}
-      flex="1 0 0"
+      flex="0 0 260px"
       minW="0"
+      mr={6}
+      mb={6}
       fontFamily="Lato, sans-serif"
     >
       <Text
@@ -87,8 +89,8 @@ export default function DocumentDownloadCard({
         <Image
           src={documentIcon}
           alt=""
-          width="47px"
-          height="63px"
+          width="44px"
+          height="56px"
           aria-hidden
         />
       </Flex>

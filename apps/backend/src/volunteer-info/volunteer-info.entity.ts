@@ -11,8 +11,9 @@ export class VolunteerInfo {
   @PrimaryColumn()
   appId!: number;
 
-  // TODO: clarify what format this string is in, and why it's not an array
-  // if people can hold multiple licenses in real life
+  /**
+   * Free text license field
+   */
   @Column({ type: 'varchar' })
   license!: string;
 }
