@@ -7,9 +7,9 @@ import RequireAuth from './auth/RequireAuth';
 import RequireRole from './auth/RequireRole';
 import RoleHomeRedirect from './auth/RoleHomeRedirect';
 import { UserType } from './api/types';
-import Login from './containers/Login';
-import Signup from './containers/Signup';
-import Logout from './containers/Logout';
+import Login from './containers/login';
+import Signup from './containers/signup';
+import Logout from './containers/logout';
 
 export const App: React.FC = () => {
   return (
