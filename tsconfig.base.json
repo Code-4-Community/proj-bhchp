@@ -15,13 +15,13 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@admin/*": ["apps/frontend/src/admin/*"],
       "@api/*": ["apps/frontend/src/api/*"],
       "@components/*": ["apps/frontend/src/components/*"],
       "@containers/*": ["apps/frontend/src/containers/*"],
       "@public/*": ["apps/frontend/public/*"],
       "@shared/*": ["shared/src/*"],
-      "@utils/*": ["apps/frontend/src/utils/*"],
-      "@admin/*": ["apps/frontend/src/admin/*"]
+      "@utils/*": ["apps/frontend/src/utils/*"]
     }
   },
   "exclude": ["node_modules", "tmp"]
