@@ -45,39 +45,10 @@ export class ApiClient {
       return config;
     });
 
-    // Response interceptor to log responses for the user lookup path
+    // Response interceptor kept for future request-specific diagnostics.
     this.axiosInstance.interceptors.response.use(
-      (response) => {
-        try {
-          const url = response.config.url ?? '';
-          if (url.includes('/api/users/email')) {
-            console.debug('[api] Response for getUserByEmail', {
-              url,
-              status: response.status,
-              // Avoid printing full user object in logs in case of sensitive fields; print userType when available
-              userType: response.data?.userType,
-            });
-          }
-        } catch {
-          /* noop */
-        }
-
-        return response;
-      },
-      (error) => {
-        try {
-          const cfg = error?.config;
-          if (cfg?.url && cfg.url.includes('/api/users/email')) {
-            console.error('[api] Error response for getUserByEmail', {
-              url: cfg.url,
-              message: error?.message,
-            });
-          }
-        } catch {
-          /* noop */
-        }
-        return Promise.reject(error);
-      },
+      (response) => response,
+      (error) => Promise.reject(error),
     );
   }
 
@@ -93,10 +64,8 @@ export class ApiClient {
     return this.get(`/api/volunteer_info/${appId}`) as Promise<VolunteerInfo>;
   }
 
-  public async getUserByEmail(email: string): Promise<User | null> {
-    return this.get(
-      `/api/users/email/${encodeURIComponent(email)}`,
-    ) as Promise<User | null>;
+  public async getCurrentUser(): Promise<User | null> {
+    return this.get('/api/users/me') as Promise<User | null>;
   }
 
   public async getLearnerInfo(appId: number): Promise<LearnerInfo> {

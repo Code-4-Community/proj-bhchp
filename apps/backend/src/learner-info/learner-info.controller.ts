@@ -1,14 +1,20 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { LearnerInfo } from './learner-info.entity';
 import { ApiTags } from '@nestjs/swagger';
 import { LearnerInfoService } from './learner-info.service';
 import { CreateLearnerInfoDto } from './dto/create-learner-info.request.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserType } from '../users/types';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about learner-specific application info.
  */
 @ApiTags('LearnerInfo')
 @Controller('learner_info')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(UserType.ADMIN, UserType.STANDARD)
 export class LearnerInfoController {
   constructor(private learnerInfoService: LearnerInfoService) {}
 

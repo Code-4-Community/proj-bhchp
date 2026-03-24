@@ -6,6 +6,7 @@ import { LearnerInfo } from './learner-info.entity';
 import { CreateLearnerInfoDto } from './dto/create-learner-info.request.dto';
 import { School } from './types';
 import { BadRequestException } from '@nestjs/common';
+import { RolesGuard } from '../auth/roles.guard';
 
 describe('LearnerInfoController', () => {
   let controller: LearnerInfoController;
@@ -14,6 +15,10 @@ describe('LearnerInfoController', () => {
     create: jest.fn(),
     update: jest.fn(),
     findById: jest.fn(),
+  };
+
+  const mockRolesGuard = {
+    canActivate: jest.fn().mockReturnValue(true),
   };
 
   beforeEach(async () => {
@@ -29,7 +34,10 @@ describe('LearnerInfoController', () => {
           useValue: {},
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(RolesGuard)
+      .useValue(mockRolesGuard)
+      .compile();
 
     controller = module.get<LearnerInfoController>(LearnerInfoController);
   });

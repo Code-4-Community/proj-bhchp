@@ -4,6 +4,7 @@ import {
   Controller,
   Post,
   UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 
 import { SignInDto } from './dtos/sign-in.dto';
@@ -19,6 +20,10 @@ import { ConfirmPasswordDto } from './dtos/confirm-password.dto';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { ApiTags } from '@nestjs/swagger';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from './roles.guard';
+import { Roles } from './roles.decorator';
+import { UserType } from '../users/types';
 
 /**
  * Controller to expose HTTP endpoints to handle user authentication, including signup and login.
@@ -131,6 +136,8 @@ export class AuthController {
    * Does not return a value.
    */
   @Post('/delete')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserType.ADMIN)
   async delete(@Body() body: DeleteUserDto): Promise<void> {
     const user = await this.usersService.findOne(body.email);
     if (!user) {

@@ -39,15 +39,15 @@ export const signUpWithEmailPassword = async (
     username,
   });
 
-  // Build a params object and cast it to the type expected by the
-  // `signUp` function to avoid using `any` while preserving runtime shape.
-  const signUpParams = {
+  const result = await signUp({
     username,
     password,
-    attributes: { email: username },
-  } as unknown as Parameters<typeof signUp>[0];
-
-  const result = await signUp(signUpParams);
+    options: {
+      userAttributes: {
+        email: username,
+      },
+    },
+  });
   console.debug('[auth] signUpWithEmailPassword: Cognito signUp result', {
     username,
     result: !!result,

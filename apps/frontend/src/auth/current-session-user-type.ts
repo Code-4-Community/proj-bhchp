@@ -27,10 +27,10 @@ export const fetchAndStoreCurrentSessionUserType =
       return null;
     }
 
-    console.debug('[auth] calling backend to fetch user by email', { email });
+    console.debug('[auth] calling backend for current user role', { email });
     // The backend is the source of truth for app roles; we cache the result in
     // session storage for the current browser tab session.
-    const user = await apiClient.getUserByEmail(email);
+    const user = await apiClient.getCurrentUser();
 
     if (!user) {
       console.debug(
@@ -51,10 +51,21 @@ export const fetchAndStoreCurrentSessionUserType =
 
 export const getCurrentSessionUserType = async (): Promise<UserType | null> => {
   // Prefer the cached role first so route guards do not call the backend on
-  // every render.
+  // every render, but only if Cognito still considers the session valid.
   const storedUserType = getCurrentSessionUserTypeFromStorage();
   if (storedUserType) {
-    return storedUserType;
+    try {
+      const attributes = await fetchUserAttributes();
+      if (!attributes.email) {
+        clearCurrentSessionUserType();
+        return null;
+      }
+
+      return storedUserType;
+    } catch {
+      clearCurrentSessionUserType();
+      return null;
+    }
   }
 
   try {

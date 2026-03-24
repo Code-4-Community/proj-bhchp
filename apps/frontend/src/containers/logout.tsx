@@ -1,6 +1,6 @@
-import { Box, Button, Heading, Stack, Text } from '@chakra-ui/react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Box, Button, Heading, Stack, Text } from '@chakra-ui/react';
 
 import { signOutUser } from '../auth/cognito';
 

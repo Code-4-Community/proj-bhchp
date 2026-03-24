@@ -7,6 +7,7 @@ import { UsersService } from '../users/users.service';
 import { User } from '../users/user.entity';
 import { JwtStrategy } from './jwt.strategy';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
+import { RolesGuard } from './roles.guard';
 
 @Module({
   imports: [
@@ -14,7 +15,13 @@ import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UsersService, JwtStrategy, CurrentUserInterceptor],
+  providers: [
+    AuthService,
+    UsersService,
+    JwtStrategy,
+    CurrentUserInterceptor,
+    RolesGuard,
+  ],
   exports: [AuthService, UsersService],
 })
 export class AuthModule {}

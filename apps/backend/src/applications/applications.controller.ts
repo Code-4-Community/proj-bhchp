@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
@@ -16,12 +17,18 @@ import { ApiTags } from '@nestjs/swagger';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.request.dto';
 import { UpdateApplicationDisciplineDto } from './dto/update-application-discipline.request.dto';
 import { UpdateApplicationAvailabilityDto } from './dto/update-application-availability.request.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserType } from '../users/types';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about the app's applications.
  */
 @ApiTags('Applications')
 @Controller('applications')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(UserType.ADMIN, UserType.STANDARD)
 export class ApplicationsController {
   constructor(private applicationsService: ApplicationsService) {}
 

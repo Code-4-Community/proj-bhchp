@@ -7,6 +7,7 @@ import { AuthService } from '../auth/auth.service';
 import { UsersService } from '../users/users.service';
 import { DISCIPLINE_VALUES } from './disciplines.constants';
 import { CreateDisciplineRequestDto } from './dto/create-discipline.request.dto';
+import { RolesGuard } from '../auth/roles.guard';
 
 const mockDisciplinesService: Partial<DisciplinesService> = {
   findAll: jest.fn(),
@@ -24,6 +25,10 @@ const mockAuthService = {
 const mockUsersService = {
   find: jest.fn(),
   findOne: jest.fn(),
+};
+
+const mockRolesGuard = {
+  canActivate: jest.fn().mockReturnValue(true),
 };
 
 const defaultDiscipline: Discipline = {
@@ -54,6 +59,10 @@ describe('DisciplinesController', () => {
         {
           provide: UsersService,
           useValue: mockUsersService,
+        },
+        {
+          provide: RolesGuard,
+          useValue: mockRolesGuard,
         },
       ],
     }).compile();

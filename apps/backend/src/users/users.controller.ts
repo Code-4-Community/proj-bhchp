@@ -3,6 +3,7 @@ import {
   Delete,
   Get,
   Param,
+  Req,
   UseGuards,
   UseInterceptors,
   Headers,
@@ -13,6 +14,9 @@ import { AuthGuard } from '@nestjs/passport';
 import { User } from './user.entity';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserType } from './types';
 
 /**
  * Controller to expose callable HTTP endpoints to
@@ -22,7 +26,8 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(UserType.ADMIN, UserType.STANDARD)
 @UseInterceptors(CurrentUserInterceptor)
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
@@ -30,11 +35,22 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   /**
+   * Returns the current database-backed user resolved from the authenticated
+   * request. This keeps standard users from probing arbitrary emails.
+   */
+  @Get('me')
+  async getCurrentUser(@Req() req: { user?: User }): Promise<User | null> {
+    return req.user ?? null;
+  }
+
+  /**
    * Exposes an endpoint to get a user's information by their email.
+   * Admins may look up other users by email; standard users should use /me.
    * @param email The email of the desired user (URL-encoded).
    * @returns The user with the corresponding email or null if not found.
    */
   @Get('email/:email')
+  @Roles(UserType.ADMIN)
   async getUser(
     @Param('email') email: string,
     @Headers('authorization') authorization?: string,
@@ -67,6 +83,7 @@ export class UsersController {
    * @param email The email of the user to delete (URL-encoded).
    */
   @Delete('email/:email')
+  @Roles(UserType.ADMIN)
   async removeUser(@Param('email') email: string): Promise<void> {
     const decoded = decodeURIComponent(email);
     await this.usersService.remove(decoded);

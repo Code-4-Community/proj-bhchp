@@ -5,6 +5,7 @@ import { VolunteerInfoService } from './volunteer-info.service';
 import { VolunteerInfo } from './volunteer-info.entity';
 import { CreateVolunteerInfoDto } from './dto/create-volunteer-info.request.dto';
 import { BadRequestException } from '@nestjs/common';
+import { RolesGuard } from '../auth/roles.guard';
 
 describe('VolunteerInfoController', () => {
   let controller: VolunteerInfoController;
@@ -12,6 +13,10 @@ describe('VolunteerInfoController', () => {
   const mockVolunteerInfoService = {
     create: jest.fn(),
     findById: jest.fn(),
+  };
+
+  const mockRolesGuard = {
+    canActivate: jest.fn().mockReturnValue(true),
   };
 
   beforeEach(async () => {
@@ -27,7 +32,10 @@ describe('VolunteerInfoController', () => {
           useValue: {},
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(RolesGuard)
+      .useValue(mockRolesGuard)
+      .compile();
 
     controller = module.get<VolunteerInfoController>(VolunteerInfoController);
   });

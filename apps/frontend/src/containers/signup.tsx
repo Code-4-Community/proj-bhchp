@@ -1,20 +1,19 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Alert,
   Box,
   Button,
   Heading,
   Input,
   Stack,
   Text,
+  Alert,
 } from '@chakra-ui/react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { signUpWithEmailPassword } from '../auth/cognito';
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -51,7 +50,6 @@ const Signup: React.FC = () => {
           <Stack gap="4">
             <Heading size="lg">Create account</Heading>
             <Text color="gray.600">Create a Cognito account to sign in.</Text>
-
             {error ? <Alert.Root status="error">{error}</Alert.Root> : null}
             {success ? (
               <Alert.Root status="success">{success}</Alert.Root>
@@ -70,7 +68,6 @@ const Signup: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-
             <Button type="submit" loading={loading} colorPalette="blue">
               Sign Up
             </Button>

@@ -1,14 +1,20 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { VolunteerInfo } from './volunteer-info.entity';
 import { ApiTags } from '@nestjs/swagger';
 import { VolunteerInfoService } from './volunteer-info.service';
 import { CreateVolunteerInfoDto } from './dto/create-volunteer-info.request.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserType } from '../users/types';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about volunteer-specific application info.
  */
 @ApiTags('volunteerInfo')
 @Controller('volunteer_info')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(UserType.ADMIN, UserType.STANDARD)
 export class VolunteerInfoController {
   constructor(private volunteerInfoService: VolunteerInfoService) {}
 

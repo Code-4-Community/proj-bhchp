@@ -10,6 +10,7 @@ import {
   ApplicantType,
 } from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
+import { RolesGuard } from '../auth/roles.guard';
 
 const mockApplicationsService: Partial<ApplicationsService> = {
   findAll: jest.fn(),
@@ -21,6 +22,10 @@ const mockApplicationsService: Partial<ApplicationsService> = {
   updateProposedStartDate: jest.fn(),
   updateActualStartDate: jest.fn(),
   updateEndDate: jest.fn(),
+};
+
+const mockRolesGuard = {
+  canActivate: jest.fn().mockReturnValue(true),
 };
 
 const mockApplication: Application = {
@@ -66,8 +71,15 @@ describe('ApplicationsController', () => {
           provide: ApplicationsService,
           useValue: mockApplicationsService,
         },
+        {
+          provide: RolesGuard,
+          useValue: mockRolesGuard,
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(RolesGuard)
+      .useValue(mockRolesGuard)
+      .compile();
 
     controller = module.get<ApplicationsController>(ApplicationsController);
   });

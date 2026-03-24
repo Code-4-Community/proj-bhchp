@@ -1,5 +1,6 @@
 import React from 'react';
 import { Flex, Text, Box, Link } from '@chakra-ui/react';
+import { Link as RouterLink } from 'react-router-dom';
 
 export type NavbarItemProps = {
   href: string;
@@ -8,9 +9,12 @@ export type NavbarItemProps = {
 };
 
 export default function NavBarItem({ href, label, icon }: NavbarItemProps) {
+  const isInternal = href && href.startsWith('/');
+
   return (
     <Link
-      href={href}
+      as={isInternal ? RouterLink : undefined}
+      {...(isInternal ? { to: href } : { href })}
       _focus={{ outline: 'none', boxShadow: 'none' }}
       _focusVisible={{ outline: 'none', boxShadow: 'none' }}
       _hover={{ textDecoration: 'none' }}

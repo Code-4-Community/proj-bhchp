@@ -5,6 +5,8 @@ import { CandidateInfoService } from './candidate-info.service';
 import { CandidateInfo } from './candidate-info.entity';
 import { AuthService } from '../auth/auth.service';
 import { UsersService } from '../users/users.service';
+import { RolesGuard } from '../auth/roles.guard';
+import { UserType } from '../users/types';
 
 const mockCandidateInfoService: Partial<CandidateInfoService> = {
   create: jest.fn(),
@@ -20,6 +22,10 @@ const mockAuthService = {
 
 const mockUsersService = {
   find: jest.fn(),
+};
+
+const mockRolesGuard = {
+  canActivate: jest.fn().mockReturnValue(true),
 };
 
 const defaultCandidateInfo: CandidateInfo = {
@@ -50,6 +56,10 @@ describe('CandidateInfoController', () => {
           provide: UsersService,
           useValue: mockUsersService,
         },
+        {
+          provide: RolesGuard,
+          useValue: mockRolesGuard,
+        },
       ],
     }).compile();
 
@@ -66,6 +76,12 @@ describe('CandidateInfoController', () => {
         appId: 1,
         email: 'john@example.com',
       };
+      const request = {
+        user: {
+          email: 'john@example.com',
+          userType: UserType.ADMIN,
+        },
+      };
 
       jest
         .spyOn(mockCandidateInfoService, 'create')
@@ -73,6 +89,7 @@ describe('CandidateInfoController', () => {
 
       const result = await controller.createCandidateInfo(
         createCandidateInfoDto,
+        request as never,
       );
 
       expect(result).toEqual(defaultCandidateInfo);
@@ -87,6 +104,12 @@ describe('CandidateInfoController', () => {
         appId: 1,
         email: 'john@example.com',
       };
+      const request = {
+        user: {
+          email: 'john@example.com',
+          userType: UserType.ADMIN,
+        },
+      };
 
       const errorMessage = 'Failed to create CandidateInfo';
       jest
@@ -94,7 +117,10 @@ describe('CandidateInfoController', () => {
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.createCandidateInfo(createCandidateInfoDto),
+        controller.createCandidateInfo(
+          createCandidateInfoDto,
+          request as never,
+        ),
       ).rejects.toThrow(errorMessage);
     });
   });
@@ -144,9 +170,16 @@ describe('CandidateInfoController', () => {
       jest
         .spyOn(mockCandidateInfoService, 'findOne')
         .mockResolvedValue(defaultCandidateInfo);
+      const request = {
+        user: {
+          email: 'john@example.com',
+          userType: UserType.ADMIN,
+        },
+      };
 
       const result = await controller.getCandidateInfoByEmail(
         'john@example.com',
+        request as never,
       );
 
       expect(result).toEqual(defaultCandidateInfo);
@@ -158,12 +191,21 @@ describe('CandidateInfoController', () => {
     it('should throw an error if CandidateInfo is not found', async () => {
       const errorMessage =
         'CandidateInfo with email notfound@example.com not found';
+      const request = {
+        user: {
+          email: 'john@example.com',
+          userType: UserType.ADMIN,
+        },
+      };
       jest
         .spyOn(mockCandidateInfoService, 'findOne')
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.getCandidateInfoByEmail('notfound@example.com'),
+        controller.getCandidateInfoByEmail(
+          'notfound@example.com',
+          request as never,
+        ),
       ).rejects.toThrow(errorMessage);
     });
   });

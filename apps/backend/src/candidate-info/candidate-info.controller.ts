@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Controller,
   Get,
   Post,
@@ -7,21 +8,55 @@ import {
   ParseIntPipe,
   UseInterceptors,
   Delete,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { CandidateInfoService } from './candidate-info.service';
 import { CandidateInfo } from './candidate-info.entity';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { CreateCandidateInfoDto } from './dto/candidate-info.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserType } from '../users/types';
 
 /**
  * Controller exposing HTTP endpoints to get, create, and change information
  * about the app's CandidateInfo, including start and end dates.
  */
 @Controller('CandidateInfo')
-// @UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 @UseInterceptors(CurrentUserInterceptor)
+@Roles(UserType.ADMIN, UserType.STANDARD)
 export class CandidateInfoController {
   constructor(private CandidateInfoService: CandidateInfoService) {}
+
+  private assertAdminOrMatchingEmail(
+    requestUser: { email?: string; userType?: UserType } | undefined,
+    targetEmail: string,
+  ): void {
+    if (!requestUser) {
+      throw new ForbiddenException('Authenticated user is required.');
+    }
+
+    if (requestUser.userType === UserType.ADMIN) {
+      return;
+    }
+
+    const requestEmail = requestUser.email?.toLowerCase();
+    const normalizedTarget = targetEmail.toLowerCase();
+
+    if (
+      requestUser.userType === UserType.STANDARD &&
+      requestEmail === normalizedTarget
+    ) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      'You are not allowed to access this candidate record.',
+    );
+  }
 
   /**
    * Exposes an endpoint to create a CandidateInfo.
@@ -35,7 +70,9 @@ export class CandidateInfoController {
   async createCandidateInfo(
     @Body()
     createCandidateInfoDto: CreateCandidateInfoDto,
+    @Req() req: { user?: { email?: string; userType?: UserType } },
   ): Promise<CandidateInfo> {
+    this.assertAdminOrMatchingEmail(req.user, createCandidateInfoDto.email);
     return this.CandidateInfoService.create(
       createCandidateInfoDto.appId,
       createCandidateInfoDto.email,
@@ -48,6 +85,7 @@ export class CandidateInfoController {
    * @throws {Error} If the repository throws an error.
    */
   @Get()
+  @Roles(UserType.ADMIN)
   async getAllCandidateInfo(): Promise<CandidateInfo[]> {
     return this.CandidateInfoService.findAll();
   }
@@ -62,7 +100,9 @@ export class CandidateInfoController {
   @Get('email/:email')
   async getCandidateInfoByEmail(
     @Param('email') email: string,
+    @Req() req: { user?: { email?: string; userType?: UserType } },
   ): Promise<CandidateInfo> {
+    this.assertAdminOrMatchingEmail(req.user, email);
     return this.CandidateInfoService.findOne(email);
   }
 
@@ -72,6 +112,7 @@ export class CandidateInfoController {
    * @returns The CandidateInfo(s) with the desired appId.
    */
   @Get('/:appId')
+  @Roles(UserType.ADMIN)
   async getCandidateInfoByAppId(
     @Param('appId', ParseIntPipe) appId: number,
   ): Promise<CandidateInfo[]> {
@@ -86,6 +127,7 @@ export class CandidateInfoController {
    * @throws {NotFoundException} if the CandidateInfo with the specified email does not exist.
    */
   @Delete('email/:email')
+  @Roles(UserType.ADMIN)
   async deleteCandidateInfo(
     @Param('email') email: string,
   ): Promise<CandidateInfo> {

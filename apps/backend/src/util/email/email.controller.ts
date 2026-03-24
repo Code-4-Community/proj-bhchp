@@ -1,12 +1,18 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { EmailService } from './email.service';
 import { SendEmailDto } from './dto/send-email.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../../auth/roles.guard';
+import { Roles } from '../../auth/roles.decorator';
+import { UserType } from '../../users/types';
 
 /**
  * Controller to expose callable HTTP endpoints to
  * manage email communications.
  */
 @Controller('email')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles(UserType.ADMIN)
 export class EmailController {
   constructor(private emailService: EmailService) {}
 
