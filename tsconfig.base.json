@@ -14,7 +14,15 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@api/*": ["apps/frontend/src/api/*"],
+      "@components/*": ["apps/frontend/src/components/*"],
+      "@containers/*": ["apps/frontend/src/containers/*"],
+      "@public/*": ["apps/frontend/public/*"],
+      "@shared/*": ["shared/src/*"],
+      "@utils/*": ["apps/frontend/src/utils/*"],
+      "@admin/*": ["apps/frontend/src/admin/*"]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }
