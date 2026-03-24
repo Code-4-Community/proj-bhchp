@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 import { getCurrentSessionUserType } from './current-session-user-type';
-import { UserType } from '@api/types';
+import { UserType } from '../api/types';
 
 type RequireRoleProps = {
   allowedUserTypes: UserType[];

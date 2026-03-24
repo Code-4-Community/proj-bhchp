@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { getCurrentSessionUserType } from './current-session-user-type';
-import { UserType } from '@api/types';
+import { UserType } from '../api/types';
 
 const RoleHomeRedirect: React.FC = () => {
   const [to, setTo] = useState<string | null>(null);

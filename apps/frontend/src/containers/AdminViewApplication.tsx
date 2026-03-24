@@ -1,8 +1,8 @@
-import NavBar from '@components/NavBar/NavBar';
+import NavBar from '../components/NavBar/NavBar';
 import { useParams } from 'react-router-dom';
-import apiClient from '@api/apiClient';
+import apiClient from '../api/apiClient';
 import { Box, Spinner, Text } from '@chakra-ui/react';
-import AvailabilityTable from '@components/AvailabilityTable';
+import AvailabilityTable from '../components/AvailabilityTable';
 import { useEffect, useState } from 'react';
 import {
   ApplicantType,
@@ -11,11 +11,11 @@ import {
   LearnerInfo,
   UserType,
   VolunteerInfo,
-} from '@api/types';
-import QuestionFrame from '@components/QuestionFrame';
-import RequirementsFrame from '@components/RequirementsFrame';
-import UploadedMaterial from '@components/UploadedMaterial';
-import SchoolAffiliationFrame from '@components/SchoolAffiliationFrame';
+} from '../api/types';
+import QuestionFrame from '../components/QuestionFrame';
+import RequirementsFrame from '../components/RequirementsFrame';
+import UploadedMaterial from '../components/UploadedMaterial';
+import SchoolAffiliationFrame from '../components/SchoolAffiliationFrame';
 
 const AdminViewApplication: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();

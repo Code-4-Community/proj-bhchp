@@ -1,7 +1,7 @@
 import { fetchUserAttributes } from 'aws-amplify/auth';
 
-import apiClient from '@api/apiClient';
-import { UserType } from '@api/types';
+import apiClient from '../api/apiClient';
+import { UserType } from '../api/types';
 
 import {
   clearCurrentSessionUserType,

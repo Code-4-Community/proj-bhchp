@@ -1,8 +1,8 @@
 import { fetchUserAttributes } from 'aws-amplify/auth';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import apiClient from '@api/apiClient';
-import { UserType } from '@api/types';
+import apiClient from '../api/apiClient';
+import { UserType } from '../api/types';
 
 import {
   fetchAndStoreCurrentSessionUserType,
@@ -17,7 +17,7 @@ vi.mock('aws-amplify/auth', () => ({
   fetchUserAttributes: vi.fn(),
 }));
 
-vi.mock('@api/apiClient', () => ({
+vi.mock('../api/apiClient', () => ({
   default: {
     getCurrentUser: vi.fn(),
   },

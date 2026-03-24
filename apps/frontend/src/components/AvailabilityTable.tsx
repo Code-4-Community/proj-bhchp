@@ -10,8 +10,8 @@ import {
   Portal,
 } from '@chakra-ui/react';
 import { BsThreeDots } from 'react-icons/bs';
-import { AvailabilityFields } from '@api/types';
-import apiClient from '@api/apiClient';
+import { AvailabilityFields } from '../api/types';
+import apiClient from '../api/apiClient';
 
 type DayKey = keyof AvailabilityFields;
 

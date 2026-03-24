@@ -1,6 +1,6 @@
 import { useRouteError } from 'react-router-dom';
 
-import { getErrorMessage } from '@utils/router';
+import { getErrorMessage } from '../utils/router';
 
 const NotFound: React.FC = () => {
   const errorMessage = getErrorMessage(useRouteError());

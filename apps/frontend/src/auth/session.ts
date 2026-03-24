@@ -1,4 +1,4 @@
-import { UserType } from '@api/types';
+import { UserType } from '../api/types';
 
 const userTypeSessionKey = 'bhchp.currentUserType';
 

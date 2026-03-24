@@ -4,7 +4,7 @@ import NavbarItem from './NavBarItem';
 import { FaHouse, FaPerson, FaRegFile } from 'react-icons/fa6';
 import { IoIosSettings } from 'react-icons/io';
 import { CgProfile } from 'react-icons/cg';
-import { UserType } from '@api/types';
+import { UserType } from '../../api/types';
 
 export type NavBarProps = {
   logo: React.ReactNode;

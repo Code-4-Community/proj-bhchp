@@ -1,5 +1,5 @@
-import DashboardCard from '@components/DashboardCard';
-import NavBar from '@components/NavBar/NavBar';
+import DashboardCard from '../components/DashboardCard';
+import NavBar from '../components/NavBar/NavBar';
 
 import usersIcon from '../assets/icons/users.svg';
 import clockIcon from '../assets/icons/clock.svg';
@@ -7,11 +7,11 @@ import crossIcon from '../assets/icons/cross.svg';
 import checkmarkIcon from '../assets/icons/checkmark.svg';
 import { Box } from '@chakra-ui/react';
 import { useState } from 'react';
-import PageTransitionButton from '@components/PageTransitionButton';
-import Searchbar from '@components/TableSearchBar';
-import PageCounter from '@components/PageCounter';
-import ApplicationTable from '@components/ApplicationTable';
-import { UserType } from '@api/types';
+import PageTransitionButton from '../components/PageTransitionButton';
+import Searchbar from '../components/TableSearchBar';
+import PageCounter from '../components/PageCounter';
+import ApplicationTable from '../components/ApplicationTable';
+import { UserType } from '../api/types';
 
 const AdminLanding: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');

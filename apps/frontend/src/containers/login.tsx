@@ -15,7 +15,7 @@ import {
   fetchAndStoreCurrentSessionUserType,
   getCurrentSessionUserType,
 } from '../auth/current-session-user-type';
-import { UserType } from '@api/types';
+import { UserType } from '../api/types';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
