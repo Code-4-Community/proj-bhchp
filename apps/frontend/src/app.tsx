@@ -1,22 +1,15 @@
-import {
-  BrowserRouter,
-  Navigate,
-  Outlet,
-  Route,
-  Routes,
-} from 'react-router-dom';
+import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-
 import AdminLanding from '@containers/AdminLanding';
 import AdminViewApplication from '@containers/AdminViewApplication';
-import Login from '@containers/login';
-import Signup from '@containers/signup';
 import NotFound from '@containers/404';
 import RequireAuth from './auth/RequireAuth';
 import RequireRole from './auth/RequireRole';
 import RoleHomeRedirect from './auth/RoleHomeRedirect';
-import Logout from '@containers/logout';
 import { UserType } from '@api/types';
+import Login from '@containers/login';
+import Signup from '@containers/Signup';
+import Logout from '@containers/Logout';
 
 export const App: React.FC = () => {
   return (

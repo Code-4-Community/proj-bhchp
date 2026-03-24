@@ -40,7 +40,7 @@ export class UsersController {
     @Headers('authorization') authorization?: string,
   ): Promise<User | null> {
     const decoded = decodeURIComponent(email);
-    this.logger.log(
+    this.logger.debug(
       `GET /users/email/${decoded} called. Authorization present: ${
         authorization ? 'yes' : 'no'
       }`,
@@ -49,9 +49,11 @@ export class UsersController {
     try {
       const user = await this.usersService.findOne(decoded);
       if (user) {
-        this.logger.log(`Found user for ${decoded}: userType=${user.userType}`);
+        this.logger.debug(
+          `Found user for ${decoded}: userType=${user.userType}`,
+        );
       } else {
-        this.logger.log(`No user found for ${decoded}`);
+        this.logger.debug(`No user found for ${decoded}`);
       }
       return user;
     } catch (err: unknown) {

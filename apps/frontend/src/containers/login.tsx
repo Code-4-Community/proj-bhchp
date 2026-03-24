@@ -7,7 +7,7 @@ import {
   Stack,
   Text,
 } from '@chakra-ui/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
 import { signInWithEmailPassword, signOutUser } from '../auth/cognito';
@@ -25,11 +25,11 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const landingForUserType = (userType: UserType): string => {
+  const landingForUserType = useCallback((userType: UserType): string => {
     return userType === UserType.ADMIN
       ? '/admin/landing'
       : '/candidate/view-application';
-  };
+  }, []);
 
   useEffect(() => {
     // If an existing session already has a backend userType cached, send the user
@@ -47,7 +47,7 @@ const Login: React.FC = () => {
       .catch((err) => {
         console.error('[ui] Login: error checking session userType', err);
       });
-  }, [navigate]);
+  }, [navigate, landingForUserType]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

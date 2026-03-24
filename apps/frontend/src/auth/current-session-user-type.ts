@@ -31,10 +31,20 @@ export const fetchAndStoreCurrentSessionUserType =
     // The backend is the source of truth for app roles; we cache the result in
     // session storage for the current browser tab session.
     const user = await apiClient.getUserByEmail(email);
+
+    if (!user) {
+      console.debug(
+        '[auth] No backend user found for email; clearing session userType',
+      );
+      clearCurrentSessionUserType();
+      return null;
+    }
+
     console.debug('[auth] backend returned user', {
       email,
       userType: user?.userType,
     });
+
     setCurrentSessionUserType(user.userType);
     return user.userType;
   };

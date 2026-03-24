@@ -33,15 +33,33 @@ export const configureAmplify = (): void => {
 
   const resolvedUserPoolId = userPoolId as string;
   const resolvedUserPoolClientId = userPoolClientId as string;
+  const resolvedRegion = region as string;
 
-  Amplify.configure({
-    Auth: {
-      Cognito: {
-        userPoolId: resolvedUserPoolId,
-        userPoolClientId: resolvedUserPoolClientId,
-      },
+  // Provide both the nested `Cognito` shape and top-level keys so this
+  // configuration works across multiple Amplify versions and satisfies
+  // the project's Amplify types which expect an `Auth.Cognito` entry.
+  type AmplifyAuthConfig = {
+    Cognito: {
+      userPoolId: string;
+      userPoolClientId: string;
+      [key: string]: unknown;
+    };
+    region?: string;
+    userPoolWebClientId?: string;
+    [key: string]: unknown;
+  };
+
+  const authConfig: AmplifyAuthConfig = {
+    Cognito: {
+      userPoolId: resolvedUserPoolId,
+      userPoolClientId: resolvedUserPoolClientId,
     },
-  });
+    // Keep top-level keys as well for runtime compatibility.
+    region: resolvedRegion,
+    userPoolWebClientId: resolvedUserPoolClientId,
+  };
+
+  Amplify.configure({ Auth: authConfig });
 
   isConfigured = true;
 };

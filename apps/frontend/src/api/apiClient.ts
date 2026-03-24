@@ -93,10 +93,10 @@ export class ApiClient {
     return this.get(`/api/volunteer_info/${appId}`) as Promise<VolunteerInfo>;
   }
 
-  public async getUserByEmail(email: string): Promise<User> {
+  public async getUserByEmail(email: string): Promise<User | null> {
     return this.get(
       `/api/users/email/${encodeURIComponent(email)}`,
-    ) as Promise<User>;
+    ) as Promise<User | null>;
   }
 
   public async getLearnerInfo(appId: number): Promise<LearnerInfo> {
