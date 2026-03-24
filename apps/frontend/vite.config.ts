@@ -19,10 +19,10 @@ export default defineConfig({
 
   plugins: [react(), nxViteTsPaths()],
 
-  // Uncomment this if you are using workers.
-  // worker: {
-  //  plugins: [ nxViteTsPaths() ],
-  // },
+  // Expose both VITE_ vars and non-prefixed AWS_ vars to the client.
+  // The frontend reads `AWS_REGION` directly, while the Cognito app
+  // still uses `VITE_COGNITO_*` values.
+  envPrefix: ['VITE_', 'AWS_'],
 
   test: {
     globals: true,

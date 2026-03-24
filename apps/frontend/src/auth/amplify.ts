@@ -3,23 +3,20 @@ import { Amplify } from 'aws-amplify';
 // Amplify is configured once at app startup so every auth call shares the same
 // Cognito user pool and app client settings.
 const userPoolId = import.meta.env.VITE_COGNITO_USER_POOL_ID;
-const region = import.meta.env.VITE_COGNITO_REGION;
+// Read region from `AWS_REGION` (no Vite prefix).
+const region = import.meta.env.AWS_REGION;
 const userPoolClientId = import.meta.env.VITE_COGNITO_APP_CLIENT_ID;
 
 let isConfigured = false;
 
-const assertAmplifyEnv = (): void => {
+const assertAmplifyEnv = (): string[] => {
   const missingVars: string[] = [];
 
   if (!userPoolId) missingVars.push('VITE_COGNITO_USER_POOL_ID');
-  if (!region) missingVars.push('VITE_COGNITO_REGION');
+  if (!region) missingVars.push('AWS_REGION');
   if (!userPoolClientId) missingVars.push('VITE_COGNITO_APP_CLIENT_ID');
 
-  if (missingVars.length > 0) {
-    throw new Error(
-      `Missing required Cognito env vars: ${missingVars.join(', ')}`,
-    );
-  }
+  return missingVars;
 };
 
 export const configureAmplify = (): void => {
@@ -27,9 +24,17 @@ export const configureAmplify = (): void => {
     return;
   }
 
-  // Fail fast here so developers see a clear error if the frontend env file is
-  // missing Cognito settings instead of getting a vague auth failure later.
-  assertAmplifyEnv();
+  // Check required env vars. If they're missing, warn and skip configuring
+  // Amplify rather than throwing so the app can still load in development
+  // environments where auth isn't set up.
+  const missing = assertAmplifyEnv();
+  if (missing.length > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `Skipping Amplify configuration; missing env vars: ${missing.join(', ')}`,
+    );
+    return;
+  }
 
   const resolvedUserPoolId = userPoolId as string;
   const resolvedUserPoolClientId = userPoolClientId as string;
