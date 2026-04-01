@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
@@ -80,6 +80,7 @@ describe('ApplicationsService', () => {
 
   const mockRepository = {
     find: jest.fn(),
+    count: jest.fn(),
     findOne: jest.fn(),
     save: jest.fn(),
     create: jest.fn(),
@@ -141,6 +142,50 @@ describe('ApplicationsService', () => {
       await expect(service.findAll()).rejects.toThrow(
         `There was a problem retrieving the info`,
       );
+    });
+  });
+
+  describe('count endpoints', () => {
+    it('should return total applications count', async () => {
+      mockRepository.count.mockResolvedValue(298);
+
+      const result = await service.countAll();
+
+      expect(repository.count).toHaveBeenCalledWith();
+      expect(result).toBe(298);
+    });
+
+    it('should return in-review count', async () => {
+      mockRepository.count.mockResolvedValue(52);
+
+      const result = await service.countInReview();
+
+      expect(repository.count).toHaveBeenCalledWith({
+        where: { appStatus: AppStatus.IN_REVIEW },
+      });
+      expect(result).toBe(52);
+    });
+
+    it('should return rejected count', async () => {
+      mockRepository.count.mockResolvedValue(12);
+
+      const result = await service.countRejected();
+
+      expect(repository.count).toHaveBeenCalledWith({
+        where: { appStatus: AppStatus.DECLINED },
+      });
+      expect(result).toBe(12);
+    });
+
+    it('should return approved or active count', async () => {
+      mockRepository.count.mockResolvedValue(102);
+
+      const result = await service.countApprovedOrActive();
+
+      expect(repository.count).toHaveBeenCalledWith({
+        where: { appStatus: In([AppStatus.ACCEPTED, AppStatus.ACTIVE]) },
+      });
+      expect(result).toBe(102);
     });
   });
 

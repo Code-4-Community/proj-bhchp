@@ -33,6 +33,46 @@ export class ApplicationsController {
   constructor(private applicationsService: ApplicationsService) {}
 
   /**
+   * Exposes an endpoint to return the total number of applications.
+   * @returns Object containing the total application count.
+   */
+  @Get('count/total')
+  async getTotalApplicationsCount(): Promise<{ count: number }> {
+    const count = await this.applicationsService.countAll();
+    return { count };
+  }
+
+  /**
+   * Exposes an endpoint to return the total number of applications in review.
+   * @returns Object containing the in-review application count.
+   */
+  @Get('count/in-review')
+  async getInReviewApplicationsCount(): Promise<{ count: number }> {
+    const count = await this.applicationsService.countInReview();
+    return { count };
+  }
+
+  /**
+   * Exposes an endpoint to return the total number of rejected applications.
+   * @returns Object containing the rejected application count.
+   */
+  @Get('count/rejected')
+  async getRejectedApplicationsCount(): Promise<{ count: number }> {
+    const count = await this.applicationsService.countRejected();
+    return { count };
+  }
+
+  /**
+   * Exposes an endpoint to return the total number of approved/active applications.
+   * @returns Object containing the approved/active application count.
+   */
+  @Get('count/approved')
+  async getApprovedApplicationsCount(): Promise<{ count: number }> {
+    const count = await this.applicationsService.countApprovedOrActive();
+    return { count };
+  }
+
+  /**
    * Exposes an endpoint to return all applications.
    * @returns A promise of the list of all available applications.
    * @throws {Error} which is unchanged from what repository throws.

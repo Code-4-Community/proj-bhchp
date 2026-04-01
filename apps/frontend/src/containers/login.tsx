@@ -58,6 +58,18 @@ const Login: React.FC = () => {
     try {
       console.debug('[ui] Login: attempting signIn', { email });
       await signInWithEmailPassword(email.trim(), password);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Sign in failed. Verify your credentials and try again.';
+      setError(message);
+      console.error('Cognito sign-in failed:', err);
+      setLoading(false);
+      return;
+    }
+
+    try {
       console.debug('[ui] Login: signIn succeeded, fetching backend userType');
       // Cognito confirms the identity here; the backend determines whether
       // that identity maps to an ADMIN or STANDARD user in this app.
@@ -76,13 +88,19 @@ const Login: React.FC = () => {
 
       navigate('/', { replace: true });
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Sign in failed. Verify your credentials and try again.';
-      setError(message);
-      // Helpful for debugging Cognito errors (e.g. secret hash / unconfirmed user)
-      console.error('Cognito sign-in failed:', err);
+      await signOutUser().catch(() => undefined);
+
+      const status =
+        typeof err === 'object' && err !== null && 'response' in err
+          ? (err as { response?: { status?: number } }).response?.status
+          : undefined;
+
+      setError(
+        status === 403
+          ? 'This Cognito account is authenticated, but no BHCHP user record exists yet.'
+          : 'Unable to determine the account type for this user.',
+      );
+      console.error('[ui] Login: backend user lookup failed', err);
     } finally {
       setLoading(false);
     }

@@ -4,6 +4,7 @@ import apiClient from '../api/apiClient';
 import { Box, Spinner, Text } from '@chakra-ui/react';
 import AvailabilityTable from '../components/AvailabilityTable';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
   ApplicantType,
   Application,
@@ -32,25 +33,56 @@ const AdminViewApplication: React.FC = () => {
 
   useEffect(() => {
     if (!appId) return;
-    setLoading(true);
-    apiClient
-      .getApplication(Number(appId))
-      .then((app) => {
+
+    let cancelled = false;
+    const numericAppId = Number(appId);
+
+    const isNotFoundError = (err: unknown): boolean =>
+      axios.isAxiosError(err) && err.response?.status === 404;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      setApplication(null);
+      setLearnerInfo(null);
+      setVolunteerInfo(null);
+
+      try {
+        const app = await apiClient.getApplication(numericAppId);
+        if (cancelled) return;
         setApplication(app);
+
         if (app?.applicantType === ApplicantType.VOLUNTEER) {
-          apiClient
-            .getVolunteerInfo(Number(appId))
-            .then(setVolunteerInfo)
-            .catch(() => setError('Failed to load volunteer info'));
+          try {
+            const info = await apiClient.getVolunteerInfo(numericAppId);
+            if (!cancelled) setVolunteerInfo(info);
+          } catch (err) {
+            if (!cancelled && !isNotFoundError(err)) {
+              setError('Failed to load volunteer info');
+            }
+          }
         } else if (app?.applicantType === ApplicantType.LEARNER) {
-          apiClient
-            .getLearnerInfo(Number(appId))
-            .then(setLearnerInfo)
-            .catch(() => setError('Failed to load learner info'));
+          try {
+            const info = await apiClient.getLearnerInfo(numericAppId);
+            if (!cancelled) setLearnerInfo(info);
+          } catch (err) {
+            if (!cancelled && !isNotFoundError(err)) {
+              setError('Failed to load learner info');
+            }
+          }
         }
-      })
-      .catch(() => setError('Failed to load application'))
-      .finally(() => setLoading(false));
+      } catch {
+        if (!cancelled) setError('Failed to load application');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [appId]);
 
   const handleAvailabilityUpdate = (updated: AvailabilityFields) => {
@@ -68,14 +100,10 @@ const AdminViewApplication: React.FC = () => {
     );
   }
 
-  if (
-    error ||
-    application === null ||
-    (learnerInfo === null && volunteerInfo === null)
-  ) {
+  if (error || application === null) {
     return (
       <div className="flex flex-row">
-        <NavBar logo="BHCHP" userType={UserType.STANDARD} />
+        <NavBar logo="BHCHP" userType={UserType.ADMIN} />
         <Box p="10" flex="1">
           <Text color="red.500">{error ?? 'Application data not found'}</Text>
         </Box>
@@ -129,13 +157,17 @@ const AdminViewApplication: React.FC = () => {
           />
         </Box>
 
-        {application.applicantType === ApplicantType.LEARNER &&
-        learnerInfo !== null &&
-        'syllabus' in learnerInfo ? (
-          <UploadedMaterial frameProps={{ hasSyllabus: true }} />
-        ) : (
-          <UploadedMaterial frameProps={{ hasSyllabus: false }} />
-        )}
+        <UploadedMaterial
+          frameProps={{
+            resume: application.resume,
+            coverLetter: application.coverLetter,
+            syllabus:
+              application.applicantType === ApplicantType.LEARNER &&
+              learnerInfo !== null
+                ? learnerInfo.syllabus
+                : undefined,
+          }}
+        />
 
         {application.applicantType === ApplicantType.LEARNER &&
           learnerInfo !== null && (

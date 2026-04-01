@@ -12,10 +12,20 @@ import Searchbar from '../components/TableSearchBar';
 import PageCounter from '../components/PageCounter';
 import ApplicationTable from '../components/ApplicationTable';
 import { UserType } from '../api/types';
+import {
+  useApprovedApplicationsCount,
+  useInReviewApplicationsCount,
+  useRejectedApplicationsCount,
+  useTotalApplicationsCount,
+} from '../api/apiClient';
 
 const AdminLanding: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  const { count: totalCount } = useTotalApplicationsCount();
+  const { count: inReviewCount } = useInReviewApplicationsCount();
+  const { count: rejectedCount } = useRejectedApplicationsCount();
+  const { count: approvedCount } = useApprovedApplicationsCount();
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSearchQuery(e.target.value);
@@ -35,7 +45,7 @@ const AdminLanding: React.FC = () => {
           <DashboardCard
             className="basis-1/4"
             title="Total Applications"
-            value={298}
+            value={totalCount}
             description="All time submissions"
             icon={usersIcon}
           />
@@ -43,7 +53,7 @@ const AdminLanding: React.FC = () => {
           <DashboardCard
             className="basis-1/4"
             title="Pending Review"
-            value={52}
+            value={inReviewCount}
             description="Awaiting decision"
             icon={clockIcon}
           />
@@ -51,7 +61,7 @@ const AdminLanding: React.FC = () => {
           <DashboardCard
             className="basis-1/4"
             title="Rejected"
-            value={12}
+            value={rejectedCount}
             description="Not matched"
             icon={crossIcon}
           />
@@ -59,8 +69,8 @@ const AdminLanding: React.FC = () => {
           <DashboardCard
             className="basis-1/4"
             title="Approved"
-            value={102}
-            description="Active volunteers "
+            value={approvedCount}
+            description="Active volunteers"
             icon={checkmarkIcon}
           />
         </Box>

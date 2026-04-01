@@ -26,8 +26,7 @@ import { UserType } from './types';
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('users')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles(UserType.ADMIN, UserType.STANDARD)
+@UseGuards(AuthGuard('jwt'))
 @UseInterceptors(CurrentUserInterceptor)
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
@@ -40,7 +39,11 @@ export class UsersController {
    */
   @Get('me')
   async getCurrentUser(@Req() req: { user?: User }): Promise<User | null> {
-    return req.user ?? null;
+    if (!req.user || !req.user.userType) {
+      return null;
+    }
+
+    return req.user;
   }
 
   /**
@@ -50,6 +53,7 @@ export class UsersController {
    * @returns The user with the corresponding email or null if not found.
    */
   @Get('email/:email')
+  @UseGuards(RolesGuard)
   @Roles(UserType.ADMIN)
   async getUser(
     @Param('email') email: string,

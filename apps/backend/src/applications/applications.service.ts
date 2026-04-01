@@ -4,10 +4,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
-import { PHONE_REGEX } from './types';
+import { AppStatus, PHONE_REGEX } from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 
 /**
@@ -48,6 +48,44 @@ export class ApplicationsService {
    */
   async findAll(): Promise<Application[]> {
     return await this.applicationRepository.find();
+  }
+
+  /**
+   * Returns the total number of applications.
+   * @returns A promise resolving to the total number of applications.
+   */
+  async countAll(): Promise<number> {
+    return await this.applicationRepository.count();
+  }
+
+  /**
+   * Returns the number of applications in review.
+   * @returns A promise resolving to the count for AppStatus.IN_REVIEW.
+   */
+  async countInReview(): Promise<number> {
+    return await this.applicationRepository.count({
+      where: { appStatus: AppStatus.IN_REVIEW },
+    });
+  }
+
+  /**
+   * Returns the number of rejected applications.
+   * @returns A promise resolving to the count for declined applications.
+   */
+  async countRejected(): Promise<number> {
+    return await this.applicationRepository.count({
+      where: { appStatus: AppStatus.DECLINED },
+    });
+  }
+
+  /**
+   * Returns the number of approved/active applications.
+   * @returns A promise resolving to the count for accepted or active applications.
+   */
+  async countApprovedOrActive(): Promise<number> {
+    return await this.applicationRepository.count({
+      where: { appStatus: In([AppStatus.ACCEPTED, AppStatus.ACTIVE]) },
+    });
   }
 
   /**

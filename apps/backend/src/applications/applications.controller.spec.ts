@@ -14,6 +14,10 @@ import { RolesGuard } from '../auth/roles.guard';
 
 const mockApplicationsService: Partial<ApplicationsService> = {
   findAll: jest.fn(),
+  countAll: jest.fn(),
+  countInReview: jest.fn(),
+  countRejected: jest.fn(),
+  countApprovedOrActive: jest.fn(),
   findById: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
@@ -90,6 +94,50 @@ describe('ApplicationsController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('count endpoints', () => {
+    it('should return total applications count', async () => {
+      jest.spyOn(mockApplicationsService, 'countAll').mockResolvedValue(298);
+
+      const result = await controller.getTotalApplicationsCount();
+
+      expect(result).toEqual({ count: 298 });
+      expect(mockApplicationsService.countAll).toHaveBeenCalled();
+    });
+
+    it('should return in-review applications count', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'countInReview')
+        .mockResolvedValue(52);
+
+      const result = await controller.getInReviewApplicationsCount();
+
+      expect(result).toEqual({ count: 52 });
+      expect(mockApplicationsService.countInReview).toHaveBeenCalled();
+    });
+
+    it('should return rejected applications count', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'countRejected')
+        .mockResolvedValue(12);
+
+      const result = await controller.getRejectedApplicationsCount();
+
+      expect(result).toEqual({ count: 12 });
+      expect(mockApplicationsService.countRejected).toHaveBeenCalled();
+    });
+
+    it('should return approved applications count', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'countApprovedOrActive')
+        .mockResolvedValue(102);
+
+      const result = await controller.getApprovedApplicationsCount();
+
+      expect(result).toEqual({ count: 102 });
+      expect(mockApplicationsService.countApprovedOrActive).toHaveBeenCalled();
+    });
   });
 
   describe('getApplicationsByDiscipline', () => {

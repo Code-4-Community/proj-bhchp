@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { AdminInfoService } from './admin-info.service';
 import { CreateAdminInfoDto } from './dto/create-admin.dto';
@@ -10,7 +9,6 @@ import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 
 describe('AdminInfoService', () => {
   let service: AdminInfoService;
-  let repository: Repository<AdminInfo>;
 
   const mockRepository = {
     create: jest.fn(),
@@ -39,9 +37,6 @@ describe('AdminInfoService', () => {
     }).compile();
 
     service = module.get<AdminInfoService>(AdminInfoService);
-    repository = module.get<Repository<AdminInfo>>(
-      getRepositoryToken(AdminInfo),
-    );
   });
 
   afterEach(() => {
