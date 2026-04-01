@@ -69,6 +69,8 @@ export const getIdToken = async (): Promise<string | undefined> => {
 };
 
 export const isAuthenticated = async (): Promise<boolean> => {
+  if (import.meta.env.VITE_DEV_AUTH_EMAIL) return true;
+
   try {
     await getCurrentUser();
     return true;

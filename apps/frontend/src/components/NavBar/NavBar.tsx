@@ -40,13 +40,17 @@ export default function NavBar({ logo, userType }: NavBarProps) {
           )}
           {userType === UserType.STANDARD && (
             <NavbarItem
-              href="#myapplication"
+              href="/candidate/view-application"
               label="My Application"
               icon={<FaPerson />}
             />
           )}
           {userType === UserType.STANDARD && (
-            <NavbarItem href="#myforms" label="My Forms" icon={<FaRegFile />} />
+            <NavbarItem
+              href="/candidate/upload-forms"
+              label="My Forms"
+              icon={<FaRegFile />}
+            />
           )}
           <NavbarItem
             href="#settings"

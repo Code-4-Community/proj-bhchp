@@ -2,6 +2,7 @@ import { BrowserRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 import AdminLanding from './containers/AdminLanding';
 import AdminViewApplication from './containers/AdminViewApplication';
+import CandidateViewApplication from './containers/CandidateViewApplication';
 import NotFound from './containers/404';
 import RequireAuth from './auth/RequireAuth';
 import RequireRole from './auth/RequireRole';
@@ -45,7 +46,10 @@ export const App: React.FC = () => {
               element={<RequireRole allowedUserTypes={[UserType.STANDARD]} />}
             >
               <Route path="candidate" element={<Outlet />}>
-                <Route path="view-application" />
+                <Route
+                  path="view-application"
+                  element={<CandidateViewApplication />}
+                />
                 <Route path="upload-forms" />
                 <Route path="settings" />
               </Route>
