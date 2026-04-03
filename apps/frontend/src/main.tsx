@@ -4,6 +4,7 @@ import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
 
 import App from './app';
 import { configureAmplify } from './auth/amplify';
+import './styles.css';
 
 configureAmplify();
 
