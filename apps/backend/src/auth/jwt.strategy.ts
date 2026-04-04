@@ -4,7 +4,7 @@ import { passportJwtSecret } from 'jwks-rsa';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Logger } from '@nestjs/common';
 
-import envConfig from './aws-exports';
+import envConfig from '../aws-exports';
 
 // Passport strategy that validates Cognito JWTs before protected routes run.
 // Once a token passes this strategy, request.user contains the decoded claims.

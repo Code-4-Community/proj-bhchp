@@ -4,7 +4,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { BadRequestException } from '@nestjs/common';
 
-jest.mock('./aws-exports', () => ({
+jest.mock('../aws-exports', () => ({
   __esModule: true,
   default: {
     AWSConfig: {

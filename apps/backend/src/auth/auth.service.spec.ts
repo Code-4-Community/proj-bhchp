@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import { UserType } from '../users/types';
 
-jest.mock('./aws-exports', () => ({
+jest.mock('../aws-exports', () => ({
   __esModule: true,
   default: {
     AWSConfig: {

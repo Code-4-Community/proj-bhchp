@@ -9,7 +9,7 @@ import { DISCIPLINE_VALUES } from './disciplines.constants';
 import { CreateDisciplineRequestDto } from './dto/create-discipline.request.dto';
 import { RolesGuard } from '../auth/roles.guard';
 
-jest.mock('../auth/aws-exports', () => ({
+jest.mock('../aws-exports', () => ({
   __esModule: true,
   default: {
     AWSConfig: {

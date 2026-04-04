@@ -11,7 +11,7 @@ import {
   SignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
-import envConfig from './aws-exports';
+import envConfig from '../aws-exports';
 import { SignUpDto } from './dtos/sign-up.dto';
 import { SignInDto } from './dtos/sign-in.dto';
 import { SignInResponseDto } from './dtos/sign-in-response.dto';

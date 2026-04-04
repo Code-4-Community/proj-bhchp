@@ -8,7 +8,7 @@ import { UsersService } from '../users/users.service';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserType } from '../users/types';
 
-jest.mock('../auth/aws-exports', () => ({
+jest.mock('../aws-exports', () => ({
   __esModule: true,
   default: {
     AWSConfig: {
