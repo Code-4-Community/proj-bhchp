@@ -9,10 +9,12 @@ function checkAWSSecrets(): void {
   ) {
     missingVars.push('AWS_SECRET_ACCESS_KEY');
   }
-  throw new Error(
-    'The following environmental variables are missing:' +
-      missingVars.toString(),
-  );
+  if (missingVars.length > 0) {
+    throw new Error(
+      'The following environmental variables are missing:' +
+        missingVars.toString(),
+    );
+  }
 }
 
 checkAWSSecrets();
@@ -40,16 +42,15 @@ function checkAuthSecrets(): void {
   ) {
     missingVars.push('COGNITO_APP_CLIENT_ID');
   }
-  if (
-    !process.env.COGNITO_CLIENT_SECRET &&
-    !process.env.VITE_COGNITO_APP_CLIENT_ID
-  ) {
+  if (!process.env.COGNITO_CLIENT_SECRET) {
     missingVars.push('COGNITO_CLIENT_SECRET');
   }
-  throw new Error(
-    'The following environmental variables are missing:' +
-      missingVars.toString(),
-  );
+  if (missingVars.length > 0) {
+    throw new Error(
+      'The following environmental variables are missing:' +
+        missingVars.toString(),
+    );
+  }
 }
 
 checkAuthSecrets();
@@ -63,8 +64,7 @@ const CognitoAuthConfig = {
     process.env.COGNITO_REGION ||
     process.env.VITE_COGNITO_REGION ||
     'us-east-2',
-  clientSecret:
-    process.env.COGNITO_CLIENT_SECRET || process.env.VITE_COGNITO_APP_CLIENT_ID,
+  clientSecret: process.env.COGNITO_CLIENT_SECRET,
 };
 
 export default { CognitoAuthConfig, AWSConfig };

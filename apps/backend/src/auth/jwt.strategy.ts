@@ -19,18 +19,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    */
   constructor() {
     const cognitoAuthority = `https://cognito-idp.${envConfig.CognitoAuthConfig.region}.amazonaws.com/${envConfig.CognitoAuthConfig.userPoolId}`;
+    // Use both types of tokens from either frontend app client id (the one without the secret) or the backend app client id (one with the secret)
+    const acceptedAudiences = [
+      process.env.COGNITO_APP_CLIENT_ID,
+      process.env.VITE_COGNITO_APP_CLIENT_ID,
+    ].filter((value, index, array): value is string => {
+      return !!value && array.indexOf(value) === index;
+    });
 
     // These settings tell Passport which tokens to trust and where to fetch
     // the public keys that Cognito uses to sign JWTs.
     Logger.log(
-      `Configuring JWT strategy for issuer ${cognitoAuthority} and client ${envConfig.CognitoAuthConfig.clientId}`,
+      `Configuring JWT strategy for issuer ${cognitoAuthority} and clients ${acceptedAudiences.join(
+        ', ',
+      )}`,
       JwtStrategy.name,
     );
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      audience: envConfig.CognitoAuthConfig.clientId,
+      audience: acceptedAudiences,
       issuer: cognitoAuthority,
       algorithms: ['RS256'],
       secretOrKeyProvider: passportJwtSecret({

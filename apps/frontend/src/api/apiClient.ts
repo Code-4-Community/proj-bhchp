@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance } from 'axios';
+import axios, { AxiosError, type AxiosInstance } from 'axios';
 import { getIdToken } from '../auth/cognito';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -48,7 +48,21 @@ export class ApiClient {
     // Response interceptor kept for future request-specific diagnostics.
     this.axiosInstance.interceptors.response.use(
       (response) => response,
-      (error) => Promise.reject(error),
+      (error: unknown) => {
+        if (error instanceof AxiosError) {
+          console.error('[api] Response error', {
+            method: error.config?.method,
+            url: error.config?.url,
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message,
+          });
+        } else {
+          console.error('[api] Unknown response error', error);
+        }
+
+        return Promise.reject(error);
+      },
     );
   }
 

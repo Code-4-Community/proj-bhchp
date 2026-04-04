@@ -40,8 +40,15 @@ export class UsersController {
   @Get('me')
   async getCurrentUser(@Req() req: { user?: User }): Promise<User | null> {
     if (!req.user || !req.user.userType) {
+      this.logger.warn(
+        'GET /users/me resolved without database user or userType on request.user',
+      );
       return null;
     }
+
+    this.logger.log(
+      `GET /users/me returning user email=${req.user.email}, userType=${req.user.userType}`,
+    );
 
     return req.user;
   }
