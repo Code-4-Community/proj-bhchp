@@ -18,6 +18,10 @@ type HttpRequest = {
   user?: RequestUser;
 };
 
+/**
+ * Authorization guard that enforces role-based access using `@Roles(...)`
+ * metadata on route handlers/classes.
+ */
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
@@ -25,6 +29,16 @@ export class RolesGuard implements CanActivate {
     private readonly usersService: UsersService,
   ) {}
 
+  /**
+   * Determines whether the current request may access the route.
+   * If role metadata exists and `request.user.userType` is missing, it loads
+   * the user from the database by email before evaluating role membership.
+   * @param context Current execution context from Nest.
+   * @returns `true` when access is allowed.
+   * @throws {UnauthorizedException} If an authenticated email is not present.
+   * @throws {ForbiddenException} If the user does not exist or lacks a
+   * required role.
+   */
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredRoles = this.reflector.getAllAndOverride<UserType[]>(
       'roles',

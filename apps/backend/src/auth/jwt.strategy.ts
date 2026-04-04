@@ -4,7 +4,7 @@ import { passportJwtSecret } from 'jwks-rsa';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Logger } from '@nestjs/common';
 
-import CognitoAuthConfig from './aws-exports';
+import envConfig from './aws-exports';
 
 // Passport strategy that validates Cognito JWTs before protected routes run.
 // Once a token passes this strategy, request.user contains the decoded claims.
@@ -12,30 +12,25 @@ import CognitoAuthConfig from './aws-exports';
 export class JwtStrategy extends PassportStrategy(Strategy) {
   private readonly logger = new Logger(JwtStrategy.name);
 
+  /**
+   * Configures the JWT strategy to trust Cognito-issued access tokens for
+   * this user pool/app client.
+   * @throws {Error} If required Cognito configuration is missing.
+   */
   constructor() {
-    if (
-      !CognitoAuthConfig.userPoolId ||
-      !CognitoAuthConfig.clientId ||
-      !CognitoAuthConfig.region
-    ) {
-      throw new Error(
-        'Missing Cognito auth config for backend JWT strategy. Set COGNITO_USER_POOL_ID, COGNITO_APP_CLIENT_ID, and COGNITO_REGION (or the VITE_ equivalents).',
-      );
-    }
-
-    const cognitoAuthority = `https://cognito-idp.${CognitoAuthConfig.region}.amazonaws.com/${CognitoAuthConfig.userPoolId}`;
+    const cognitoAuthority = `https://cognito-idp.${envConfig.CognitoAuthConfig.region}.amazonaws.com/${envConfig.CognitoAuthConfig.userPoolId}`;
 
     // These settings tell Passport which tokens to trust and where to fetch
     // the public keys that Cognito uses to sign JWTs.
     Logger.log(
-      `Configuring JWT strategy for issuer ${cognitoAuthority} and client ${CognitoAuthConfig.clientId}`,
+      `Configuring JWT strategy for issuer ${cognitoAuthority} and client ${envConfig.CognitoAuthConfig.clientId}`,
       JwtStrategy.name,
     );
 
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      audience: CognitoAuthConfig.clientId,
+      audience: envConfig.CognitoAuthConfig.clientId,
       issuer: cognitoAuthority,
       algorithms: ['RS256'],
       secretOrKeyProvider: passportJwtSecret({
@@ -47,6 +42,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  /**
+   * Normalizes validated JWT claims into the request user object used by the
+   * rest of the backend.
+   * @param payload Decoded Cognito JWT payload.
+   * @returns Minimal user identity payload for downstream guards/controllers.
+   */
   async validate(payload) {
     // `validate` runs only after Passport has already verified the JWT
     // signature and issuer. We keep only the fields the rest of the app uses.

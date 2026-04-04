@@ -4,6 +4,22 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { BadRequestException } from '@nestjs/common';
 
+jest.mock('./aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      region: 'us-east-2',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 describe('AuthController', () => {
   let controller: AuthController;
 

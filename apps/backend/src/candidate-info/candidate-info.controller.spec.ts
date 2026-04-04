@@ -8,6 +8,22 @@ import { UsersService } from '../users/users.service';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserType } from '../users/types';
 
+jest.mock('../auth/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      region: 'us-east-2',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 const mockCandidateInfoService: Partial<CandidateInfoService> = {
   create: jest.fn(),
   findOne: jest.fn(),

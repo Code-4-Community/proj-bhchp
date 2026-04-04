@@ -11,7 +11,7 @@ import {
   SignUpCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 
-import CognitoAuthConfig from './aws-exports';
+import envConfig from './aws-exports';
 import { SignUpDto } from './dtos/sign-up.dto';
 import { SignInDto } from './dtos/sign-in.dto';
 import { SignInResponseDto } from './dtos/sign-in-response.dto';
@@ -28,26 +28,24 @@ export class AuthService {
   private readonly providerClient: CognitoIdentityProviderClient;
   private readonly clientSecret: string;
 
+  /**
+   * Creates the Cognito SDK client used by all auth operations.
+   * It optionally wires static credentials from env vars; otherwise the AWS
+   * SDK default credential chain is used.
+   */
   constructor() {
-    // The backend talks directly to Cognito for admin operations such as
-    // sign-up, password reset, and token exchange.
-    const accessKeyId =
-      process.env.AWS_ACCESS_KEY_ID ?? process.env.NX_AWS_ACCESS_KEY;
-    const secretAccessKey =
-      process.env.AWS_SECRET_ACCESS_KEY ?? process.env.NX_AWS_SECRET_ACCESS_KEY;
+    const accessKeyId = envConfig.AWSConfig.accessKeyId;
+    const secretAccessKey = envConfig.AWSConfig.secretAccessKey;
 
     this.providerClient = new CognitoIdentityProviderClient({
-      region: CognitoAuthConfig.region,
-      credentials:
-        accessKeyId && secretAccessKey
-          ? {
-              accessKeyId,
-              secretAccessKey,
-            }
-          : undefined,
+      region: envConfig.CognitoAuthConfig.region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
     });
 
-    this.clientSecret = process.env.COGNITO_CLIENT_SECRET;
+    this.clientSecret = envConfig.CognitoAuthConfig.clientSecret;
   }
 
   /**
@@ -61,16 +59,22 @@ export class AuthService {
    */
   calculateHash(username: string): string {
     const hmac = createHmac('sha256', this.clientSecret);
-    hmac.update(username + CognitoAuthConfig.clientId);
+    hmac.update(username + envConfig.CognitoAuthConfig.clientId);
     return hmac.digest('base64');
   }
 
+  /**
+   * Retrieves Cognito user attributes for a given `sub` claim.
+   * @param userSub Cognito subject identifier from a validated JWT.
+   * @returns The attribute list for the matched user.
+   * @throws {Error} If the Cognito request fails.
+   */
   async getUser(userSub: string): Promise<AttributeType[]> {
     // This is used only by server-side auth flows. The JWT strategy already
     // authenticated the user; this lookup translates a Cognito `sub` into the
     // user's profile attributes.
     const listUsersCommand = new ListUsersCommand({
-      UserPoolId: CognitoAuthConfig.userPoolId,
+      UserPoolId: envConfig.CognitoAuthConfig.userPoolId,
       Filter: `sub = "${userSub}"`,
     });
 
@@ -93,7 +97,7 @@ export class AuthService {
   ): Promise<boolean> {
     // Needs error handling
     const signUpCommand = new SignUpCommand({
-      ClientId: CognitoAuthConfig.clientId,
+      ClientId: envConfig.CognitoAuthConfig.clientId,
       SecretHash: this.calculateHash(email),
       Username: email,
       Password: password,
@@ -124,7 +128,7 @@ export class AuthService {
    */
   async verifyUser(email: string, verificationCode: string): Promise<void> {
     const confirmCommand = new ConfirmSignUpCommand({
-      ClientId: CognitoAuthConfig.clientId,
+      ClientId: envConfig.CognitoAuthConfig.clientId,
       SecretHash: this.calculateHash(email),
       Username: email,
       ConfirmationCode: verificationCode,
@@ -144,8 +148,8 @@ export class AuthService {
   async signin({ email, password }: SignInDto): Promise<SignInResponseDto> {
     const signInCommand = new AdminInitiateAuthCommand({
       AuthFlow: 'ADMIN_USER_PASSWORD_AUTH',
-      ClientId: CognitoAuthConfig.clientId,
-      UserPoolId: CognitoAuthConfig.userPoolId,
+      ClientId: envConfig.CognitoAuthConfig.clientId,
+      UserPoolId: envConfig.CognitoAuthConfig.userPoolId,
       AuthParameters: {
         USERNAME: email,
         PASSWORD: password,
@@ -179,8 +183,8 @@ export class AuthService {
   }: RefreshTokenDto): Promise<SignInResponseDto> {
     const refreshCommand = new AdminInitiateAuthCommand({
       AuthFlow: 'REFRESH_TOKEN_AUTH',
-      ClientId: CognitoAuthConfig.clientId,
-      UserPoolId: CognitoAuthConfig.userPoolId,
+      ClientId: envConfig.CognitoAuthConfig.clientId,
+      UserPoolId: envConfig.CognitoAuthConfig.userPoolId,
       AuthParameters: {
         REFRESH_TOKEN: refreshToken,
         SECRET_HASH: this.calculateHash(userSub),
@@ -191,7 +195,7 @@ export class AuthService {
 
     return {
       accessToken: response.AuthenticationResult.AccessToken,
-      refreshToken: refreshToken,
+      refreshToken: response.AuthenticationResult.RefreshToken,
       idToken: response.AuthenticationResult.IdToken,
     };
   }
@@ -207,7 +211,7 @@ export class AuthService {
    */
   async forgotPassword(email: string) {
     const forgotCommand = new ForgotPasswordCommand({
-      ClientId: CognitoAuthConfig.clientId,
+      ClientId: envConfig.CognitoAuthConfig.clientId,
       Username: email,
       SecretHash: this.calculateHash(email),
     });
@@ -229,7 +233,7 @@ export class AuthService {
     newPassword,
   }: ConfirmPasswordDto) {
     const confirmComamnd = new ConfirmForgotPasswordCommand({
-      ClientId: CognitoAuthConfig.clientId,
+      ClientId: envConfig.CognitoAuthConfig.clientId,
       SecretHash: this.calculateHash(email),
       Username: email,
       ConfirmationCode: confirmationCode,
@@ -251,7 +255,7 @@ export class AuthService {
   async deleteUser(email: string): Promise<void> {
     const adminDeleteUserCommand = new AdminDeleteUserCommand({
       Username: email,
-      UserPoolId: CognitoAuthConfig.userPoolId,
+      UserPoolId: envConfig.CognitoAuthConfig.userPoolId,
     });
 
     await this.providerClient.send(adminDeleteUserCommand);

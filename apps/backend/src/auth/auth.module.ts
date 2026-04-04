@@ -24,4 +24,8 @@ import { RolesGuard } from './roles.guard';
   ],
   exports: [AuthService, UsersService],
 })
+/**
+ * Wires authentication controllers/services, JWT strategy, and role guard
+ * dependencies for the backend auth subsystem.
+ */
 export class AuthModule {}

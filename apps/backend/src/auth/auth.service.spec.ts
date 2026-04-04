@@ -3,6 +3,22 @@ import { AuthService } from './auth.service';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import { UserType } from '../users/types';
 
+jest.mock('./aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      region: 'us-east-2',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 // Mock the entire AWS SDK v3 module
 jest.mock('@aws-sdk/client-cognito-identity-provider');
 
@@ -211,6 +227,7 @@ describe('AuthService', () => {
       mockSend.mockResolvedValueOnce({
         AuthenticationResult: {
           AccessToken: 'new-access-token',
+          RefreshToken: 'old-refresh-token',
           IdToken: 'new-id-token',
         },
       });

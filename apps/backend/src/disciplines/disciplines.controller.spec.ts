@@ -9,6 +9,22 @@ import { DISCIPLINE_VALUES } from './disciplines.constants';
 import { CreateDisciplineRequestDto } from './dto/create-discipline.request.dto';
 import { RolesGuard } from '../auth/roles.guard';
 
+jest.mock('../auth/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      region: 'us-east-2',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 const mockDisciplinesService: Partial<DisciplinesService> = {
   findAll: jest.fn(),
   findOne: jest.fn(),
