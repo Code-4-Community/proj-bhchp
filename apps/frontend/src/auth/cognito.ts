@@ -5,7 +5,6 @@ import {
   signOut,
   signUp,
 } from 'aws-amplify/auth';
-import { clearCurrentSessionUserType } from './session';
 
 // These helpers wrap Amplify's lower-level auth methods so the rest of the app
 // does not need to know about Cognito-specific calls or token retrieval.
@@ -24,10 +23,7 @@ export const signInWithEmailPassword = async (
 };
 
 export const signOutUser = async (): Promise<void> => {
-  console.debug(
-    '[auth] signOutUser: clearing session and calling Cognito signOut',
-  );
-  clearCurrentSessionUserType();
+  console.debug('[auth] signOutUser: calling Cognito signOut');
   await signOut();
 };
 

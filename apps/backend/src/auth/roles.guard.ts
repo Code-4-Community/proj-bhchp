@@ -31,8 +31,9 @@ export class RolesGuard implements CanActivate {
 
   /**
    * Determines whether the current request may access the route.
-   * If role metadata exists and `request.user.userType` is missing, it loads
-   * the user from the database by email before evaluating role membership.
+   * It always reloads the current user from the database by authenticated
+   * email before evaluating role membership so authorization never relies on
+   * a previously attached role value.
    * @param context Current execution context from Nest.
    * @returns `true` when access is allowed.
    * @throws {UnauthorizedException} If an authenticated email is not present.
@@ -56,18 +57,14 @@ export class RolesGuard implements CanActivate {
       throw new UnauthorizedException('Missing authenticated user email.');
     }
 
-    let resolvedUserType = requestUser.userType;
-
-    if (!resolvedUserType) {
-      const databaseUser = await this.usersService.findOne(requestUser.email);
-      if (!databaseUser) {
-        throw new ForbiddenException('Authenticated user was not found.');
-      }
-      request.user = databaseUser;
-      resolvedUserType = databaseUser.userType;
+    const databaseUser = await this.usersService.findOne(requestUser.email);
+    if (!databaseUser) {
+      throw new ForbiddenException('Authenticated user was not found.');
     }
 
-    if (!requiredRoles.includes(resolvedUserType)) {
+    request.user = databaseUser;
+
+    if (!requiredRoles.includes(databaseUser.userType)) {
       throw new ForbiddenException('Insufficient role for this route.');
     }
 

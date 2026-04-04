@@ -12,17 +12,12 @@ import {
   signOutUser,
   signUpWithEmailPassword,
 } from './cognito';
-import { clearCurrentSessionUserType } from './session';
 
 vi.mock('aws-amplify/auth', () => ({
   fetchAuthSession: vi.fn(),
   getCurrentUser: vi.fn(),
   signOut: vi.fn(),
   signUp: vi.fn(),
-}));
-
-vi.mock('./session', () => ({
-  clearCurrentSessionUserType: vi.fn(),
 }));
 
 describe('cognito auth helpers', () => {
@@ -88,29 +83,20 @@ describe('cognito auth helpers', () => {
   });
 
   describe('signOutUser', () => {
-    it('clears the cached session role before signing out', async () => {
+    it('calls Cognito sign out', async () => {
       const mockSignOut = vi.mocked(signOut);
-      const mockClearCurrentSessionUserType = vi.mocked(
-        clearCurrentSessionUserType,
-      );
       mockSignOut.mockResolvedValue(undefined as never);
 
       await signOutUser();
 
-      expect(mockClearCurrentSessionUserType).toHaveBeenCalledTimes(1);
       expect(mockSignOut).toHaveBeenCalledTimes(1);
     });
 
-    it('still clears the cached session role when sign out fails', async () => {
+    it('surfaces Cognito sign out failures', async () => {
       const mockSignOut = vi.mocked(signOut);
-      const mockClearCurrentSessionUserType = vi.mocked(
-        clearCurrentSessionUserType,
-      );
       mockSignOut.mockRejectedValue(new Error('sign out failed'));
 
       await expect(signOutUser()).rejects.toThrow('sign out failed');
-
-      expect(mockClearCurrentSessionUserType).toHaveBeenCalledTimes(1);
       expect(mockSignOut).toHaveBeenCalledTimes(1);
     });
   });

@@ -1,4 +1,3 @@
-import { fetchUserAttributes } from 'aws-amplify/auth';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import apiClient from '../api/apiClient';
@@ -8,14 +7,7 @@ import {
   fetchAndStoreCurrentSessionUserType,
   getCurrentSessionUserType,
 } from './current-session-user-type';
-import {
-  getCurrentSessionUserTypeFromStorage,
-  setCurrentSessionUserType,
-} from './session';
-
-vi.mock('aws-amplify/auth', () => ({
-  fetchUserAttributes: vi.fn(),
-}));
+import * as cognito from './cognito';
 
 vi.mock('../api/apiClient', () => ({
   default: {
@@ -23,101 +15,67 @@ vi.mock('../api/apiClient', () => ({
   },
 }));
 
-describe('getCurrentSessionUserType', () => {
+vi.mock('./cognito', () => ({
+  getIdToken: vi.fn(),
+}));
+
+describe('current session user type', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionStorage.clear();
   });
 
-  it('returns the cached userType when Cognito session validation succeeds', async () => {
-    setCurrentSessionUserType(UserType.STANDARD);
-
-    const mockFetchUserAttributes = vi.mocked(fetchUserAttributes);
-    mockFetchUserAttributes.mockResolvedValue({
-      email: 'jane@example.com',
-    } as never);
-
-    await expect(getCurrentSessionUserType()).resolves.toBe(UserType.STANDARD);
-    expect(getCurrentSessionUserTypeFromStorage()).toBe(UserType.STANDARD);
-  });
-
-  it('clears a cached userType when Cognito session is no longer valid', async () => {
-    setCurrentSessionUserType(UserType.ADMIN);
-
-    const mockFetchUserAttributes = vi.mocked(fetchUserAttributes);
-    mockFetchUserAttributes.mockRejectedValue(new Error('session expired'));
-
-    await expect(getCurrentSessionUserType()).resolves.toBeNull();
-    expect(getCurrentSessionUserTypeFromStorage()).toBeNull();
-  });
-
-  it('clears a cached userType when Cognito returns no email', async () => {
-    const mockFetchUserAttributes = vi.mocked(fetchUserAttributes);
+  it('returns null when there is no authenticated session', async () => {
+    const mockGetIdToken = vi.mocked(cognito.getIdToken);
     const mockGetCurrentUser = vi.mocked(apiClient.getCurrentUser);
 
-    setCurrentSessionUserType(UserType.ADMIN);
-    mockFetchUserAttributes.mockResolvedValue({} as never);
+    mockGetIdToken.mockResolvedValue(undefined);
 
     await expect(getCurrentSessionUserType()).resolves.toBeNull();
     expect(mockGetCurrentUser).not.toHaveBeenCalled();
-    expect(getCurrentSessionUserTypeFromStorage()).toBeNull();
   });
 
-  describe('fetchAndStoreCurrentSessionUserType', () => {
-    it('returns null and clears cache when Cognito has no email attribute', async () => {
-      const mockFetchUserAttributes = vi.mocked(fetchUserAttributes);
-      const mockGetCurrentUser = vi.mocked(apiClient.getCurrentUser);
-
-      setCurrentSessionUserType(UserType.ADMIN);
-      mockFetchUserAttributes.mockResolvedValue({} as never);
-
-      await expect(fetchAndStoreCurrentSessionUserType()).resolves.toBeNull();
-      expect(mockGetCurrentUser).not.toHaveBeenCalled();
-      expect(getCurrentSessionUserTypeFromStorage()).toBeNull();
-    });
-
-    it('stores the backend userType when Cognito and backend both resolve', async () => {
-      const mockFetchUserAttributes = vi.mocked(fetchUserAttributes);
-      const mockGetCurrentUser = vi.mocked(apiClient.getCurrentUser);
-
-      mockFetchUserAttributes.mockResolvedValue({
-        email: 'jane@example.com',
-      } as never);
-      mockGetCurrentUser.mockResolvedValue({
-        email: 'jane@example.com',
-        firstName: 'Jane',
-        lastName: 'Doe',
-        userType: UserType.ADMIN,
-      });
-
-      await expect(fetchAndStoreCurrentSessionUserType()).resolves.toBe(
-        UserType.ADMIN,
-      );
-      expect(getCurrentSessionUserTypeFromStorage()).toBe(UserType.ADMIN);
-    });
-
-    it('returns null and clears cache when the backend has no matching user', async () => {
-      const mockFetchUserAttributes = vi.mocked(fetchUserAttributes);
-      const mockGetCurrentUser = vi.mocked(apiClient.getCurrentUser);
-
-      setCurrentSessionUserType(UserType.STANDARD);
-      mockFetchUserAttributes.mockResolvedValue({
-        email: 'jane@example.com',
-      } as never);
-      mockGetCurrentUser.mockResolvedValue(null);
-
-      await expect(fetchAndStoreCurrentSessionUserType()).resolves.toBeNull();
-      expect(getCurrentSessionUserTypeFromStorage()).toBeNull();
-    });
-  });
-
-  it('fetches and stores the backend userType when no cache exists', async () => {
-    const mockFetchUserAttributes = vi.mocked(fetchUserAttributes);
+  it('returns null when backend role lookup fails', async () => {
+    const mockGetIdToken = vi.mocked(cognito.getIdToken);
     const mockGetCurrentUser = vi.mocked(apiClient.getCurrentUser);
 
-    mockFetchUserAttributes.mockResolvedValue({
+    mockGetIdToken.mockResolvedValue('header.payload.signature');
+    mockGetCurrentUser.mockRejectedValue(new Error('boom'));
+
+    await expect(getCurrentSessionUserType()).resolves.toBeNull();
+  });
+
+  it('returns the backend userType for an authenticated session', async () => {
+    const mockGetIdToken = vi.mocked(cognito.getIdToken);
+    const mockGetCurrentUser = vi.mocked(apiClient.getCurrentUser);
+
+    mockGetIdToken.mockResolvedValue('header.payload.signature');
+    mockGetCurrentUser.mockResolvedValue({
       email: 'jane@example.com',
-    } as never);
+      firstName: 'Jane',
+      lastName: 'Doe',
+      userType: UserType.ADMIN,
+    });
+
+    await expect(fetchAndStoreCurrentSessionUserType()).resolves.toBe(
+      UserType.ADMIN,
+    );
+  });
+
+  it('returns null when the backend has no matching user', async () => {
+    const mockGetIdToken = vi.mocked(cognito.getIdToken);
+    const mockGetCurrentUser = vi.mocked(apiClient.getCurrentUser);
+
+    mockGetIdToken.mockResolvedValue('header.payload.signature');
+    mockGetCurrentUser.mockResolvedValue(null);
+
+    await expect(fetchAndStoreCurrentSessionUserType()).resolves.toBeNull();
+  });
+
+  it('revalidates against the backend each time a role check runs', async () => {
+    const mockGetIdToken = vi.mocked(cognito.getIdToken);
+    const mockGetCurrentUser = vi.mocked(apiClient.getCurrentUser);
+
+    mockGetIdToken.mockResolvedValue('header.payload.signature');
     mockGetCurrentUser.mockResolvedValue({
       email: 'jane@example.com',
       firstName: 'Jane',
@@ -126,6 +84,7 @@ describe('getCurrentSessionUserType', () => {
     });
 
     await expect(getCurrentSessionUserType()).resolves.toBe(UserType.STANDARD);
-    expect(getCurrentSessionUserTypeFromStorage()).toBe(UserType.STANDARD);
+    await expect(getCurrentSessionUserType()).resolves.toBe(UserType.STANDARD);
+    expect(mockGetCurrentUser).toHaveBeenCalledTimes(2);
   });
 });

@@ -3,7 +3,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { CandidateInfoController } from './candidate-info.controller';
 import { CandidateInfoService } from './candidate-info.service';
 import { CandidateInfo } from './candidate-info.entity';
-import { AuthService } from '../auth/auth.service';
 import { UsersService } from '../users/users.service';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserType } from '../users/types';
@@ -30,10 +29,6 @@ const mockCandidateInfoService: Partial<CandidateInfoService> = {
   findAll: jest.fn(),
   findByAppId: jest.fn(),
   delete: jest.fn(),
-};
-
-const mockAuthService = {
-  getUser: jest.fn(),
 };
 
 const mockUsersService = {
@@ -63,10 +58,6 @@ describe('CandidateInfoController', () => {
         {
           provide: getRepositoryToken(CandidateInfo),
           useValue: {},
-        },
-        {
-          provide: AuthService,
-          useValue: mockAuthService,
         },
         {
           provide: UsersService,

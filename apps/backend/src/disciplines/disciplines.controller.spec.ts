@@ -3,7 +3,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DisciplinesController } from './disciplines.controller';
 import { DisciplinesService } from './disciplines.service';
 import { Discipline } from './disciplines.entity';
-import { AuthService } from '../auth/auth.service';
 import { UsersService } from '../users/users.service';
 import { DISCIPLINE_VALUES } from './disciplines.constants';
 import { CreateDisciplineRequestDto } from './dto/create-discipline.request.dto';
@@ -32,10 +31,6 @@ const mockDisciplinesService: Partial<DisciplinesService> = {
   remove: jest.fn(),
   addAdmin: jest.fn(),
   removeAdmin: jest.fn(),
-};
-
-const mockAuthService = {
-  getUser: jest.fn(),
 };
 
 const mockUsersService = {
@@ -67,10 +62,6 @@ describe('DisciplinesController', () => {
         {
           provide: getRepositoryToken(Discipline),
           useValue: {},
-        },
-        {
-          provide: AuthService,
-          useValue: mockAuthService,
         },
         {
           provide: UsersService,
