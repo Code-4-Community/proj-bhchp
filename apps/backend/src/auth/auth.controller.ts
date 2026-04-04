@@ -69,11 +69,10 @@ export class AuthController {
    *
    * Does not return a value.
    */
-  // TODO deprecated if verification code is replaced by link
   @Post('/verify')
-  verifyUser(@Body() body: VerifyUserDto): void {
+  async verifyUser(@Body() body: VerifyUserDto): Promise<void> {
     try {
-      this.authService.verifyUser(body.email, body.verificationCode);
+      await this.authService.verifyUser(body.email, body.verificationCode);
     } catch (e) {
       throw new BadRequestException(e.message);
     }

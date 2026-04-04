@@ -169,8 +169,7 @@ describe('AuthController', () => {
 
       mockAuthService.verifyUser.mockResolvedValue(undefined);
 
-      // The controller method is not async, so we don't await it
-      expect(() => controller.verifyUser(verifyDto)).not.toThrow();
+      await expect(controller.verifyUser(verifyDto)).resolves.toBeUndefined();
 
       expect(mockAuthService.verifyUser).toHaveBeenCalledWith(
         'test@northeastern.edu',
@@ -178,17 +177,17 @@ describe('AuthController', () => {
       );
     });
 
-    it('should throw BadRequestException for invalid verification code', () => {
+    it('should throw BadRequestException for invalid verification code', async () => {
       const verifyDto = {
         email: 'test@northeastern.edu',
         verificationCode: 'wrong',
       };
 
-      mockAuthService.verifyUser.mockImplementation(() => {
-        throw new Error('CodeMismatchException');
-      });
+      mockAuthService.verifyUser.mockRejectedValue(
+        new Error('CodeMismatchException'),
+      );
 
-      expect(() => controller.verifyUser(verifyDto)).toThrow(
+      await expect(controller.verifyUser(verifyDto)).rejects.toThrow(
         BadRequestException,
       );
     });
