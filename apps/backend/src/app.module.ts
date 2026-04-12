@@ -13,6 +13,8 @@ import { UsersModule } from './users/users.module';
 import { ConfigModule } from '@nestjs/config';
 import { DisciplinesModule } from './disciplines/disciplines.module';
 import { AdminInfoModule } from './admin-info/admin-info.module';
+import { PandadocWebhookModule } from './pandadoc-webhook/pandadoc-webhook.module';
+import { CandidateInfoModule } from './candidate-info/candidate-info.module';
 
 @Module({
   imports: [
@@ -32,7 +34,8 @@ import { AdminInfoModule } from './admin-info/admin-info.module';
     DisciplinesModule,
     LearnerInfoModule,
     ApplicationsModule,
-    ApplicationsModule,
+    CandidateInfoModule,
+    PandadocWebhookModule,
   ],
   controllers: [AppController],
   providers: [AppService],

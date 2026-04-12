@@ -24,5 +24,6 @@ import { UtilModule } from '../util/util.module';
     ApplicationValidationEmailFilter,
     ApplicationCreationErrorFilter,
   ],
+  exports: [ApplicationsService],
 })
 export class ApplicationsModule {}
