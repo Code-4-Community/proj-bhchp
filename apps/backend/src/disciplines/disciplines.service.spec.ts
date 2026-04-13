@@ -154,6 +154,20 @@ describe('DisciplinesService', () => {
       expect(repository.save).toHaveBeenCalledWith(disciplineWithEmptyAdmins);
       expect(result).toEqual(disciplineWithEmptyAdmins);
     });
+
+    it('should pass along repository errors during create', async () => {
+      const createDisciplineDto: CreateDisciplineRequestDto = {
+        name: DISCIPLINE_VALUES.RN,
+        admin_emails: [],
+      };
+
+      mockRepository.create.mockReturnValue(mockDiscipline1);
+      mockRepository.save.mockRejectedValue(new Error('Save failed'));
+
+      await expect(service.create(createDisciplineDto)).rejects.toThrow(
+        'Save failed',
+      );
+    });
   });
 
   describe('remove', () => {

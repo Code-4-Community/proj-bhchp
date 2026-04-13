@@ -12,6 +12,7 @@ import { ApplicationValidationEmailFilter } from './filters/application-validati
 import { ApplicationCreationErrorFilter } from './filters/application-creation-validation.filter';
 import { NotFoundException } from '@nestjs/common';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
+import { UserType } from '../users/types';
 
 jest.mock('../util/aws-exports', () => ({
   __esModule: true,
@@ -293,6 +294,31 @@ describe('ApplicationsController', () => {
     });
   });
 
+  describe('getAllApplications', () => {
+    it('should return all applications', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findAll')
+        .mockResolvedValue([mockApplication]);
+
+      await expect(controller.getAllApplications()).resolves.toEqual([
+        mockApplication,
+      ]);
+      expect(mockApplicationsService.findAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass along service errors without information loss', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findAll')
+        .mockRejectedValue(
+          new Error('There was a problem retrieving the info'),
+        );
+
+      await expect(controller.getAllApplications()).rejects.toThrow(
+        'There was a problem retrieving the info',
+      );
+    });
+  });
+
   describe('getApplicationsByDiscipline', () => {
     it('should return applications with the specified discipline', async () => {
       const mockApplications: Application[] = [
@@ -382,6 +408,114 @@ describe('ApplicationsController', () => {
           discipline,
         );
       }
+    });
+  });
+
+  describe('getApplicationById', () => {
+    it('should return an application for an admin user', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.getApplicationById(1, {
+          user: { email: 'admin@example.com', userType: UserType.ADMIN },
+        }),
+      ).resolves.toEqual(mockApplication);
+      expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
+    });
+
+    it('should return an application for the matching standard user', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.getApplicationById(1, {
+          user: { email: 'test@example.com', userType: UserType.STANDARD },
+        }),
+      ).resolves.toEqual(mockApplication);
+      expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw ForbiddenException when a standard user requests another user application', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.getApplicationById(1, {
+          user: { email: 'other@example.com', userType: UserType.STANDARD },
+        }),
+      ).rejects.toThrow(
+        'Standard users can only access their own application.',
+      );
+    });
+
+    it('should pass through service errors from findById', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockRejectedValue(
+          new NotFoundException('Application with ID 99 not found'),
+        );
+
+      await expect(
+        controller.getApplicationById(99, {
+          user: { email: 'admin@example.com', userType: UserType.ADMIN },
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createApplication', () => {
+    it('should create an application', async () => {
+      const createApplicationDto = {
+        appStatus: AppStatus.APP_SUBMITTED,
+        mondayAvailability: 'monday',
+        tuesdayAvailability: 'tuesday',
+        wednesdayAvailability: 'wednesday',
+        thursdayAvailability: 'thursday',
+        fridayAvailability: 'friday',
+        saturdayAvailability: 'saturday',
+        interest: [InterestArea.WOMENS_HEALTH],
+        license: 'n/a',
+        applicantType: ApplicantType.LEARNER,
+        phone: '123-456-7890',
+        email: 'test@example.com',
+        discipline: DISCIPLINE_VALUES.RN,
+        proposedStartDate: '2024-01-01',
+        referred: false,
+        weeklyHours: 20,
+        pronouns: 'they/them',
+        desiredExperience: 'Help patients',
+        resume: 'resume.pdf',
+        coverLetter: 'cover.pdf',
+        emergencyContactName: 'Jane Doe',
+        emergencyContactPhone: '111-111-1111',
+        emergencyContactRelationship: 'Mother',
+        heardAboutFrom: [],
+      };
+
+      jest
+        .spyOn(mockApplicationsService, 'create')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.createApplication(createApplicationDto as never),
+      ).resolves.toEqual(mockApplication);
+      expect(mockApplicationsService.create).toHaveBeenCalledWith(
+        createApplicationDto,
+      );
+    });
+
+    it('should pass along service errors while creating an application', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'create')
+        .mockRejectedValue(new Error('Failed to create application'));
+
+      await expect(controller.createApplication({} as never)).rejects.toThrow(
+        'Failed to create application',
+      );
     });
   });
 
@@ -685,6 +819,84 @@ describe('ApplicationsController', () => {
           appStatus: AppStatus.ACCEPTED,
         }),
       ).rejects.toThrow('There was a problem updating the status');
+    });
+  });
+
+  describe('deleteApplication', () => {
+    it('should delete an application', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'delete')
+        .mockResolvedValue(undefined);
+
+      await expect(controller.deleteApplication(1)).resolves.toBeUndefined();
+      expect(mockApplicationsService.delete).toHaveBeenCalledWith(1);
+    });
+
+    it('should pass along service errors while deleting', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'delete')
+        .mockRejectedValue(
+          new NotFoundException('Application with ID 999 not found'),
+        );
+
+      await expect(controller.deleteApplication(999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('getCurrentApplication', () => {
+    it('should return NotFoundException when request user context is missing', async () => {
+      const result = await controller.getCurrentApplication({});
+
+      expect(result).toBeInstanceOf(NotFoundException);
+      expect((result as NotFoundException).message).toBe(
+        'No user matching the JWT was found.',
+      );
+    });
+
+    it('should return the current user application when candidate info exists', async () => {
+      mockCandidateInfoService.findOne.mockResolvedValue({
+        email: 'test@example.com',
+        appId: 1,
+      });
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.getCurrentApplication({
+          user: {
+            email: 'test@example.com',
+            userType: UserType.STANDARD,
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      ).resolves.toEqual(mockApplication);
+      expect(mockCandidateInfoService.findOne).toHaveBeenCalledWith(
+        'test@example.com',
+      );
+      expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
+    });
+
+    it('should pass through candidate lookup errors', async () => {
+      mockCandidateInfoService.findOne.mockRejectedValue(
+        new NotFoundException(
+          'candidate with email test@example.com not found',
+        ),
+      );
+
+      await expect(
+        controller.getCurrentApplication({
+          user: {
+            email: 'test@example.com',
+            userType: UserType.STANDARD,
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -137,7 +137,7 @@ export class ApplicationsService {
    * @throws {Error} which is unchanged from what repository throws.
    */
   async findById(appId: number): Promise<Application> {
-    const application: Application = await this.applicationRepository.findOne({
+    const application = await this.applicationRepository.findOne({
       where: { appId },
     });
 

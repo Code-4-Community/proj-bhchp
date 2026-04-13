@@ -256,7 +256,7 @@ export class ApplicationsController {
    * @throws {NotFoundException} with message 'Application with ID <appId> not found'
    *         if the application does not exist.
    */
-  @Patch('/:appId/start-date')
+  @Patch('/:appId/actual-start-date')
   @Roles(UserType.ADMIN)
   async updateApplicationActualStartDate(
     @Param('appId', ParseIntPipe) appId: number,

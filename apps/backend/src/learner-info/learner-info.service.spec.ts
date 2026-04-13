@@ -145,6 +145,14 @@ describe('LearnerInfoService', () => {
       });
     });
 
+    it('should throw BadRequestException when appId is missing', async () => {
+      mockRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findById(undefined as never)).rejects.toThrow(
+        new BadRequestException('Learner info ID is required'),
+      );
+    });
+
     it('should pass along any repo errors without information loss', async () => {
       mockRepository.findOne.mockRejectedValue(
         new Error('There was a problem retrieving the info'),

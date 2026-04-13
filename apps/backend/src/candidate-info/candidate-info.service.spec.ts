@@ -70,6 +70,22 @@ describe('CandidateInfoService', () => {
       expect(mockcandidatesRepository.save).toHaveBeenCalledWith(candidate1);
     });
 
+    it('should trim email before creating a candidate', async () => {
+      jest
+        .spyOn(mockcandidatesRepository, 'create')
+        .mockReturnValue(candidate1);
+      jest
+        .spyOn(mockcandidatesRepository, 'save')
+        .mockResolvedValue(candidate1);
+
+      await service.create(1, '  john@example.com  ');
+
+      expect(mockcandidatesRepository.create).toHaveBeenCalledWith({
+        appId: 1,
+        email: 'john@example.com',
+      });
+    });
+
     it('should throw error if appId is invalid', async () => {
       await expect(service.create(0, 'john@example.com')).rejects.toThrow(
         'Valid app ID is required',
@@ -123,6 +139,18 @@ describe('CandidateInfoService', () => {
       const result = await service.findOne('john@example.com');
 
       expect(result).toEqual(candidate1);
+      expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
+        email: 'john@example.com',
+      });
+    });
+
+    it('should trim email before lookup', async () => {
+      jest
+        .spyOn(mockcandidatesRepository, 'findOneBy')
+        .mockResolvedValue(candidate1);
+
+      await service.findOne('  john@example.com  ');
+
       expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
         email: 'john@example.com',
       });
