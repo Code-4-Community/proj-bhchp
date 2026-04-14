@@ -183,6 +183,7 @@ const CandidateViewApplication: React.FC = () => {
           over18={learnerInfo?.isLegalAdult}
         />
         <SchoolAffiliationFrame
+          isLearner={application.applicantType === ApplicantType.LEARNER}
           schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
           schoolDepartment={
             (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'

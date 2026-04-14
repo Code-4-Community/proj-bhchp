@@ -126,6 +126,7 @@ const AdminViewApplication: React.FC = () => {
           }
         />
         <SchoolAffiliationFrame
+          isLearner={application.applicantType === ApplicantType.LEARNER}
           schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
           schoolDepartment={
             (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'
