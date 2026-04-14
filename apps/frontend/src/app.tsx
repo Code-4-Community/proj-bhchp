@@ -11,6 +11,7 @@ import { UserType } from './api/types';
 import Login from './containers/login';
 import Signup from './containers/signup';
 import FormsPage from '@containers/FormsPage';
+import CreateNewAdmin from '@containers/CreateNewAdmin';
 
 export const App: React.FC = () => {
   return (
@@ -38,6 +39,7 @@ export const App: React.FC = () => {
                   element={<AdminViewApplication />}
                 />
                 <Route path="settings" />
+                <Route path="create" element={<CreateNewAdmin />} />
               </Route>
             </Route>
 
