@@ -6,6 +6,7 @@ import {
   FaPerson,
   FaRegFile,
   FaRightFromBracket,
+  FaUserPlus,
 } from 'react-icons/fa6';
 import { UserType } from '@api/types';
 import { signOutUser } from '../../auth/cognito';
@@ -48,9 +49,16 @@ export default function NavBar({ logo, userType }: NavBarProps) {
         <Flex direction="column" width="100%" paddingTop="16px">
           {userType === UserType.ADMIN && (
             <NavbarItem
-              href="#dashboard"
+              href="/admin/landing"
               label="Dashboard"
               icon={<FaHouse />}
+            />
+          )}
+          {userType === UserType.ADMIN && (
+            <NavbarItem
+              href="/admin/create"
+              label="Create New Admin"
+              icon={<FaUserPlus />}
             />
           )}
           {userType === UserType.STANDARD && (
