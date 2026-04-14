@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Heading, Flex } from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
 import NavbarItem from './NavBarItem';
 import {
   FaHouse,
@@ -17,8 +16,6 @@ export type NavBarProps = {
 };
 
 export default function NavBar({ logo, userType }: NavBarProps) {
-  const navigate = useNavigate();
-
   const handleLogout = async () => {
     try {
       await signOutUser();
@@ -26,7 +23,7 @@ export default function NavBar({ logo, userType }: NavBarProps) {
       // eslint-disable-next-line no-console
       console.error('Sign out failed', err);
     } finally {
-      navigate('/login', { replace: true });
+      window.location.replace('/login');
     }
   };
 
