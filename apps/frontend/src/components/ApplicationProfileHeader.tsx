@@ -1,5 +1,6 @@
-import { Box, Float, Text } from '@chakra-ui/react';
+import { Box, Float, Text, Flex } from '@chakra-ui/react';
 import React from 'react';
+import type { ReactNode } from 'react';
 
 interface ApplicationProfileHeaderProps {
   firstName: string;
@@ -9,6 +10,7 @@ interface ApplicationProfileHeaderProps {
   email?: string;
   phone?: string;
   over18?: boolean;
+  statusControl?: ReactNode;
 }
 
 const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
@@ -19,6 +21,7 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
   email,
   phone,
   over18,
+  statusControl,
 }) => {
   return (
     <Box className="space-y-4" p="5">
@@ -56,44 +59,54 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
         p="6"
         pl="150px"
       >
-        <div>
-          <Text as="span" fontWeight="semibold">
-            Pronouns:
-          </Text>{' '}
-          {pronouns ?? 'N/A'}
-        </div>
-        <div>
-          <Text as="span" fontWeight="semibold">
-            Discipline:
-          </Text>{' '}
-          {discipline ?? 'N/A'}
-        </div>
-        <div>
-          <Text as="span" fontWeight="semibold">
-            Email:
-          </Text>{' '}
-          {email ?? 'N/A'}
-        </div>
-        <div>
-          <Text as="span" fontWeight="semibold">
-            Phone:
-          </Text>{' '}
-          {phone ?? 'N/A'}
-        </div>
-        <div>
-          <Text as="span" fontWeight="semibold">
-            Over 18?
-          </Text>{' '}
-          <Text
-            className={`inline-block px-3 py-1 text-sm rounded-full font-semibold text-white ${
-              over18 === false ? 'bg-red-500' : 'bg-green-500'
-            }`}
-            pl="3"
-            pr="3"
-          >
-            {over18 === false ? 'No' : 'Yes'}
-          </Text>
-        </div>
+        <Flex align="center" gap="6">
+          <Box flex="1">
+            <div>
+              <Text as="span" fontWeight="semibold">
+                Pronouns:
+              </Text>{' '}
+              {pronouns ?? 'N/A'}
+            </div>
+            <div>
+              <Text as="span" fontWeight="semibold">
+                Discipline:
+              </Text>{' '}
+              {discipline ?? 'N/A'}
+            </div>
+            <div>
+              <Text as="span" fontWeight="semibold">
+                Email:
+              </Text>{' '}
+              {email ?? 'N/A'}
+            </div>
+            <div>
+              <Text as="span" fontWeight="semibold">
+                Phone:
+              </Text>{' '}
+              {phone ?? 'N/A'}
+            </div>
+            <div>
+              <Text as="span" fontWeight="semibold">
+                Over 18?
+              </Text>{' '}
+              <Text
+                className={`inline-block px-3 py-1 text-sm rounded-full font-semibold text-white ${
+                  over18 === false ? 'bg-red-500' : 'bg-green-500'
+                }`}
+                pl="3"
+                pr="3"
+              >
+                {over18 === false ? 'No' : 'Yes'}
+              </Text>
+            </div>
+          </Box>
+
+          {statusControl && (
+            <Box flexShrink={0} display="flex" alignItems="center" mr="20">
+              {statusControl}
+            </Box>
+          )}
+        </Flex>
       </Box>
     </Box>
   );

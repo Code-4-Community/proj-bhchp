@@ -1,5 +1,4 @@
 import { Flex, Heading, Text, Circle } from '@chakra-ui/react';
-import type { ReactNode } from 'react';
 
 export interface SchoolAffiliationProps {
   schoolName: string;
@@ -10,7 +9,6 @@ export interface SchoolAffiliationProps {
   actualStartDate: string;
   endDate: string;
   totalTimeRequested: string;
-  statusControl?: ReactNode;
 }
 
 const SchoolAffiliationFrame = ({
@@ -22,7 +20,6 @@ const SchoolAffiliationFrame = ({
   actualStartDate,
   endDate,
   totalTimeRequested,
-  statusControl,
 }: SchoolAffiliationProps) => {
   return (
     <Flex
@@ -44,7 +41,6 @@ const SchoolAffiliationFrame = ({
         <Heading as="h2" size="sm" mb="2">
           School Affiliation
         </Heading>
-        {statusControl}
       </Flex>
 
       <Flex

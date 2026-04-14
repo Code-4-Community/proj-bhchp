@@ -118,6 +118,12 @@ const AdminViewApplication: React.FC = () => {
           email={application.email || 'N/A'}
           phone={application.phone || 'N/A'}
           over18={learnerInfo?.isLegalAdult}
+          statusControl={
+            <ApplicantStageControl
+              value={application.appStatus}
+              onConfirmChange={handleStatusUpdate}
+            />
+          }
         />
         <SchoolAffiliationFrame
           schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
@@ -134,12 +140,6 @@ const AdminViewApplication: React.FC = () => {
           actualStartDate={''}
           endDate={''}
           totalTimeRequested={application.weeklyHours + ' hours per week'}
-          statusControl={
-            <ApplicantStageControl
-              value={application.appStatus}
-              onConfirmChange={handleStatusUpdate}
-            />
-          }
         />
 
         <Box>
