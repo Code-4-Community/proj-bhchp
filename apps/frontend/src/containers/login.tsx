@@ -154,9 +154,6 @@ const Login: React.FC = () => {
             <Button type="submit" loading={loading} colorPalette="blue">
               Sign In
             </Button>
-            <Text>
-              <RouterLink to="/signup">Create an account</RouterLink>
-            </Text>
           </Stack>
         </Box>
       </form>

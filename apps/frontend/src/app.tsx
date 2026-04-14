@@ -9,7 +9,6 @@ import RequireRole from './auth/RequireRole';
 import RoleHomeRedirect from './auth/RoleHomeRedirect';
 import { UserType } from './api/types';
 import Login from './containers/login';
-import Signup from './containers/signup';
 import FormsPage from '@containers/FormsPage';
 import CreateNewAdmin from '@containers/CreateNewAdmin';
 
@@ -24,7 +23,6 @@ export const App: React.FC = () => {
       >
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
 
           <Route element={<RequireAuth />}>
             <Route path="/" element={<RoleHomeRedirect />} />
