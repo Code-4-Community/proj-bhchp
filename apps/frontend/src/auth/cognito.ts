@@ -1,4 +1,5 @@
 import {
+  confirmSignIn,
   fetchAuthSession,
   getCurrentUser,
   signIn,
@@ -6,6 +7,14 @@ import {
   signUp,
 } from 'aws-amplify/auth';
 import { clearCurrentSessionUserType } from './session';
+
+export type SignInWithPasswordResult =
+  | {
+      kind: 'SIGNED_IN';
+    }
+  | {
+      kind: 'NEW_PASSWORD_REQUIRED';
+    };
 
 // These helpers wrap Amplify's lower-level auth methods so the rest of the app
 // does not need to know about Cognito-specific calls or token retrieval.
@@ -18,7 +27,7 @@ import { clearCurrentSessionUserType } from './session';
 export const signInWithEmailPassword = async (
   username: string,
   password: string,
-): Promise<void> => {
+): Promise<SignInWithPasswordResult> => {
   console.debug('[auth] signInWithEmailPassword: calling Cognito signIn', {
     username,
   });
@@ -26,6 +35,33 @@ export const signInWithEmailPassword = async (
   console.debug('[auth] signInWithEmailPassword: Cognito signIn result', {
     username,
     result: !!result,
+    signInStep: result.nextStep?.signInStep,
+  });
+
+  if (
+    result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED'
+  ) {
+    return {
+      kind: 'NEW_PASSWORD_REQUIRED',
+    };
+  }
+
+  return {
+    kind: 'SIGNED_IN',
+  };
+};
+
+/**
+ * Completes Cognito's first-login new-password challenge for invited users.
+ *
+ * @param newPassword Password chosen by the invited user.
+ */
+export const confirmSignInWithNewPassword = async (
+  newPassword: string,
+): Promise<void> => {
+  console.debug('[auth] confirmSignInWithNewPassword: confirming challenge');
+  await confirmSignIn({
+    challengeResponse: newPassword,
   });
 };
 
