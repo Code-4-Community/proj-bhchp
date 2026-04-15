@@ -9,8 +9,8 @@ import { ProvisionAdminDto } from './dto/provision-admin.dto';
 import { ProvisionAdminResponse } from './types';
 
 /**
- * Mock controller for the admin provisioning flow described in phases 2-5 of
- * the authentication plan.
+ * Controller for the admin provisioning flow described in phases 2-5 of the
+ * authentication plan.
  */
 @ApiTags('Admin Provisioning')
 @ApiBearerAuth()
@@ -22,11 +22,9 @@ export class AdminProvisioningController {
   ) {}
 
   /**
-   * Mock admin provisioning endpoint.
-   *
-   * TODO:
-   * - Keep this route admin-only once the real implementation lands.
-   * - Replace the mocked response with real service orchestration results.
+   * Attempts to provision an admin within our database and authentication provider.
+   * @param provisionAdminDto information about the admin, which hinges on the admin email
+   * @returns {Promise<ProvisionAdminResponse>} with key information regarding whether provisioning failed or not
    */
   @Post('provision')
   @Roles(UserType.ADMIN)

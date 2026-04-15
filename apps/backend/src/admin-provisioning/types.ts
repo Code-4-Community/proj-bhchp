@@ -1,17 +1,12 @@
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { UserType } from '../users/types';
 
-export type MockCognitoCreateResult = {
+export type CognitoCreateResult = {
   cognitoUsername: string;
   userStatus: 'FORCE_CHANGE_PASSWORD';
 };
 
-export type MockEmailDeliveryResult = {
-  deliveryTriggered: boolean;
-  deliveryMode: 'COGNITO_MANAGED_EMAIL';
-};
-
-export type MockDatabaseCreateResult = {
+export type DatabaseCreateResult = {
   user: {
     email: string;
     firstName: string;
@@ -27,7 +22,7 @@ export type MockDatabaseCreateResult = {
 };
 
 export type ProvisionAdminResponse = {
-  mode: 'mock';
+  mode: 'live';
   status:
     | 'SUCCESS'
     | 'COGNITO_CREATE_FAILED'
@@ -44,6 +39,6 @@ export type ProvisionAdminResponse = {
     attemptedTransaction: boolean;
     committed: boolean;
   };
-  records: MockDatabaseCreateResult | null;
+  records: DatabaseCreateResult | null;
   notes: string[];
 };

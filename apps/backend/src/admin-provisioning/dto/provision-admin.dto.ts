@@ -1,21 +1,8 @@
-import {
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { DISCIPLINE_VALUES } from '../../disciplines/disciplines.constants';
 
-export enum AdminProvisioningMockScenario {
-  SUCCESS = 'SUCCESS',
-  COGNITO_CREATE_FAILS = 'COGNITO_CREATE_FAILS',
-  DATABASE_WRITE_FAILS = 'DATABASE_WRITE_FAILS',
-  ROLLBACK_FAILS = 'ROLLBACK_FAILS',
-}
-
 /**
- * DTO for the mocked admin provisioning endpoint.
+ * DTO for the admin provisioning endpoint.
  *
  * Note: the temporary password is intentionally not accepted from the
  * frontend. The backend is responsible for generating it and sending it only
@@ -37,12 +24,4 @@ export class ProvisionAdminDto {
   @IsEnum(DISCIPLINE_VALUES)
   @IsNotEmpty()
   discipline: DISCIPLINE_VALUES;
-
-  /**
-   * Temporary mock switch for exercising the scaffolded failure paths while
-   * the real Cognito/DB logic is still TODO.
-   */
-  @IsOptional()
-  @IsEnum(AdminProvisioningMockScenario)
-  mockScenario?: AdminProvisioningMockScenario;
 }

@@ -7,13 +7,10 @@ import { randomBytes } from 'crypto';
 import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ObjectLiteral, Repository } from 'typeorm';
+import { ProvisionAdminDto } from './dto/provision-admin.dto';
 import {
-  AdminProvisioningMockScenario,
-  ProvisionAdminDto,
-} from './dto/provision-admin.dto';
-import {
-  MockCognitoCreateResult,
-  MockDatabaseCreateResult,
+  CognitoCreateResult,
+  DatabaseCreateResult,
   ProvisionAdminResponse,
 } from './types';
 import { AdminInfo } from '../admin-info/admin-info.entity';
@@ -60,15 +57,8 @@ export class AdminProvisioningService {
   async createAdminUserInCognito(
     email: string,
     temporaryPassword: string,
-    mockScenario: AdminProvisioningMockScenario,
-  ): Promise<MockCognitoCreateResult> {
+  ): Promise<CognitoCreateResult> {
     this.logger.debug(`Creating Cognito admin user for ${email}`);
-
-    if (mockScenario === AdminProvisioningMockScenario.COGNITO_CREATE_FAILS) {
-      throw new Error(
-        '[MOCK] Cognito AdminCreateUser failed before any database write began.',
-      );
-    }
 
     const userPoolId = process.env.COGNITO_USER_POOL_ID;
     if (!userPoolId) {
@@ -107,19 +97,9 @@ export class AdminProvisioningService {
    */
   async createAdminDatabaseRecords(
     provisionAdminDto: ProvisionAdminDto,
-    mockScenario: AdminProvisioningMockScenario,
-  ): Promise<MockDatabaseCreateResult> {
+  ): Promise<DatabaseCreateResult> {
     const normalizedEmail = provisionAdminDto.email.trim().toLowerCase();
     this.logger.debug(`Creating database admin records for ${normalizedEmail}`);
-
-    if (
-      mockScenario === AdminProvisioningMockScenario.DATABASE_WRITE_FAILS ||
-      mockScenario === AdminProvisioningMockScenario.ROLLBACK_FAILS
-    ) {
-      throw new Error(
-        '[MOCK] Database transaction failed after Cognito user creation.',
-      );
-    }
 
     const manager = (
       this.userRepository as Repository<User> & {
@@ -253,15 +233,8 @@ export class AdminProvisioningService {
    * Deletes the Cognito user when database persistence fails after Cognito
    * creation.
    */
-  async deleteAdminUserInCognito(
-    cognitoUsername: string,
-    mockScenario: AdminProvisioningMockScenario,
-  ): Promise<boolean> {
+  async deleteAdminUserInCognito(cognitoUsername: string): Promise<boolean> {
     this.logger.warn(`Deleting Cognito admin user ${cognitoUsername}`);
-
-    if (mockScenario === AdminProvisioningMockScenario.ROLLBACK_FAILS) {
-      return false;
-    }
 
     const userPoolId = process.env.COGNITO_USER_POOL_ID;
     if (!userPoolId) {
@@ -288,25 +261,19 @@ export class AdminProvisioningService {
   async provisionAdmin(
     provisionAdminDto: ProvisionAdminDto,
   ): Promise<ProvisionAdminResponse> {
-    const mockScenario =
-      provisionAdminDto.mockScenario ?? AdminProvisioningMockScenario.SUCCESS;
-
-    this.logger.log(
-      `Provisioning admin ${provisionAdminDto.email} with scenario ${mockScenario}`,
-    );
+    this.logger.log(`Provisioning admin ${provisionAdminDto.email}`);
 
     const temporaryPassword = this.generateTemporaryPassword();
 
-    let cognitoResult: MockCognitoCreateResult;
+    let cognitoResult: CognitoCreateResult;
     try {
       cognitoResult = await this.createAdminUserInCognito(
         provisionAdminDto.email,
         temporaryPassword,
-        mockScenario,
       );
     } catch (error) {
       return {
-        mode: 'mock',
+        mode: 'live',
         status: 'COGNITO_CREATE_FAILED',
         cognito: {
           attemptedCreate: true,
@@ -319,20 +286,16 @@ export class AdminProvisioningService {
         records: null,
         notes: [
           'Cognito user creation failed before any database write was attempted.',
-          'TODO: map real Cognito exceptions to stable API error responses.',
           error instanceof Error ? error.message : 'Unknown Cognito error.',
         ],
       };
     }
 
     try {
-      const records = await this.createAdminDatabaseRecords(
-        provisionAdminDto,
-        mockScenario,
-      );
+      const records = await this.createAdminDatabaseRecords(provisionAdminDto);
 
       return {
-        mode: 'mock',
+        mode: 'live',
         status: 'SUCCESS',
         cognito: {
           attemptedCreate: true,
@@ -348,42 +311,68 @@ export class AdminProvisioningService {
         notes: [
           'Cognito AdminCreateUser was called with Cognito-managed invite delivery.',
           'Database record creation completed through the service transaction boundary.',
-          'TODO: replace the current best-effort local cleanup with a true transaction boundary for User and AdminInfo writes.',
+          'User and AdminInfo writes are transactional when the TypeORM manager is available.',
         ],
       };
     } catch (databaseError) {
-      const rollbackSucceeded = await this.deleteAdminUserInCognito(
-        cognitoResult.cognitoUsername,
-        mockScenario,
-      );
+      try {
+        const rollbackSucceeded = await this.deleteAdminUserInCognito(
+          cognitoResult.cognitoUsername,
+        );
 
-      return {
-        mode: 'mock',
-        status: rollbackSucceeded
-          ? 'DATABASE_WRITE_FAILED_ROLLED_BACK'
-          : 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED',
-        cognito: {
-          attemptedCreate: true,
-          attemptedRollback: true,
-          cognitoUsername: cognitoResult.cognitoUsername,
-          userStatus: cognitoResult.userStatus,
-          rollbackSucceeded,
-        },
-        database: {
-          attemptedTransaction: true,
-          committed: false,
-        },
-        records: null,
-        notes: [
-          'Database write failed after Cognito creation.',
-          rollbackSucceeded
-            ? 'Cognito rollback succeeded.'
-            : 'Cognito rollback failed; manual cleanup would be required.',
-          databaseError instanceof Error
-            ? databaseError.message
-            : 'Unknown database error.',
-        ],
-      };
+        return {
+          mode: 'live',
+          status: rollbackSucceeded
+            ? 'DATABASE_WRITE_FAILED_ROLLED_BACK'
+            : 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED',
+          cognito: {
+            attemptedCreate: true,
+            attemptedRollback: true,
+            cognitoUsername: cognitoResult.cognitoUsername,
+            userStatus: cognitoResult.userStatus,
+            rollbackSucceeded,
+          },
+          database: {
+            attemptedTransaction: true,
+            committed: false,
+          },
+          records: null,
+          notes: [
+            'Database write failed after Cognito creation.',
+            'Cognito rollback succeeded.',
+            databaseError instanceof Error
+              ? databaseError.message
+              : 'Unknown database error.',
+          ],
+        };
+      } catch (rollbackError) {
+        return {
+          mode: 'live',
+          status: 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED',
+          cognito: {
+            attemptedCreate: true,
+            attemptedRollback: true,
+            cognitoUsername: cognitoResult.cognitoUsername,
+            userStatus: cognitoResult.userStatus,
+            rollbackSucceeded: false,
+          },
+          database: {
+            attemptedTransaction: true,
+            committed: false,
+          },
+          records: null,
+          notes: [
+            'Database write failed after Cognito creation.',
+            'Cognito rollback failed; manual cleanup would be required.',
+            databaseError instanceof Error
+              ? databaseError.message
+              : 'Unknown database error.',
+            rollbackError instanceof Error
+              ? rollbackError.message
+              : 'Unknown rollback error.',
+          ],
+        };
+      }
     }
   }
 }
