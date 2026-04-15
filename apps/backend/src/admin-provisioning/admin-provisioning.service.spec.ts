@@ -307,11 +307,18 @@ describe('AdminProvisioningService', () => {
       mockCognitoIdentityProvider.send.mockRejectedValue(
         new Error('UsernameExistsException'),
       );
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
 
       const result = await service.provisionAdmin(baseDto);
 
       expect(mockCognitoIdentityProvider.send).toHaveBeenCalledTimes(1);
-      expect(userRepository.findOneBy).not.toHaveBeenCalled();
+      expect(userRepository.findOneBy).toHaveBeenCalledWith({
+        email: 'ada@example.com',
+      });
+      expect(adminInfoRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'ada@example.com' },
+      });
       expect(result.mode).toBe('live');
       expect(result.status).toBe('COGNITO_CREATE_FAILED');
       expect(result.database).toEqual({
@@ -321,6 +328,31 @@ describe('AdminProvisioningService', () => {
       expect(result.notes).toEqual([
         'Cognito user creation failed before any database write was attempted.',
         'UsernameExistsException',
+      ]);
+    });
+
+    it('should reject duplicate records before calling Cognito', async () => {
+      mockUserRepository.findOneBy.mockResolvedValue({
+        email: 'ada@example.com',
+      });
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.provisionAdmin(baseDto);
+
+      expect(mockCognitoIdentityProvider.send).not.toHaveBeenCalled();
+      expect(result.mode).toBe('live');
+      expect(result.status).toBe('COGNITO_CREATE_FAILED');
+      expect(result.cognito).toEqual({
+        attemptedCreate: false,
+        attemptedRollback: false,
+      });
+      expect(result.database).toEqual({
+        attemptedTransaction: false,
+        committed: false,
+      });
+      expect(result.notes).toEqual([
+        'Provisioning was rejected before Cognito user creation because a duplicate record already exists.',
+        'User with email ada@example.com already exists.',
       ]);
     });
 

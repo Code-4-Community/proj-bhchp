@@ -51,6 +51,32 @@ export class AdminProvisioningService {
   }
 
   /**
+   * Rejects duplicate admin provisioning requests before Cognito is called so
+   * we avoid creating an external identity when the database truth source
+   * already contains the user.
+   */
+  async assertAdminDoesNotAlreadyExist(email: string): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const [existingUser, existingAdmin] = await Promise.all([
+      this.userRepository.findOneBy({ email: normalizedEmail }),
+      this.adminInfoRepository.findOne({ where: { email: normalizedEmail } }),
+    ]);
+
+    if (existingUser) {
+      throw new ConflictException(
+        `User with email ${normalizedEmail} already exists.`,
+      );
+    }
+
+    if (existingAdmin) {
+      throw new ConflictException(
+        `AdminInfo with email ${normalizedEmail} already exists.`,
+      );
+    }
+  }
+
+  /**
    * Creates the Cognito user record and relies on Cognito-managed invite email
    * delivery.
    */
@@ -263,6 +289,30 @@ export class AdminProvisioningService {
   ): Promise<ProvisionAdminResponse> {
     this.logger.log(`Provisioning admin ${provisionAdminDto.email}`);
 
+    try {
+      await this.assertAdminDoesNotAlreadyExist(provisionAdminDto.email);
+    } catch (error) {
+      return {
+        mode: 'live',
+        status: 'COGNITO_CREATE_FAILED',
+        cognito: {
+          attemptedCreate: false,
+          attemptedRollback: false,
+        },
+        database: {
+          attemptedTransaction: false,
+          committed: false,
+        },
+        records: null,
+        notes: [
+          'Provisioning was rejected before Cognito user creation because a duplicate record already exists.',
+          error instanceof Error
+            ? error.message
+            : 'Unknown duplicate-check error.',
+        ],
+      };
+    }
+
     const temporaryPassword = this.generateTemporaryPassword();
 
     let cognitoResult: CognitoCreateResult;
@@ -346,6 +396,11 @@ export class AdminProvisioningService {
           ],
         };
       } catch (rollbackError) {
+        this.logger.error(
+          `Manual cleanup required for Cognito user ${cognitoResult.cognitoUsername} after database write failure for ${provisionAdminDto.email}`,
+          rollbackError instanceof Error ? rollbackError.stack : undefined,
+        );
+
         return {
           mode: 'live',
           status: 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED',
