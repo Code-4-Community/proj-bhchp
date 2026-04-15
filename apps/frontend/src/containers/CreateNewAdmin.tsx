@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Flex,
@@ -15,6 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import NavBar from '@components/NavBar/NavBar';
 import ConfirmationPopoverContent from '@components/ConfirmationPopoverContent';
 import { DISCIPLINE_VALUES, UserType } from '@api/types';
+import apiClient from '@api/apiClient';
 
 const CreateNewAdmin: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +27,8 @@ const CreateNewAdmin: React.FC = () => {
   const [discipline, setDiscipline] = useState('');
   const [isConfirmPopoverOpen, setIsConfirmPopoverOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canConfirm = useMemo(() => {
     return (
@@ -41,16 +45,59 @@ const CreateNewAdmin: React.FC = () => {
     navigate('/admin/landing');
   };
 
-  const onConfirm = () => {
-    // UI-only for now; backend wiring can be added when endpoint is ready.
-    console.debug('[ui] CreateNewAdmin submit', {
-      email,
-      firstName,
-      lastName,
-      discipline,
-    });
-    setIsConfirmPopoverOpen(false);
-    setShowSuccess(true);
+  const resetForm = () => {
+    setEmail('');
+    setConfirmEmail('');
+    setFirstName('');
+    setLastName('');
+    setDiscipline('');
+  };
+
+  const onConfirm = async () => {
+    if (!canConfirm || isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      console.debug('[ui] CreateNewAdmin submit', {
+        email,
+        firstName,
+        lastName,
+        discipline,
+      });
+
+      const response = await apiClient.provisionAdmin({
+        email: email.trim().toLowerCase(),
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        discipline: discipline as DISCIPLINE_VALUES,
+      });
+
+      if (response.status !== 'SUCCESS') {
+        console.error(
+          '[ui] CreateNewAdmin provisioning returned non-success response',
+          response,
+        );
+        setSubmitError(
+          'We could not finish creating this admin account. Please try again or contact support.',
+        );
+        return;
+      }
+
+      setIsConfirmPopoverOpen(false);
+      setShowSuccess(true);
+      resetForm();
+    } catch (error) {
+      console.error('[ui] CreateNewAdmin provisioning failed', error);
+      setSubmitError(
+        'We could not finish creating this admin account. Please try again or contact support.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -110,6 +157,16 @@ const CreateNewAdmin: React.FC = () => {
           Create Admin
         </Heading>
 
+        {submitError && (
+          <Alert.Root status="error" mb="6">
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>Admin creation failed</Alert.Title>
+              <Alert.Description>{submitError}</Alert.Description>
+            </Alert.Content>
+          </Alert.Root>
+        )}
+
         <Box
           borderWidth="1px"
           borderRadius="10px"
@@ -132,7 +189,10 @@ const CreateNewAdmin: React.FC = () => {
                 </Text>
                 <Input
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setSubmitError(null);
+                  }}
                   placeholder="admin@bhchp.org"
                   bg="white"
                   borderColor="#676767"
@@ -148,7 +208,10 @@ const CreateNewAdmin: React.FC = () => {
                 </Text>
                 <Input
                   value={confirmEmail}
-                  onChange={(e) => setConfirmEmail(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmEmail(e.target.value);
+                    setSubmitError(null);
+                  }}
                   placeholder="admin@bhchp.org"
                   bg="white"
                   borderColor="#676767"
@@ -165,7 +228,10 @@ const CreateNewAdmin: React.FC = () => {
                   </Text>
                   <Input
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      setSubmitError(null);
+                    }}
                     placeholder="John"
                     bg="white"
                     borderColor="#676767"
@@ -181,7 +247,10 @@ const CreateNewAdmin: React.FC = () => {
                   </Text>
                   <Input
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      setSubmitError(null);
+                    }}
                     placeholder="Doe"
                     bg="white"
                     borderColor="#676767"
@@ -198,9 +267,10 @@ const CreateNewAdmin: React.FC = () => {
                 </Text>
                 <chakra.select
                   value={discipline}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                    setDiscipline(e.target.value)
-                  }
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                    setDiscipline(e.target.value);
+                    setSubmitError(null);
+                  }}
                   w="100%"
                   h="40px"
                   borderWidth="1px"
@@ -240,6 +310,7 @@ const CreateNewAdmin: React.FC = () => {
               borderColor="#4C72C9"
               color="#013594"
               onClick={onCancel}
+              disabled={isSubmitting}
               borderRadius="6px"
               p="6"
             >
@@ -255,7 +326,7 @@ const CreateNewAdmin: React.FC = () => {
                   bg={canConfirm ? '#204AA0' : '#AAB1BE'}
                   color="white"
                   _hover={canConfirm ? { bg: '#163C86' } : {}}
-                  disabled={!canConfirm}
+                  disabled={!canConfirm || isSubmitting}
                   borderRadius="6px"
                   p="6"
                 >
@@ -271,6 +342,9 @@ const CreateNewAdmin: React.FC = () => {
                 cancelText="No"
                 onConfirm={onConfirm}
                 onCancel={onCloseConfirmPopover}
+                confirmLoading={isSubmitting}
+                cancelDisabled={isSubmitting}
+                errorMessage={submitError}
               />
             </Popover.Root>
           </Flex>

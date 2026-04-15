@@ -8,6 +8,8 @@ import {
   AvailabilityFields,
   CandidateInfo,
   LearnerInfo,
+  ProvisionAdminRequest,
+  ProvisionAdminResponse,
   User,
 } from './types';
 
@@ -72,6 +74,15 @@ export class ApiClient {
 
   public async getUser(email: string): Promise<User> {
     return this.get(`/api/users/email/${email}`) as Promise<User>;
+  }
+
+  public async provisionAdmin(
+    payload: ProvisionAdminRequest,
+  ): Promise<ProvisionAdminResponse> {
+    return this.post(
+      '/api/admins/provision',
+      payload,
+    ) as Promise<ProvisionAdminResponse>;
   }
 
   public async updateAvailability(

@@ -154,3 +154,40 @@ export interface CandidateInfo {
   email: string;
   appId: number;
 }
+
+export interface ProvisionAdminRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  discipline: DISCIPLINE_VALUES;
+}
+
+export interface ProvisionAdminResponse {
+  mode: 'live';
+  status:
+    | 'SUCCESS'
+    | 'COGNITO_CREATE_FAILED'
+    | 'DATABASE_WRITE_FAILED_ROLLED_BACK'
+    | 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED';
+  cognito: {
+    attemptedCreate: boolean;
+    attemptedRollback: boolean;
+    cognitoUsername?: string;
+    userStatus?: string;
+    rollbackSucceeded?: boolean;
+  };
+  database: {
+    attemptedTransaction: boolean;
+    committed: boolean;
+  };
+  records: {
+    user: User;
+    adminInfo: {
+      email: string;
+      discipline: DISCIPLINE_VALUES;
+      createdAt: string;
+      updatedAt: string;
+    };
+  } | null;
+  notes: string[];
+}
