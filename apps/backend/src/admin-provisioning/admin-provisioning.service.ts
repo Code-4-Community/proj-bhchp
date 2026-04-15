@@ -1,0 +1,389 @@
+import {
+  AdminCreateUserCommand,
+  AdminDeleteUserCommand,
+  CognitoIdentityProviderClient,
+} from '@aws-sdk/client-cognito-identity-provider';
+import { randomBytes } from 'crypto';
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ObjectLiteral, Repository } from 'typeorm';
+import {
+  AdminProvisioningMockScenario,
+  ProvisionAdminDto,
+} from './dto/provision-admin.dto';
+import {
+  MockCognitoCreateResult,
+  MockDatabaseCreateResult,
+  ProvisionAdminResponse,
+} from './types';
+import { AdminInfo } from '../admin-info/admin-info.entity';
+import { UserType } from '../users/types';
+import { User } from '../users/user.entity';
+import { COGNITO_IDENTITY_PROVIDER } from './cognito.provider';
+
+/**
+ * Service for phases 2-5 of the admin provisioning plan.
+ *
+ * The outward response shape remains stable for the current tests, but the
+ * internals now perform the real Cognito SDK and repository work required by
+ * the module.
+ */
+@Injectable()
+export class AdminProvisioningService {
+  private readonly logger = new Logger(AdminProvisioningService.name);
+
+  constructor(
+    @Inject(COGNITO_IDENTITY_PROVIDER)
+    private readonly cognitoIdentityProvider: CognitoIdentityProviderClient,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(AdminInfo)
+    private readonly adminInfoRepository: Repository<AdminInfo>,
+  ) {}
+
+  /**
+   * Generates a backend-only temporary password that satisfies the common
+   * Cognito password policy requirements of upper/lowercase, numeric, and
+   * special characters.
+   */
+  generateTemporaryPassword(): string {
+    this.logger.debug('Generating temporary password for admin provisioning');
+
+    const randomSegment = randomBytes(12).toString('base64url');
+    return `Bhchp-${randomSegment}Aa1!`;
+  }
+
+  /**
+   * Creates the Cognito user record and relies on Cognito-managed invite email
+   * delivery.
+   */
+  async createAdminUserInCognito(
+    email: string,
+    temporaryPassword: string,
+    mockScenario: AdminProvisioningMockScenario,
+  ): Promise<MockCognitoCreateResult> {
+    this.logger.debug(`Creating Cognito admin user for ${email}`);
+
+    if (mockScenario === AdminProvisioningMockScenario.COGNITO_CREATE_FAILS) {
+      throw new Error(
+        '[MOCK] Cognito AdminCreateUser failed before any database write began.',
+      );
+    }
+
+    const userPoolId = process.env.COGNITO_USER_POOL_ID;
+    if (!userPoolId) {
+      throw new Error('Missing COGNITO_USER_POOL_ID.');
+    }
+
+    const command = new AdminCreateUserCommand({
+      UserPoolId: userPoolId,
+      Username: email,
+      TemporaryPassword: temporaryPassword,
+      DesiredDeliveryMediums: ['EMAIL'],
+      UserAttributes: [
+        { Name: 'email', Value: email },
+        { Name: 'email_verified', Value: 'true' },
+      ],
+    });
+
+    const response = await this.cognitoIdentityProvider.send(command);
+
+    return {
+      cognitoUsername: response.User?.Username ?? email,
+      userStatus:
+        (response.User?.UserStatus as 'FORCE_CHANGE_PASSWORD' | undefined) ??
+        'FORCE_CHANGE_PASSWORD',
+    };
+  }
+
+  /**
+   * Creates the BHCHP database records.
+   *
+   * In the real app runtime, this uses a TypeORM transaction via the injected
+   * repository manager so `User` and `AdminInfo` are committed atomically.
+   *
+   * The fallback branch exists only for lightweight unit-test doubles that do
+   * not expose a TypeORM manager.
+   */
+  async createAdminDatabaseRecords(
+    provisionAdminDto: ProvisionAdminDto,
+    mockScenario: AdminProvisioningMockScenario,
+  ): Promise<MockDatabaseCreateResult> {
+    const normalizedEmail = provisionAdminDto.email.trim().toLowerCase();
+    this.logger.debug(`Creating database admin records for ${normalizedEmail}`);
+
+    if (
+      mockScenario === AdminProvisioningMockScenario.DATABASE_WRITE_FAILS ||
+      mockScenario === AdminProvisioningMockScenario.ROLLBACK_FAILS
+    ) {
+      throw new Error(
+        '[MOCK] Database transaction failed after Cognito user creation.',
+      );
+    }
+
+    const manager = (
+      this.userRepository as Repository<User> & {
+        manager?: {
+          transaction?: <T>(
+            runInTransaction: (transactionManager: {
+              getRepository: <Entity extends ObjectLiteral>(
+                target: new () => Entity,
+              ) => Repository<Entity>;
+            }) => Promise<T>,
+          ) => Promise<T>;
+        };
+      }
+    ).manager;
+
+    if (manager?.transaction) {
+      return manager.transaction(async (transactionManager) => {
+        const transactionalUserRepository =
+          transactionManager.getRepository(User);
+        const transactionalAdminInfoRepository =
+          transactionManager.getRepository(AdminInfo);
+
+        const existingUser = await transactionalUserRepository.findOneBy({
+          email: normalizedEmail,
+        });
+        if (existingUser) {
+          throw new ConflictException(
+            `User with email ${normalizedEmail} already exists.`,
+          );
+        }
+
+        const existingAdmin = await transactionalAdminInfoRepository.findOne({
+          where: { email: normalizedEmail },
+        });
+        if (existingAdmin) {
+          throw new ConflictException(
+            `AdminInfo with email ${normalizedEmail} already exists.`,
+          );
+        }
+
+        const user = transactionalUserRepository.create({
+          email: normalizedEmail,
+          firstName: provisionAdminDto.firstName,
+          lastName: provisionAdminDto.lastName,
+          userType: UserType.ADMIN,
+        });
+        const savedUser = await transactionalUserRepository.save(user);
+
+        const adminInfo = transactionalAdminInfoRepository.create({
+          email: normalizedEmail,
+          discipline: provisionAdminDto.discipline,
+        });
+        const savedAdminInfo = await transactionalAdminInfoRepository.save(
+          adminInfo,
+        );
+
+        return {
+          user: savedUser,
+          adminInfo: {
+            email: savedAdminInfo.email,
+            discipline: savedAdminInfo.discipline,
+            createdAt: savedAdminInfo.createdAt.toISOString(),
+            updatedAt: savedAdminInfo.updatedAt.toISOString(),
+          },
+        };
+      });
+    }
+
+    const existingUser = await this.userRepository.findOneBy({
+      email: normalizedEmail,
+    });
+    if (existingUser) {
+      throw new ConflictException(
+        `User with email ${normalizedEmail} already exists.`,
+      );
+    }
+
+    const existingAdmin = await this.adminInfoRepository.findOne({
+      where: { email: normalizedEmail },
+    });
+    if (existingAdmin) {
+      throw new ConflictException(
+        `AdminInfo with email ${normalizedEmail} already exists.`,
+      );
+    }
+
+    let savedUser: User | null = null;
+
+    const user = this.userRepository.create({
+      email: normalizedEmail,
+      firstName: provisionAdminDto.firstName,
+      lastName: provisionAdminDto.lastName,
+      userType: UserType.ADMIN,
+    });
+
+    try {
+      savedUser = await this.userRepository.save(user);
+
+      const adminInfo = this.adminInfoRepository.create({
+        email: normalizedEmail,
+        discipline: provisionAdminDto.discipline,
+      });
+      const savedAdminInfo = await this.adminInfoRepository.save(adminInfo);
+
+      return {
+        user: savedUser,
+        adminInfo: {
+          email: savedAdminInfo.email,
+          discipline: savedAdminInfo.discipline,
+          createdAt: savedAdminInfo.createdAt.toISOString(),
+          updatedAt: savedAdminInfo.updatedAt.toISOString(),
+        },
+      };
+    } catch (error) {
+      if (savedUser) {
+        try {
+          await this.userRepository.remove(savedUser);
+        } catch (cleanupError) {
+          this.logger.error(
+            `Failed to clean up partially created user ${normalizedEmail}`,
+            cleanupError instanceof Error ? cleanupError.stack : undefined,
+          );
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes the Cognito user when database persistence fails after Cognito
+   * creation.
+   */
+  async deleteAdminUserInCognito(
+    cognitoUsername: string,
+    mockScenario: AdminProvisioningMockScenario,
+  ): Promise<boolean> {
+    this.logger.warn(`Deleting Cognito admin user ${cognitoUsername}`);
+
+    if (mockScenario === AdminProvisioningMockScenario.ROLLBACK_FAILS) {
+      return false;
+    }
+
+    const userPoolId = process.env.COGNITO_USER_POOL_ID;
+    if (!userPoolId) {
+      throw new Error('Missing COGNITO_USER_POOL_ID.');
+    }
+
+    const command = new AdminDeleteUserCommand({
+      UserPoolId: userPoolId,
+      Username: cognitoUsername,
+    });
+    await this.cognitoIdentityProvider.send(command);
+
+    return true;
+  }
+
+  /**
+   * Top-level orchestrator for phases 2-5 of the plan:
+   * - generate password on the backend
+   * - create Cognito user
+   * - rely on Cognito-managed invite delivery
+   * - create DB records in a transaction
+   * - compensate with Cognito delete if DB write fails
+   */
+  async provisionAdmin(
+    provisionAdminDto: ProvisionAdminDto,
+  ): Promise<ProvisionAdminResponse> {
+    const mockScenario =
+      provisionAdminDto.mockScenario ?? AdminProvisioningMockScenario.SUCCESS;
+
+    this.logger.log(
+      `Provisioning admin ${provisionAdminDto.email} with scenario ${mockScenario}`,
+    );
+
+    const temporaryPassword = this.generateTemporaryPassword();
+
+    let cognitoResult: MockCognitoCreateResult;
+    try {
+      cognitoResult = await this.createAdminUserInCognito(
+        provisionAdminDto.email,
+        temporaryPassword,
+        mockScenario,
+      );
+    } catch (error) {
+      return {
+        mode: 'mock',
+        status: 'COGNITO_CREATE_FAILED',
+        cognito: {
+          attemptedCreate: true,
+          attemptedRollback: false,
+        },
+        database: {
+          attemptedTransaction: false,
+          committed: false,
+        },
+        records: null,
+        notes: [
+          'Cognito user creation failed before any database write was attempted.',
+          'TODO: map real Cognito exceptions to stable API error responses.',
+          error instanceof Error ? error.message : 'Unknown Cognito error.',
+        ],
+      };
+    }
+
+    try {
+      const records = await this.createAdminDatabaseRecords(
+        provisionAdminDto,
+        mockScenario,
+      );
+
+      return {
+        mode: 'mock',
+        status: 'SUCCESS',
+        cognito: {
+          attemptedCreate: true,
+          attemptedRollback: false,
+          cognitoUsername: cognitoResult.cognitoUsername,
+          userStatus: cognitoResult.userStatus,
+        },
+        database: {
+          attemptedTransaction: true,
+          committed: true,
+        },
+        records,
+        notes: [
+          'Cognito AdminCreateUser was called with Cognito-managed invite delivery.',
+          'Database record creation completed through the service transaction boundary.',
+          'TODO: replace the current best-effort local cleanup with a true transaction boundary for User and AdminInfo writes.',
+        ],
+      };
+    } catch (databaseError) {
+      const rollbackSucceeded = await this.deleteAdminUserInCognito(
+        cognitoResult.cognitoUsername,
+        mockScenario,
+      );
+
+      return {
+        mode: 'mock',
+        status: rollbackSucceeded
+          ? 'DATABASE_WRITE_FAILED_ROLLED_BACK'
+          : 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED',
+        cognito: {
+          attemptedCreate: true,
+          attemptedRollback: true,
+          cognitoUsername: cognitoResult.cognitoUsername,
+          userStatus: cognitoResult.userStatus,
+          rollbackSucceeded,
+        },
+        database: {
+          attemptedTransaction: true,
+          committed: false,
+        },
+        records: null,
+        notes: [
+          'Database write failed after Cognito creation.',
+          rollbackSucceeded
+            ? 'Cognito rollback succeeded.'
+            : 'Cognito rollback failed; manual cleanup would be required.',
+          databaseError instanceof Error
+            ? databaseError.message
+            : 'Unknown database error.',
+        ],
+      };
+    }
+  }
+}

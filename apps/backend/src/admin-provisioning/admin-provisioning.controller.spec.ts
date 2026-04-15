@@ -1,0 +1,86 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { AdminProvisioningController } from './admin-provisioning.controller';
+import { AdminProvisioningService } from './admin-provisioning.service';
+import {
+  AdminProvisioningMockScenario,
+  ProvisionAdminDto,
+} from './dto/provision-admin.dto';
+import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
+import { RolesGuard } from '../auth/roles.guard';
+import { UsersService } from '../users/users.service';
+
+const mockAdminProvisioningService = {
+  provisionAdmin: jest.fn(),
+};
+
+describe('AdminProvisioningController', () => {
+  let controller: AdminProvisioningController;
+
+  const provisionAdminDto: ProvisionAdminDto = {
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+    email: 'ada@example.com',
+    discipline: DISCIPLINE_VALUES.RN,
+    mockScenario: AdminProvisioningMockScenario.SUCCESS,
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [AdminProvisioningController],
+      providers: [
+        {
+          provide: AdminProvisioningService,
+          useValue: mockAdminProvisioningService,
+        },
+        {
+          provide: RolesGuard,
+          useValue: { canActivate: jest.fn(() => true) },
+        },
+        {
+          provide: UsersService,
+          useValue: { findOne: jest.fn() },
+        },
+      ],
+    }).compile();
+
+    controller = module.get<AdminProvisioningController>(
+      AdminProvisioningController,
+    );
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+
+  it('should delegate provisioning to the service', async () => {
+    const mockResponse = {
+      mode: 'mock' as const,
+      status: 'SUCCESS' as const,
+      cognito: {
+        attemptedCreate: true,
+        attemptedRollback: false,
+        cognitoUsername: 'ada@example.com',
+        userStatus: 'FORCE_CHANGE_PASSWORD',
+      },
+      database: {
+        attemptedTransaction: true,
+        committed: true,
+      },
+      records: null,
+      notes: ['mock success'],
+    };
+
+    mockAdminProvisioningService.provisionAdmin.mockResolvedValue(mockResponse);
+
+    await expect(controller.provisionAdmin(provisionAdminDto)).resolves.toEqual(
+      mockResponse,
+    );
+    expect(mockAdminProvisioningService.provisionAdmin).toHaveBeenCalledWith(
+      provisionAdminDto,
+    );
+  });
+});
