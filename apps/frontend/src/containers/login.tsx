@@ -8,7 +8,7 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import {
   confirmSignInWithNewPassword,
@@ -99,6 +99,19 @@ const Login: React.FC = () => {
           '[ui] Login: Cognito requires a new password before routing',
         );
         setIsNewPasswordRequired(true);
+        setLoading(false);
+        return;
+      }
+
+      if (signInResult.kind === 'UNSUPPORTED_CHALLENGE') {
+        console.error('[ui] Login: unsupported Cognito sign-in challenge', {
+          signInStep: signInResult.signInStep,
+        });
+        setError(
+          signInResult.signInStep
+            ? `This sign-in flow requires an unsupported challenge (${signInResult.signInStep}).`
+            : 'This sign-in flow requires an unsupported Cognito challenge.',
+        );
         setLoading(false);
         return;
       }

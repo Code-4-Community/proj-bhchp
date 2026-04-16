@@ -25,6 +25,7 @@ export type ProvisionAdminResponse = {
   mode: 'live';
   status:
     | 'SUCCESS'
+    | 'DUPLICATE_RECORD'
     | 'COGNITO_CREATE_FAILED'
     | 'DATABASE_WRITE_FAILED_ROLLED_BACK'
     | 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED';

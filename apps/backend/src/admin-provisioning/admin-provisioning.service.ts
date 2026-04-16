@@ -17,6 +17,7 @@ import { AdminInfo } from '../admin-info/admin-info.entity';
 import { UserType } from '../users/types';
 import { User } from '../users/user.entity';
 import { COGNITO_IDENTITY_PROVIDER } from './cognito.provider';
+import envConfig from '../util/aws-exports';
 
 /**
  * Service for phases 2-5 of the admin provisioning plan.
@@ -28,6 +29,18 @@ import { COGNITO_IDENTITY_PROVIDER } from './cognito.provider';
 @Injectable()
 export class AdminProvisioningService {
   private readonly logger = new Logger(AdminProvisioningService.name);
+
+  private getCognitoUserPoolId(): string {
+    const userPoolId = envConfig.CognitoAuthConfig.userPoolId;
+
+    if (!userPoolId) {
+      throw new Error(
+        'Missing COGNITO_USER_POOL_ID or VITE_COGNITO_USER_POOL_ID.',
+      );
+    }
+
+    return userPoolId;
+  }
 
   constructor(
     @Inject(COGNITO_IDENTITY_PROVIDER)
@@ -86,11 +99,7 @@ export class AdminProvisioningService {
   ): Promise<CognitoCreateResult> {
     this.logger.debug(`Creating Cognito admin user for ${email}`);
 
-    const userPoolId =
-      process.env.COGNITO_USER_POOL_ID ?? process.env.VITE_COGNITO_USER_POOL_ID;
-    if (!userPoolId) {
-      throw new Error('Missing COGNITO_USER_POOL_ID.');
-    }
+    const userPoolId = this.getCognitoUserPoolId();
 
     const command = new AdminCreateUserCommand({
       UserPoolId: userPoolId,
@@ -260,24 +269,16 @@ export class AdminProvisioningService {
    * Deletes the Cognito user when database persistence fails after Cognito
    * creation.
    */
-  async deleteAdminUserInCognito(cognitoUsername: string): Promise<boolean> {
+  async deleteAdminUserInCognito(cognitoUsername: string): Promise<void> {
     this.logger.warn(`Deleting Cognito admin user ${cognitoUsername}`);
 
-    const userPoolId =
-      process.env.COGNITO_USER_POOL_ID ?? process.env.VITE_COGNITO_USER_POOL_ID;
-    if (!userPoolId) {
-      throw new Error(
-        'Missing COGNITO_USER_POOL_ID or VITE_COGNITO_USER_POOL_ID.',
-      );
-    }
+    const userPoolId = this.getCognitoUserPoolId();
 
     const command = new AdminDeleteUserCommand({
       UserPoolId: userPoolId,
       Username: cognitoUsername,
     });
     await this.cognitoIdentityProvider.send(command);
-
-    return true;
   }
 
   /**
@@ -300,7 +301,7 @@ export class AdminProvisioningService {
       if (error instanceof ConflictException) {
         return {
           mode: 'live',
-          status: 'COGNITO_CREATE_FAILED',
+          status: 'DUPLICATE_RECORD',
           cognito: {
             attemptedCreate: false,
             attemptedRollback: false,
@@ -378,21 +379,17 @@ export class AdminProvisioningService {
       };
     } catch (databaseError) {
       try {
-        const rollbackSucceeded = await this.deleteAdminUserInCognito(
-          cognitoResult.cognitoUsername,
-        );
+        await this.deleteAdminUserInCognito(cognitoResult.cognitoUsername);
 
         return {
           mode: 'live',
-          status: rollbackSucceeded
-            ? 'DATABASE_WRITE_FAILED_ROLLED_BACK'
-            : 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED',
+          status: 'DATABASE_WRITE_FAILED_ROLLED_BACK',
           cognito: {
             attemptedCreate: true,
             attemptedRollback: true,
             cognitoUsername: cognitoResult.cognitoUsername,
             userStatus: cognitoResult.userStatus,
-            rollbackSucceeded,
+            rollbackSucceeded: true,
           },
           database: {
             attemptedTransaction: true,

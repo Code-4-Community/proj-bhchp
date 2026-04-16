@@ -14,6 +14,10 @@ export type SignInWithPasswordResult =
     }
   | {
       kind: 'NEW_PASSWORD_REQUIRED';
+    }
+  | {
+      kind: 'UNSUPPORTED_CHALLENGE';
+      signInStep?: string;
     };
 
 // These helpers wrap Amplify's lower-level auth methods so the rest of the app
@@ -35,8 +39,15 @@ export const signInWithEmailPassword = async (
   console.debug('[auth] signInWithEmailPassword: Cognito signIn result', {
     username,
     result: !!result,
+    isSignedIn: result.isSignedIn,
     signInStep: result.nextStep?.signInStep,
   });
+
+  if (result.isSignedIn) {
+    return {
+      kind: 'SIGNED_IN',
+    };
+  }
 
   if (
     result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED'
@@ -46,8 +57,16 @@ export const signInWithEmailPassword = async (
     };
   }
 
+  console.warn(
+    '[auth] signInWithEmailPassword: unsupported sign-in challenge',
+    {
+      username,
+      signInStep: result.nextStep?.signInStep,
+    },
+  );
   return {
-    kind: 'SIGNED_IN',
+    kind: 'UNSUPPORTED_CHALLENGE',
+    signInStep: result.nextStep?.signInStep,
   };
 };
 

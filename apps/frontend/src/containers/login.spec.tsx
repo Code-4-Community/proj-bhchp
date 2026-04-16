@@ -113,4 +113,29 @@ describe('Login', () => {
       expect(fetchAndStoreCurrentSessionUserTypeMock).toHaveBeenCalledTimes(1);
     });
   });
+
+  it('does not call backend role resolution for unsupported Cognito challenges', async () => {
+    signInWithEmailPasswordMock.mockResolvedValue({
+      kind: 'UNSUPPORTED_CHALLENGE',
+      signInStep: 'CONFIRM_SIGN_IN_WITH_SMS_CODE',
+    });
+
+    renderLogin();
+
+    fireEvent.change(screen.getByPlaceholderText('Email'), {
+      target: { value: 'ada@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Password'), {
+      target: { value: 'TempPass123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+
+    expect(
+      await screen.findByText(
+        'This sign-in flow requires an unsupported challenge (CONFIRM_SIGN_IN_WITH_SMS_CODE).',
+      ),
+    ).toBeTruthy();
+    expect(fetchAndStoreCurrentSessionUserTypeMock).not.toHaveBeenCalled();
+    expect(confirmSignInWithNewPasswordMock).not.toHaveBeenCalled();
+  });
 });

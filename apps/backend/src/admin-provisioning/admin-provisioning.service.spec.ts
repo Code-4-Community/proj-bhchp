@@ -14,6 +14,20 @@ import { AdminInfo } from '../admin-info/admin-info.entity';
 import { UserType } from '../users/types';
 import { COGNITO_IDENTITY_PROVIDER } from './cognito.provider';
 
+jest.mock('../util/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+    AWSConfig: {
+      region: 'us-east-1',
+    },
+  },
+}));
+
 const mockCognitoIdentityProvider = {
   send: jest.fn(),
 };
@@ -36,10 +50,6 @@ describe('AdminProvisioningService', () => {
   let userRepository: Repository<User>;
   let adminInfoRepository: Repository<AdminInfo>;
 
-  const originalUserPoolId = process.env.COGNITO_USER_POOL_ID;
-  const originalUserPoolIdWasSet =
-    process.env.COGNITO_USER_POOL_ID !== undefined;
-
   const baseDto: ProvisionAdminDto = {
     firstName: 'Ada',
     lastName: 'Lovelace',
@@ -48,8 +58,6 @@ describe('AdminProvisioningService', () => {
   };
 
   beforeEach(async () => {
-    process.env.COGNITO_USER_POOL_ID = 'test-user-pool-id';
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminProvisioningService,
@@ -77,11 +85,6 @@ describe('AdminProvisioningService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    if (originalUserPoolIdWasSet) {
-      process.env.COGNITO_USER_POOL_ID = originalUserPoolId;
-    } else {
-      delete process.env.COGNITO_USER_POOL_ID;
-    }
   });
 
   it('should be defined', () => {
@@ -245,7 +248,7 @@ describe('AdminProvisioningService', () => {
 
       await expect(
         service.deleteAdminUserInCognito('ada@example.com'),
-      ).resolves.toBe(true);
+      ).resolves.toBeUndefined();
 
       expect(mockCognitoIdentityProvider.send).toHaveBeenCalledTimes(1);
       const command = mockCognitoIdentityProvider.send.mock.calls[0][0];
@@ -347,7 +350,7 @@ describe('AdminProvisioningService', () => {
 
       expect(mockCognitoIdentityProvider.send).not.toHaveBeenCalled();
       expect(result.mode).toBe('live');
-      expect(result.status).toBe('COGNITO_CREATE_FAILED');
+      expect(result.status).toBe('DUPLICATE_RECORD');
       expect(result.cognito).toEqual({
         attemptedCreate: false,
         attemptedRollback: false,
