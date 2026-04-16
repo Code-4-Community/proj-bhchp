@@ -18,11 +18,11 @@ Because of that, the correct plan is not "add one missing rollback around an exi
 
 ### Frontend login and session resolution
 
-1. App startup calls `configureAmplify()` once in [apps/frontend/src/main.tsx](C:/Users/School/Github/proj-bhchp/apps/frontend/src/main.tsx) and [apps/frontend/src/auth/amplify.ts](C:/Users/School/Github/proj-bhchp/apps/frontend/src/auth/amplify.ts).
-2. The login page in [apps/frontend/src/containers/login.tsx](C:/Users/School/Github/proj-bhchp/apps/frontend/src/containers/login.tsx) calls `signInWithEmailPassword()`.
-3. `signInWithEmailPassword()` in [apps/frontend/src/auth/cognito.ts](C:/Users/School/Github/proj-bhchp/apps/frontend/src/auth/cognito.ts) delegates directly to Amplify `signIn`.
+1. App startup calls `configureAmplify()` once in [apps/frontend/src/main.tsx](../apps/frontend/src/main.tsx) and [apps/frontend/src/auth/amplify.ts](../apps/frontend/src/auth/amplify.ts).
+2. The login page in [apps/frontend/src/containers/login.tsx](../apps/frontend/src/containers/login.tsx) calls `signInWithEmailPassword()`.
+3. `signInWithEmailPassword()` in [apps/frontend/src/auth/cognito.ts](../apps/frontend/src/auth/cognito.ts) delegates directly to Amplify `signIn`.
 4. After Cognito accepts the credentials, the login page calls `fetchAndStoreCurrentSessionUserType()`.
-5. `fetchAndStoreCurrentSessionUserType()` in [apps/frontend/src/auth/current-session-user-type.ts](C:/Users/School/Github/proj-bhchp/apps/frontend/src/auth/current-session-user-type.ts):
+5. `fetchAndStoreCurrentSessionUserType()` in [apps/frontend/src/auth/current-session-user-type.ts](../apps/frontend/src/auth/current-session-user-type.ts):
    - reads Cognito user attributes with `fetchUserAttributes()`
    - calls `GET /api/users/me`
    - stores `user.userType` in `sessionStorage`
@@ -32,7 +32,7 @@ Because of that, the correct plan is not "add one missing rollback around an exi
 
 ### Frontend token attachment
 
-1. `ApiClient` in [apps/frontend/src/api/apiClient.ts](C:/Users/School/Github/proj-bhchp/apps/frontend/src/api/apiClient.ts) adds an Axios request interceptor.
+1. `ApiClient` in [apps/frontend/src/api/apiClient.ts](../apps/frontend/src/api/apiClient.ts) adds an Axios request interceptor.
 2. Before each request, it calls `getIdToken()`.
 3. `getIdToken()` retrieves the current Cognito ID token via Amplify `fetchAuthSession()`.
 4. The token is sent as `Authorization: Bearer <idToken>`.
@@ -40,18 +40,18 @@ Because of that, the correct plan is not "add one missing rollback around an exi
 ### Backend authentication and authorization
 
 1. Protected controllers use `AuthGuard('jwt')`.
-2. `JwtStrategy` in [apps/backend/src/auth/jwt.strategy.ts](C:/Users/School/Github/proj-bhchp/apps/backend/src/auth/jwt.strategy.ts):
+2. `JwtStrategy` in [apps/backend/src/auth/jwt.strategy.ts](../apps/backend/src/auth/jwt.strategy.ts):
    - validates the Cognito JWT using the user pool JWKS
    - accepts the configured Cognito app client IDs as audiences
    - returns `{ idUser: payload.sub, email: payload.email }`
-3. `CurrentUserInterceptor` in [apps/backend/src/interceptors/current-user.interceptor.ts](C:/Users/School/Github/proj-bhchp/apps/backend/src/interceptors/current-user.interceptor.ts) reloads the database `User` by email and replaces `request.user` when a match exists.
-4. `RolesGuard` in [apps/backend/src/auth/roles.guard.ts](C:/Users/School/Github/proj-bhchp/apps/backend/src/auth/roles.guard.ts) fetches the database user again and enforces `@Roles(...)`.
+3. `CurrentUserInterceptor` in [apps/backend/src/interceptors/current-user.interceptor.ts](../apps/backend/src/interceptors/current-user.interceptor.ts) reloads the database `User` by email and replaces `request.user` when a match exists.
+4. `RolesGuard` in [apps/backend/src/auth/roles.guard.ts](../apps/backend/src/auth/roles.guard.ts) fetches the database user again and enforces `@Roles(...)`.
 5. The backend therefore treats Cognito as identity proof, but Postgres `user.userType` as authorization truth.
 
 ### Backend endpoints currently involved in auth-dependent flows
 
-- `GET /api/users/me` returns the current database user in [apps/backend/src/users/users.controller.ts](C:/Users/School/Github/proj-bhchp/apps/backend/src/users/users.controller.ts)
-- `GET /api/applications/me` returns the standard user's application in [apps/backend/src/applications/applications.controller.ts](C:/Users/School/Github/proj-bhchp/apps/backend/src/applications/applications.controller.ts)
+- `GET /api/users/me` returns the current database user in [apps/backend/src/users/users.controller.ts](../apps/backend/src/users/users.controller.ts)
+- `GET /api/applications/me` returns the standard user's application in [apps/backend/src/applications/applications.controller.ts](../apps/backend/src/applications/applications.controller.ts)
 - Admin-only routes such as `GET /api/users/email/:email`, `GET /api/applications`, and `PATCH /api/applications/:appId/status` rely on the same JWT + DB-role pattern
 
 ## Gaps Between The Draft And The Actual Codebase
@@ -156,7 +156,7 @@ Email-delivery decision:
 
 ### Phase 6: Wire the frontend Create Admin screen to the new endpoint
 
-Update [apps/frontend/src/containers/CreateNewAdmin.tsx](C:/Users/School/Github/proj-bhchp/apps/frontend/src/containers/CreateNewAdmin.tsx) so confirmation actually calls the backend.
+Update [apps/frontend/src/containers/CreateNewAdmin.tsx](../apps/frontend/src/containers/CreateNewAdmin.tsx) so confirmation actually calls the backend.
 
 Frontend changes:
 
