@@ -188,7 +188,14 @@ const Login: React.FC = () => {
                 : 'Use your Cognito account to continue.'}
             </Text>
 
-            {error ? <Alert.Root status="error">{error}</Alert.Root> : null}
+            {error ? (
+              <Alert.Root status="error">
+                <Alert.Indicator />
+                <Alert.Content>
+                  <Alert.Description>{error}</Alert.Description>
+                </Alert.Content>
+              </Alert.Root>
+            ) : null}
 
             {!isNewPasswordRequired ? (
               <>
