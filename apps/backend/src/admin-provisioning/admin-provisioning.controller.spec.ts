@@ -6,6 +6,20 @@ import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from '../users/users.service';
 
+jest.mock('../util/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+    AWSConfig: {
+      region: 'us-east-1',
+    },
+  },
+}));
+
 const mockAdminProvisioningService = {
   provisionAdmin: jest.fn(),
 };
