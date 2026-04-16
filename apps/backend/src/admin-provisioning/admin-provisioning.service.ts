@@ -87,8 +87,7 @@ export class AdminProvisioningService {
     this.logger.debug(`Creating Cognito admin user for ${email}`);
 
     const userPoolId =
-      process.env.COGNITO_USER_POOL_ID ??
-      process.env.VITE_COGNITO_USER_POOL_ID;
+      process.env.COGNITO_USER_POOL_ID ?? process.env.VITE_COGNITO_USER_POOL_ID;
     if (!userPoolId) {
       throw new Error('Missing COGNITO_USER_POOL_ID.');
     }
@@ -265,8 +264,7 @@ export class AdminProvisioningService {
     this.logger.warn(`Deleting Cognito admin user ${cognitoUsername}`);
 
     const userPoolId =
-      process.env.COGNITO_USER_POOL_ID ??
-      process.env.VITE_COGNITO_USER_POOL_ID;
+      process.env.COGNITO_USER_POOL_ID ?? process.env.VITE_COGNITO_USER_POOL_ID;
     if (!userPoolId) {
       throw new Error(
         'Missing COGNITO_USER_POOL_ID or VITE_COGNITO_USER_POOL_ID.',
@@ -293,10 +291,11 @@ export class AdminProvisioningService {
   async provisionAdmin(
     provisionAdminDto: ProvisionAdminDto,
   ): Promise<ProvisionAdminResponse> {
-    this.logger.log(`Provisioning admin ${provisionAdminDto.email}`);
+    const normalizedEmail = provisionAdminDto.email.trim().toLowerCase();
+    this.logger.log(`Provisioning admin ${normalizedEmail}`);
 
     try {
-      await this.assertAdminDoesNotAlreadyExist(provisionAdminDto.email);
+      await this.assertAdminDoesNotAlreadyExist(normalizedEmail);
     } catch (error) {
       if (error instanceof ConflictException) {
         return {
@@ -326,7 +325,7 @@ export class AdminProvisioningService {
     let cognitoResult: CognitoCreateResult;
     try {
       cognitoResult = await this.createAdminUserInCognito(
-        provisionAdminDto.email,
+        normalizedEmail,
         temporaryPassword,
       );
     } catch (error) {
@@ -350,7 +349,12 @@ export class AdminProvisioningService {
     }
 
     try {
-      const records = await this.createAdminDatabaseRecords(provisionAdminDto);
+      const normalizedDto: ProvisionAdminDto = {
+        ...provisionAdminDto,
+        email: normalizedEmail,
+      };
+
+      const records = await this.createAdminDatabaseRecords(normalizedDto);
 
       return {
         mode: 'live',
@@ -405,7 +409,7 @@ export class AdminProvisioningService {
         };
       } catch (rollbackError) {
         this.logger.error(
-          `Manual cleanup required for Cognito user ${cognitoResult.cognitoUsername} after database write failure for ${provisionAdminDto.email}`,
+          `Manual cleanup required for Cognito user ${cognitoResult.cognitoUsername} after database write failure for ${normalizedEmail}`,
           rollbackError instanceof Error ? rollbackError.stack : undefined,
         );
 
