@@ -264,9 +264,13 @@ export class AdminProvisioningService {
   async deleteAdminUserInCognito(cognitoUsername: string): Promise<boolean> {
     this.logger.warn(`Deleting Cognito admin user ${cognitoUsername}`);
 
-    const userPoolId = process.env.COGNITO_USER_POOL_ID;
+    const userPoolId =
+      process.env.COGNITO_USER_POOL_ID ??
+      process.env.VITE_COGNITO_USER_POOL_ID;
     if (!userPoolId) {
-      throw new Error('Missing COGNITO_USER_POOL_ID.');
+      throw new Error(
+        'Missing COGNITO_USER_POOL_ID or VITE_COGNITO_USER_POOL_ID.',
+      );
     }
 
     const command = new AdminDeleteUserCommand({
