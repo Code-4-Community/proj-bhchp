@@ -292,25 +292,27 @@ export class AdminProvisioningService {
     try {
       await this.assertAdminDoesNotAlreadyExist(provisionAdminDto.email);
     } catch (error) {
-      return {
-        mode: 'live',
-        status: 'COGNITO_CREATE_FAILED',
-        cognito: {
-          attemptedCreate: false,
-          attemptedRollback: false,
-        },
-        database: {
-          attemptedTransaction: false,
-          committed: false,
-        },
-        records: null,
-        notes: [
-          'Provisioning was rejected before Cognito user creation because a duplicate record already exists.',
-          error instanceof Error
-            ? error.message
-            : 'Unknown duplicate-check error.',
-        ],
-      };
+      if (error instanceof ConflictException) {
+        return {
+          mode: 'live',
+          status: 'COGNITO_CREATE_FAILED',
+          cognito: {
+            attemptedCreate: false,
+            attemptedRollback: false,
+          },
+          database: {
+            attemptedTransaction: false,
+            committed: false,
+          },
+          records: null,
+          notes: [
+            'Provisioning was rejected before Cognito user creation because a duplicate record already exists.',
+            error.message,
+          ],
+        };
+      }
+
+      throw error;
     }
 
     const temporaryPassword = this.generateTemporaryPassword();
