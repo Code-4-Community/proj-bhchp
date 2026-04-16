@@ -176,10 +176,17 @@ export class AdminProvisioningService {
           );
         }
 
+        const normalizedFirstName = provisionAdminDto.firstName
+          .trim()
+          .replace(/\s+/g, ' ');
+        const normalizedLastName = provisionAdminDto.lastName
+          .trim()
+          .replace(/\s+/g, ' ');
+
         const user = transactionalUserRepository.create({
           email: normalizedEmail,
-          firstName: provisionAdminDto.firstName,
-          lastName: provisionAdminDto.lastName,
+          firstName: normalizedFirstName,
+          lastName: normalizedLastName,
           userType: UserType.ADMIN,
         });
         const savedUser = await transactionalUserRepository.save(user);
