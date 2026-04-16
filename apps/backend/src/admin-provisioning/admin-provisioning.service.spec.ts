@@ -37,6 +37,8 @@ describe('AdminProvisioningService', () => {
   let adminInfoRepository: Repository<AdminInfo>;
 
   const originalUserPoolId = process.env.COGNITO_USER_POOL_ID;
+  const originalUserPoolIdWasSet =
+    process.env.COGNITO_USER_POOL_ID !== undefined;
 
   const baseDto: ProvisionAdminDto = {
     firstName: 'Ada',
@@ -75,7 +77,11 @@ describe('AdminProvisioningService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    process.env.COGNITO_USER_POOL_ID = originalUserPoolId;
+    if (originalUserPoolIdWasSet) {
+      process.env.COGNITO_USER_POOL_ID = originalUserPoolId;
+    } else {
+      delete process.env.COGNITO_USER_POOL_ID;
+    }
   });
 
   it('should be defined', () => {
