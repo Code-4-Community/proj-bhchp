@@ -86,7 +86,9 @@ export class AdminProvisioningService {
   ): Promise<CognitoCreateResult> {
     this.logger.debug(`Creating Cognito admin user for ${email}`);
 
-    const userPoolId = process.env.COGNITO_USER_POOL_ID;
+    const userPoolId =
+      process.env.COGNITO_USER_POOL_ID ??
+      process.env.VITE_COGNITO_USER_POOL_ID;
     if (!userPoolId) {
       throw new Error('Missing COGNITO_USER_POOL_ID.');
     }
