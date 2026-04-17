@@ -189,6 +189,7 @@ const CandidateViewApplication: React.FC = () => {
             (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'
           }
           license={application.license || 'N/A'}
+          desiredExperience={application.desiredExperience || 'N/A'}
           areaOfInterest={
             Array.isArray(application.interest)
               ? application.interest.join(', ')

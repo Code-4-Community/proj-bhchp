@@ -5,7 +5,12 @@ import { NotFoundException } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
-import { AppStatus, InterestArea, ApplicantType } from './types';
+import {
+  AppStatus,
+  InterestArea,
+  ApplicantType,
+  DesiredExperience,
+} from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
@@ -30,8 +35,7 @@ const dummyApplication: Application = {
   weeklyHours: 20,
   pronouns: 'they/them',
   nonEnglishLangs: 'some french, native spanish speaker',
-  desiredExperience:
-    'I want to give back to the boston community and learn to talk better with patients',
+  desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
   emergencyContactName: 'Jane Doe',
@@ -60,8 +64,7 @@ const dummyCreateApplicationDto: CreateApplicationDto = {
   weeklyHours: 20,
   pronouns: 'they/them',
   nonEnglishLangs: 'some chinese',
-  desiredExperience:
-    'I want to give back to the boston community and learn to talk better with patients',
+  desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
   emergencyContactName: 'Jane Doe',
@@ -270,8 +273,7 @@ describe('ApplicationsService', () => {
         weeklyHours: 20,
         pronouns: 'they/them',
         nonEnglishLangs: 'none',
-        desiredExperience:
-          'I want to give back to the boston community and learn to talk better with patients',
+        desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
         emergencyContactName: 'Jane Doe',
@@ -857,8 +859,7 @@ describe('ApplicationsService', () => {
           weeklyHours: 20,
           pronouns: 'they/them',
           nonEnglishLangs: 'some french, native spanish speaker',
-          desiredExperience:
-            'I want to give back to the boston community and learn to talk better with patients',
+          desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
           resume: 'janedoe_resume_2_6_2026.pdf',
           coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
           emergencyContactName: 'Jane Doe',
@@ -886,8 +887,7 @@ describe('ApplicationsService', () => {
           weeklyHours: 20,
           pronouns: 'they/them',
           nonEnglishLangs: 'some french, native spanish speaker',
-          desiredExperience:
-            'I want to give back to the boston community and learn to talk better with patients',
+          desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
           resume: 'janedoe_resume_2_6_2026.pdf',
           coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
           emergencyContactName: 'Jane Doe',
@@ -1201,7 +1201,7 @@ describe('ApplicationsService', () => {
         'Jane Applicant',
         {
           ...dummyCreateApplicationDto,
-          desiredExperience: '<script>alert("x")</script>',
+          emergencyContactName: '<script>alert("x")</script>',
         },
         'Bad field: <invalid>',
         'https://example.com/form?x=<bad>',

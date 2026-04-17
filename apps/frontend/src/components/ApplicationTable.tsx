@@ -6,9 +6,14 @@ const COLUMNS = [
   'Proposed Date',
   'Actual Start Date',
   'Discipline',
+  'Desired Experience',
   'Applicant Type',
   'Status',
 ];
+
+const PRE_LICENSURE_FULL_LABEL =
+  'Pre-Licensure Placement (NP/PA, Nursing, Behavioral Health, Psychiatry)';
+const PRE_LICENSURE_SHORT_LABEL = 'Pre-Licensure Placement';
 
 interface ApplicationTableProps {
   applications: ApplicationRow[];
@@ -39,6 +44,12 @@ function titleCaseName(name?: string): string {
         .join('-'),
     )
     .join(' ');
+}
+
+function formatDesiredExperience(value: string): string {
+  if (!value) return '—';
+  if (value === PRE_LICENSURE_FULL_LABEL) return PRE_LICENSURE_SHORT_LABEL;
+  return value;
 }
 
 export function ApplicationTable({
@@ -86,6 +97,9 @@ export function ApplicationTable({
             <Table.Cell>{formatDate(application.proposedStartDate)}</Table.Cell>
             <Table.Cell>{formatDate(application.actualStartDate)}</Table.Cell>
             <Table.Cell>{application.discipline}</Table.Cell>
+            <Table.Cell>
+              {formatDesiredExperience(application.desiredExperience)}
+            </Table.Cell>
             <Table.Cell>{application.applicantType}</Table.Cell>
             <Table.Cell>{application.status}</Table.Cell>
           </Table.Row>

@@ -3,7 +3,12 @@ import { ArgumentsHost, BadRequestException } from '@nestjs/common';
 import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
-import { AppStatus, InterestArea, ApplicantType } from './types';
+import {
+  AppStatus,
+  InterestArea,
+  ApplicantType,
+  DesiredExperience,
+} from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from '../users/users.service';
@@ -86,8 +91,7 @@ const mockApplication: Application = {
   weeklyHours: 20,
   pronouns: 'they/them',
   nonEnglishLangs: 'some french, native spanish speaker',
-  desiredExperience:
-    'I want to give back to the boston community and learn to talk better with patients',
+  desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
   emergencyContactName: 'Jane Doe',
@@ -487,7 +491,7 @@ describe('ApplicationsController', () => {
         referred: false,
         weeklyHours: 20,
         pronouns: 'they/them',
-        desiredExperience: 'Help patients',
+        desiredExperience: DesiredExperience.VOLUNTEER_INTERN,
         resume: 'resume.pdf',
         coverLetter: 'cover.pdf',
         emergencyContactName: 'Jane Doe',

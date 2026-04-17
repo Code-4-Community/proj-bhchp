@@ -5,6 +5,7 @@ import {
   InterestArea,
   HeardAboutFrom,
   ApplicantType,
+  DesiredExperience,
 } from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 
@@ -33,7 +34,7 @@ export class Application {
    * Example: new Date('2024-06-30').
    */
   @Column({ type: 'date' })
-  proposedStartDate: Date;
+  proposedStartDate!: Date;
 
   /**
    * The actual start date for the applicant's commitment, set by the Admin
@@ -80,7 +81,7 @@ export class Application {
    * Example: 12pm and on every other week
    */
   @Column({ type: 'varchar' })
-  mondayAvailability: string;
+  mondayAvailability!: string;
 
   /**
    * Applicant's Tuesday availability as a free text string.
@@ -88,7 +89,7 @@ export class Application {
    * Example: 12pm and on every other week
    */
   @Column({ type: 'varchar' })
-  tuesdayAvailability: string;
+  tuesdayAvailability!: string;
 
   /**
    * Applicant's Wednesday availability as a free text string.
@@ -96,7 +97,7 @@ export class Application {
    * Example: 12pm and on every other week
    */
   @Column({ type: 'varchar' })
-  wednesdayAvailability: string;
+  wednesdayAvailability!: string;
 
   /**
    * Applicant's Thursday availability as a free text string.
@@ -104,7 +105,7 @@ export class Application {
    * Example: 12pm and on every other week
    */
   @Column({ type: 'varchar' })
-  thursdayAvailability: string;
+  thursdayAvailability!: string;
 
   /**
    * Applicant's Friday availability as a free text string.
@@ -112,7 +113,7 @@ export class Application {
    * Example: 12pm and on every other week
    */
   @Column({ type: 'varchar' })
-  fridayAvailability: string;
+  fridayAvailability!: string;
 
   /**
    * Applicant's Saturday availability as a free text string.
@@ -120,7 +121,7 @@ export class Application {
    * Example: 12pm and on every other week
    */
   @Column({ type: 'varchar' })
-  saturdayAvailability: string;
+  saturdayAvailability!: string;
 
   /**
    * Applicant's area of interest for the commitment.
@@ -184,7 +185,7 @@ export class Application {
    * Example: they/them
    */
   @Column({ type: 'varchar' })
-  pronouns: string;
+  pronouns!: string;
 
   /**
    * Applicant's languages spoken other than English
@@ -200,7 +201,7 @@ export class Application {
    * Example: I want to give back to the boston community and learn to talk better with patients
    */
   @Column({ type: 'varchar' })
-  desiredExperience: string;
+  desiredExperience!: DesiredExperience;
 
   /**
    * Field for someone to elaborate on their discipline if they chose other for discipline dropdown
@@ -222,7 +223,7 @@ export class Application {
    * for every single file we can just store the file with its extension e.g. "test_photo.webp"
    */
   @Column({ type: 'varchar' })
-  resume: string;
+  resume!: string;
 
   /**
    * Name of the cover letter file stored in S3 with its extension
@@ -236,7 +237,7 @@ export class Application {
    * for every single file we can just store the file with its extension e.g. "test_photo.webp"
    */
   @Column({ type: 'varchar' })
-  coverLetter: string;
+  coverLetter!: string;
 
   /**
    * Name of the applicant's emergency contact
@@ -268,5 +269,5 @@ export class Application {
    * Example: [HeardAboutFrom.OTHER, HeardAboutFrom.SCHOOL]
    */
   @Column({ type: 'enum', enum: HeardAboutFrom, array: true, default: [] })
-  heardAboutFrom: HeardAboutFrom[];
+  heardAboutFrom!: HeardAboutFrom[];
 }

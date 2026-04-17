@@ -40,6 +40,17 @@ export enum ApplicantType {
 }
 
 /**
+ * Type of experience the applicant is seeking.
+ */
+export enum DesiredExperience {
+  PRE_LICENSURE_PLACEMENT = 'Pre-Licensure Placement (NP/PA, Nursing, Behavioral Health, Psychiatry)',
+  PRACTICUM = 'Practicum',
+  PUBLIC_HEALTH_PROJECT = 'Public Health Project',
+  SHADOWING = 'Shadowing',
+  VOLUNTEER_INTERN = 'Volunteer/Intern',
+}
+
+/**
  * Phone number regex pattern for ###-###-#### format validation
  * @see https://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number
  */
@@ -103,7 +114,7 @@ export interface Application extends AvailabilityFields {
   weeklyHours: number;
   pronouns: string;
   nonEnglishLangs?: string;
-  desiredExperience: string;
+  desiredExperience: DesiredExperience;
   elaborateOtherDiscipline?: string;
   resume: string;
   coverLetter: string;
