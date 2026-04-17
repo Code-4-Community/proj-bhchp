@@ -9,6 +9,8 @@ import { AppStatus, InterestArea, ApplicantType } from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
+import { CandidateInfoService } from '../candidate-info/candidate-info.service';
+import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 
 const dummyApplication: Application = {
   appId: 1,
@@ -34,6 +36,7 @@ const dummyApplication: Application = {
     'I want to give back to the boston community and learn to talk better with patients',
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+  confidentialityForm: undefined,
   emergencyContactName: 'Jane Doe',
   emergencyContactPhone: '111-111-1111',
   emergencyContactRelationship: 'Mother',
@@ -91,6 +94,17 @@ describe('ApplicationsService', () => {
     findOne: jest.fn().mockResolvedValue(null),
   };
 
+  const mockCandidateInfoService = {
+    findOne: jest.fn(),
+  };
+
+  const mockS3Service = {
+    createObjectLink: jest.fn(
+      (key: string) => `https://bucket.s3.us-east-2.amazonaws.com/${key}`,
+    ),
+    uploadWithKey: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -106,6 +120,14 @@ describe('ApplicationsService', () => {
         {
           provide: UsersService,
           useValue: mockUsersService,
+        },
+        {
+          provide: CandidateInfoService,
+          useValue: mockCandidateInfoService,
+        },
+        {
+          provide: AWSS3Service,
+          useValue: mockS3Service,
         },
       ],
     }).compile();

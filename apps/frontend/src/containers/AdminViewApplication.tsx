@@ -16,6 +16,7 @@ import {
 import QuestionFrame from '@components/QuestionFrame';
 import RequirementsFrame from '@components/RequirementsFrame';
 import UploadedMaterial from '@components/UploadedMaterial';
+import SignedFormMaterial from '@components/SignedFormMaterial';
 import SchoolAffiliationFrame from '@components/SchoolAffiliationFrame';
 
 import EmergencyContactFrame from '@components/EmergencyContactFrame';
@@ -125,6 +126,16 @@ const AdminViewApplication: React.FC = () => {
             />
           }
         />
+
+        {(application.appStatus === AppStatus.FORMS_SIGNED ||
+          application.appStatus === AppStatus.ACTIVE) && (
+          <SignedFormMaterial
+            frameProps={{
+              signedForm: application.confidentialityForm,
+            }}
+          />
+        )}
+
         <SchoolAffiliationFrame
           isLearner={application.applicantType === ApplicantType.LEARNER}
           schoolName={learnerInfo ? learnerInfo.school : 'N/A'}

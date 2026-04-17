@@ -15,7 +15,10 @@ import {
   UseFilters,
   NotFoundException,
   Logger,
+  ParseFilePipeBuilder,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
@@ -32,6 +35,7 @@ import { ApplicationValidationEmailFilter } from './filters/application-validati
 import { ApplicationCreationErrorFilter } from './filters/application-creation-validation.filter';
 import { User } from '../users/user.entity';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
+import { AppStatus } from './types';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about the app's applications.
@@ -287,6 +291,58 @@ export class ApplicationsController {
       appId,
       new Date(endDate),
     );
+  }
+
+  @Get('/forms/confidentiality/template')
+  @Roles(UserType.STANDARD, UserType.ADMIN)
+  async getConfidentialityTemplateUrl(): Promise<{ templateUrl: string }> {
+    return this.applicationsService.getConfidentialityTemplateUrl();
+  }
+
+  @Get('/me/forms/confidentiality')
+  @Roles(UserType.STANDARD)
+  async getCurrentUserConfidentialityForm(
+    @Req() req: { user?: User },
+  ): Promise<{ fileName: string | null; fileUrl: string | null }> {
+    if (!req.user?.email) {
+      throw new NotFoundException('No user matching the JWT was found.');
+    }
+
+    const form = await this.applicationsService.getConfidentialityForm(
+      req.user.email,
+    );
+
+    if (!form) {
+      return { fileName: null, fileUrl: null };
+    }
+
+    return form;
+  }
+
+  @Post('/me/forms/confidentiality')
+  @Roles(UserType.STANDARD)
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadCurrentUserConfidentialityForm(
+    @Req() req: { user?: User },
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: 'pdf' })
+        .addMaxSizeValidator({ maxSize: 10 * 1024 * 1024 })
+        .build({
+          fileIsRequired: true,
+          errorHttpStatusCode: 400,
+        }),
+    )
+    file: { buffer: Buffer; mimetype: string },
+  ): Promise<{ fileName: string; fileUrl: string; appStatus: AppStatus }> {
+    if (!req.user?.email) {
+      throw new NotFoundException('No user matching the JWT was found.');
+    }
+
+    return this.applicationsService.uploadConfidentialityForm(req.user.email, {
+      buffer: file.buffer,
+      mimetype: file.mimetype,
+    });
   }
 
   /**

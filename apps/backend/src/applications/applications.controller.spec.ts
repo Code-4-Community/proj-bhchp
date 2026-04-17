@@ -50,6 +50,9 @@ const mockApplicationsService: Partial<ApplicationsService> = {
   updateProposedStartDate: jest.fn(),
   updateActualStartDate: jest.fn(),
   updateEndDate: jest.fn(),
+  getConfidentialityTemplateUrl: jest.fn(),
+  getConfidentialityForm: jest.fn(),
+  uploadConfidentialityForm: jest.fn(),
 };
 
 const mockRolesGuard = {
@@ -90,6 +93,7 @@ const mockApplication: Application = {
     'I want to give back to the boston community and learn to talk better with patients',
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+  confidentialityForm: undefined,
   emergencyContactName: 'Jane Doe',
   emergencyContactPhone: '111-111-1111',
   emergencyContactRelationship: 'Mother',
@@ -726,6 +730,101 @@ describe('ApplicationsController', () => {
       await expect(
         controller.updateApplicationEndDate(1, updatedEndDate),
       ).rejects.toThrow(errorMessage);
+    });
+  });
+
+  describe('confidentiality forms endpoints', () => {
+    it('should return confidentiality template URL', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'getConfidentialityTemplateUrl')
+        .mockResolvedValue({
+          templateUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/Confidentiality_Form.pdf',
+        });
+
+      await expect(controller.getConfidentialityTemplateUrl()).resolves.toEqual(
+        {
+          templateUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/Confidentiality_Form.pdf',
+        },
+      );
+    });
+
+    it('should return uploaded confidentiality form when present', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'getConfidentialityForm')
+        .mockResolvedValue({
+          fileName: '1_confidentiality-123-abc123.pdf',
+          fileUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/1_confidentiality-123-abc123.pdf',
+        });
+
+      await expect(
+        controller.getCurrentUserConfidentialityForm({
+          user: {
+            email: 'test@example.com',
+            userType: UserType.STANDARD,
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      ).resolves.toEqual({
+        fileName: '1_confidentiality-123-abc123.pdf',
+        fileUrl:
+          'https://bucket.s3.us-east-2.amazonaws.com/1_confidentiality-123-abc123.pdf',
+      });
+    });
+
+    it('should return an empty payload when no uploaded confidentiality form exists', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'getConfidentialityForm')
+        .mockResolvedValue(null);
+
+      await expect(
+        controller.getCurrentUserConfidentialityForm({
+          user: {
+            email: 'test@example.com',
+            userType: UserType.STANDARD,
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      ).resolves.toEqual({ fileName: null, fileUrl: null });
+    });
+
+    it('should upload confidentiality form for the current user', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'uploadConfidentialityForm')
+        .mockResolvedValue({
+          fileName: '1_confidentiality-123-abc123.pdf',
+          fileUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/1_confidentiality-123-abc123.pdf',
+          appStatus: AppStatus.FORMS_SIGNED,
+        });
+
+      const mockFile = {
+        buffer: Buffer.from('pdf'),
+        mimetype: 'application/pdf',
+      } as Express.Multer.File;
+
+      await expect(
+        controller.uploadCurrentUserConfidentialityForm(
+          {
+            user: {
+              email: 'test@example.com',
+              userType: UserType.STANDARD,
+              firstName: 'Test',
+              lastName: 'User',
+            },
+          },
+          mockFile,
+        ),
+      ).resolves.toEqual({
+        fileName: '1_confidentiality-123-abc123.pdf',
+        fileUrl:
+          'https://bucket.s3.us-east-2.amazonaws.com/1_confidentiality-123-abc123.pdf',
+        appStatus: AppStatus.FORMS_SIGNED,
+      });
     });
   });
 

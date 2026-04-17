@@ -1,37 +1,47 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
   Flex,
   Heading,
-  IconButton,
   Image,
   Text,
   chakra,
 } from '@chakra-ui/react';
-import { FaDownload, FaEye, FaTrashCan, FaUpload } from 'react-icons/fa6';
+import { FaDownload, FaEye, FaUpload } from 'react-icons/fa6';
 import NavBar from '@components/NavBar/NavBar';
-import { UserType } from '@api/types';
+import { AppStatus, UserType } from '@api/types';
+import apiClient from '@api/apiClient';
 import documentIcon from '../assets/icons/Vector.svg';
 
-// Interface for a form
-// contains both a name of the form the user needs to fill out and its template url
-// TODO: Use as a prop for the FormsPage component
-interface Form {
-  name: string;
-  templateUrl: string;
+const FORM_NAME = 'Confidentiality Form';
+const TEMPLATE_FILE_NAME = 'Confidentiality_Form.pdf';
+const s3BucketAddrRaw = import.meta.env.VITE_S3_BUCKET_ADDR ?? '';
+
+function normalizeS3BucketAddr(value: string): string {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  const withProtocol = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  return withProtocol.endsWith('/') ? withProtocol : `${withProtocol}/`;
 }
 
-// TODO: Use as a prop for the FormsPage component
-const FORMS: Form[] = [
-  // Specify a url to the template for the form
-  { name: 'Confidentiality Form', templateUrl: 'https://www.google.com' },
-  { name: 'Application Form', templateUrl: '' },
-];
+const s3BucketAddr = normalizeS3BucketAddr(s3BucketAddrRaw);
+const ALLOWED_UPLOAD_STATUSES = new Set<AppStatus>([
+  AppStatus.ACCEPTED,
+  AppStatus.FORMS_SIGNED,
+  AppStatus.ACTIVE,
+]);
 
 // Interface for a form submission and its form URL
 interface FormSubmission {
-  formUrl: string;
+  fileName: string;
 }
 
 // Custom component for the upload file label
@@ -39,32 +49,107 @@ interface FormSubmission {
 const UploadFileLabel = chakra('label');
 
 const FormsPage: React.FC = () => {
-  // State for tracking the submissions by form
-  const [submissionsByForm, setSubmissionsByForm] = useState<
-    Record<Form['name'], FormSubmission | undefined>
-  >({});
+  const [submission, setSubmission] = useState<FormSubmission | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isFormsAccessAllowed, setIsFormsAccessAllowed] = useState(true);
 
-  // Handle file change for a form
-  // TODO: replace with real uploading of files
-  const handleFileChange =
-    (formName: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
+  useEffect(() => {
+    let isMounted = true;
 
-      if (!file) return;
+    const loadFormState = async () => {
+      setIsLoading(true);
+      setErrorMessage(null);
 
-      // TODO: Replace with the real URL returned from the backend
-      const formUrl = 'https://placeholder.backend.url';
+      try {
+        const currentApplication = await apiClient.getCurrentApplication();
 
-      // Update the submissions by form
-      setSubmissionsByForm((prev) => ({
-        ...prev,
-        [formName]: { formUrl },
-      }));
-      e.target.value = '';
+        const isEligibleForForms = Boolean(
+          currentApplication?.appStatus &&
+            ALLOWED_UPLOAD_STATUSES.has(currentApplication.appStatus),
+        );
+
+        if (isMounted) {
+          setIsFormsAccessAllowed(isEligibleForForms);
+        }
+
+        if (!isEligibleForForms) {
+          if (isMounted) {
+            setSubmission(null);
+          }
+          return;
+        }
+
+        const uploadedForm = await apiClient.getMyConfidentialityForm();
+        if (isMounted) {
+          if (uploadedForm.fileName && uploadedForm.fileUrl) {
+            setSubmission({
+              fileName: uploadedForm.fileName,
+            });
+          } else {
+            setSubmission(null);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setErrorMessage('Unable to load your confidentiality form details.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     };
 
-  // Check if there are any incomplete forms
-  const hasIncompleteForm = FORMS.some((f) => !submissionsByForm[f.name]);
+    loadFormState();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setIsUploading(true);
+    setErrorMessage(null);
+
+    try {
+      const uploadResult = await apiClient.uploadMyConfidentialityForm(file);
+      setSubmission({
+        fileName: uploadResult.fileName,
+      });
+    } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'response' in error &&
+        typeof (error as { response?: { status?: number } }).response
+          ?.status === 'number' &&
+        (error as { response?: { status?: number } }).response?.status === 403
+      ) {
+        setErrorMessage(
+          'Your application must be accepted before you can upload this form.',
+        );
+      } else {
+        setErrorMessage(
+          'Upload failed. Make sure the file is a PDF and try again.',
+        );
+      }
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const hasIncompleteForm = !submission;
+  const fileInputId = 'confidentiality-form-upload';
+  const templateUrl = s3BucketAddr
+    ? `${s3BucketAddr}${TEMPLATE_FILE_NAME}`
+    : '';
 
   return (
     <div className="flex flex-row h-screen">
@@ -88,6 +173,16 @@ const FormsPage: React.FC = () => {
         <Heading fontSize="48px" fontWeight="600">
           Upload a file
         </Heading>
+        {isLoading ? (
+          <Text
+            fontFamily="Lato, sans-serif"
+            fontSize="18px"
+            fontWeight="500"
+            color="#000000"
+          >
+            Loading your form details...
+          </Text>
+        ) : null}
         {hasIncompleteForm ? (
           <Text
             fontFamily="Lato, sans-serif"
@@ -98,115 +193,146 @@ const FormsPage: React.FC = () => {
             Please upload the required forms
           </Text>
         ) : null}
-        {/* For each form, display the form name, submission status, and upload button */}
-        {FORMS.map((form) => {
-          // For each form, get the submission and check if it is complete
-          const submission = submissionsByForm[form.name];
-          // Check if the form is complete
-          const isFormComplete = Boolean(submission);
-          // Create a unique ID for the file input
-          // TODO: Confirm with backend if this is the best way to do this
-          const fileInputId = form.name.replace(/\s+/g, '-');
+        {errorMessage ? (
+          <Text
+            fontFamily="Lato, sans-serif"
+            fontSize="16px"
+            fontWeight="500"
+            color="red.500"
+          >
+            {errorMessage}
+          </Text>
+        ) : null}
 
-          return (
-            <>
-              <Flex
-                key={form.name}
-                direction="column"
-                maxW="720px"
-                width="100%"
-                gap="25px"
-              >
-                {/* Display the form name and submission status */}
-                <Text fontWeight="700" color="#000000">
-                  {isFormComplete
-                    ? `${form.name} Uploaded`
-                    : `Upload Your ${form.name}`}
-                  {!isFormComplete ? (
-                    <Text as="span" color="red.500">
-                      *
-                    </Text>
-                  ) : null}
-                </Text>
-                {/* Display form details */}
-                <Flex align="flex-start" gap="3" w="100%" maxW="720px">
-                  <Flex
-                    flex="0 0 calc(100% - 0.75rem - 40px)"
-                    align="center"
-                    gap="4"
-                    px="5"
-                    py="4"
-                    h="76px"
-                    overflow="hidden"
-                    borderWidth="1px"
-                    borderColor="#D9D9D9"
-                    bg="white"
-                    minW="0"
+        {!isLoading && !isFormsAccessAllowed ? (
+          <Text
+            fontFamily="Lato, sans-serif"
+            fontSize="18px"
+            fontWeight="500"
+            color="red"
+          >
+            My Forms is available only for accepted or active volunteers.
+          </Text>
+        ) : null}
+
+        {!isFormsAccessAllowed ? null : (
+          <>
+            <Flex direction="column" maxW="720px" width="100%" gap="25px">
+              <Text fontWeight="700" color="#000000">
+                {submission
+                  ? `${FORM_NAME} Uploaded`
+                  : `Upload Your ${FORM_NAME}`}
+                {!submission ? (
+                  <Text as="span" color="red.500">
+                    *
+                  </Text>
+                ) : null}
+              </Text>
+              <Flex align="flex-start" gap="3" w="100%" maxW="720px">
+                <Flex
+                  flex="1"
+                  align="center"
+                  gap="4"
+                  px="5"
+                  py="4"
+                  h="76px"
+                  overflow="hidden"
+                  borderWidth="1px"
+                  borderColor="#D9D9D9"
+                  bg="white"
+                  minW="0"
+                >
+                  <Box
+                    flexShrink={0}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    w="44px"
+                    h="44px"
+                    bg="rgba(0, 140, 167, 0.15)"
                   >
-                    <Box
-                      flexShrink={0}
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      w="44px"
-                      h="44px"
-                      bg="rgba(0, 140, 167, 0.15)"
-                    >
-                      <Image
-                        src={documentIcon}
-                        alt=""
-                        width="24px"
-                        height="30px"
-                        aria-hidden
-                      />
-                    </Box>
-                    <Text
-                      flex="1"
-                      fontFamily="Lato, sans-serif"
-                      fontSize="16px"
-                      fontWeight="600"
-                      color="#000000"
-                      minW="0"
-                      truncate
-                      title={form.name}
-                    >
-                      {form.name}
-                    </Text>
-                    <Text
-                      fontFamily="Lato, sans-serif"
-                      fontSize="14px"
-                      fontWeight="500"
-                      color={isFormComplete ? '#16A34A' : '#A3A3A3'}
-                      flexShrink={0}
-                    >
-                      {isFormComplete ? 'Completed' : 'Incomplete'}
-                    </Text>
-                  </Flex>
-                  {isFormComplete ? (
-                    <IconButton
-                      type="button"
-                      aria-label={`Delete ${form.name}`}
-                      variant="ghost"
-                      color="gray.500"
-                      alignSelf="center"
-                      flexShrink={0}
-                      onClick={() => {}}
-                    >
-                      <FaTrashCan size="18px" aria-hidden />
-                    </IconButton>
-                  ) : null}
+                    <Image
+                      src={documentIcon}
+                      alt=""
+                      width="24px"
+                      height="30px"
+                      aria-hidden
+                    />
+                  </Box>
+                  <Text
+                    flex="1"
+                    fontFamily="Lato, sans-serif"
+                    fontSize="16px"
+                    fontWeight="600"
+                    color="#000000"
+                    minW="0"
+                    truncate
+                    title={submission?.fileName ?? FORM_NAME}
+                  >
+                    {submission?.fileName ?? FORM_NAME}
+                  </Text>
+                  <Text
+                    fontFamily="Lato, sans-serif"
+                    fontSize="14px"
+                    fontWeight="500"
+                    color={submission ? '#16A34A' : '#A3A3A3'}
+                    flexShrink={0}
+                  >
+                    {submission ? 'Completed' : 'Incomplete'}
+                  </Text>
                 </Flex>
+              </Flex>
 
-                {/* Depending on if the form is uploaded, display the button to view template and upload OR preview the form */}
-                {isFormComplete ? (
+              {submission ? (
+                <Button
+                  type="button"
+                  display="inline-flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  w="fit-content"
+                  minW="123px"
+                  h="34px"
+                  pt="5px"
+                  pr="15px"
+                  pb="5px"
+                  pl="15px"
+                  gap="15px"
+                  borderRadius="30px"
+                  fontFamily="Lato, sans-serif"
+                  fontSize="14px"
+                  fontWeight="600"
+                  bg="#B8AF98"
+                  color="#000000"
+                  _hover={{ opacity: 0.92 }}
+                  onClick={() => {
+                    if (!s3BucketAddr) {
+                      setErrorMessage(
+                        'Preview is not available because VITE_S3_BUCKET_ADDR is not configured.',
+                      );
+                      return;
+                    }
+
+                    window.open(
+                      `${s3BucketAddr}${submission.fileName}`,
+                      '_blank',
+                      'noopener,noreferrer',
+                    );
+                  }}
+                >
+                  Preview
+                  <FaEye size="16px" color="#000000" aria-hidden />
+                </Button>
+              ) : (
+                <Flex gap="4" flexWrap="wrap">
                   <Button
                     type="button"
                     display="inline-flex"
                     alignItems="center"
                     justifyContent="center"
-                    w="fit-content"
                     minW="123px"
+                    w="auto"
                     h="34px"
+                    whiteSpace="nowrap"
                     pt="5px"
                     pr="15px"
                     pb="5px"
@@ -218,101 +344,62 @@ const FormsPage: React.FC = () => {
                     fontWeight="600"
                     bg="#B8AF98"
                     color="#000000"
-                    _hover={{ opacity: submission ? 0.92 : undefined }}
+                    _hover={{ opacity: templateUrl ? 0.92 : undefined }}
+                    cursor={templateUrl ? 'pointer' : 'not-allowed'}
+                    opacity={templateUrl ? 1 : 0.65}
                     onClick={() => {
-                      if (submission?.formUrl) {
+                      if (templateUrl) {
                         window.open(
-                          submission.formUrl,
+                          templateUrl,
                           '_blank',
                           'noopener,noreferrer',
                         );
                       }
                     }}
                   >
-                    Preview
-                    <FaEye size="16px" color="#000000" aria-hidden />
+                    Download Template
+                    <FaDownload size="16px" color="#000000" aria-hidden />
                   </Button>
-                ) : (
-                  <Flex gap="4" flexWrap="wrap">
-                    <Button
-                      type="button"
-                      display="inline-flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      minW="123px"
-                      w="auto"
-                      h="34px"
-                      whiteSpace="nowrap"
-                      pt="5px"
-                      pr="15px"
-                      pb="5px"
-                      pl="15px"
-                      gap="15px"
-                      borderRadius="30px"
-                      fontFamily="Lato, sans-serif"
-                      fontSize="14px"
-                      fontWeight="600"
-                      bg="#B8AF98"
-                      color="#000000"
-                      _hover={{
-                        opacity: form.templateUrl ? 0.92 : undefined,
-                      }}
-                      cursor={form.templateUrl ? 'pointer' : 'not-allowed'}
-                      opacity={form.templateUrl ? 1 : 0.65}
-                      onClick={() => {
-                        if (form.templateUrl) {
-                          window.open(
-                            form.templateUrl,
-                            '_blank',
-                            'noopener,noreferrer',
-                          );
-                        }
-                      }}
-                    >
-                      Download Template
-                      <FaDownload size="16px" color="#000000" aria-hidden />
-                    </Button>
-                    {/* Fake Button for uploading a file */}
-                    <UploadFileLabel
-                      htmlFor={fileInputId}
-                      display="inline-flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      w="123px"
-                      h="34px"
-                      pt="5px"
-                      pr="15px"
-                      pb="5px"
-                      pl="15px"
-                      gap="15px"
-                      borderRadius="30px"
-                      fontFamily="Lato, sans-serif"
-                      fontSize="14px"
-                      fontWeight="600"
-                      bg="#6AB242"
-                      color="white"
-                      _hover={{ opacity: 0.92 }}
-                      cursor="pointer"
-                    >
-                      Upload
-                      <FaUpload size="16px" color="#FFFFFF" aria-hidden />
-                    </UploadFileLabel>
-                  </Flex>
-                )}
-                {/* Real input for uploading a file */}
-                <input
-                  id={fileInputId}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  hidden
-                  onChange={handleFileChange(form.name)}
-                />
-              </Flex>
-              {/* Divider between forms */}
-              <div className="bg-[#d9d9d9] w-full h-[1px]" />
-            </>
-          );
-        })}
+                  <UploadFileLabel
+                    htmlFor={fileInputId}
+                    display="inline-flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    w="123px"
+                    h="34px"
+                    pt="5px"
+                    pr="15px"
+                    pb="5px"
+                    pl="15px"
+                    gap="15px"
+                    borderRadius="30px"
+                    fontFamily="Lato, sans-serif"
+                    fontSize="14px"
+                    fontWeight="600"
+                    bg="#6AB242"
+                    color="white"
+                    _hover={{ opacity: 0.92 }}
+                    cursor={isUploading ? 'not-allowed' : 'pointer'}
+                    opacity={isUploading ? 0.7 : 1}
+                  >
+                    {isUploading ? 'Uploading...' : 'Upload'}
+                    <FaUpload size="16px" color="#FFFFFF" aria-hidden />
+                  </UploadFileLabel>
+                </Flex>
+              )}
+
+              <input
+                id={fileInputId}
+                type="file"
+                accept=".pdf,application/pdf"
+                hidden
+                onChange={handleFileChange}
+                disabled={isUploading}
+              />
+            </Flex>
+            <div className="bg-[#d9d9d9] w-full h-[1px]" />
+          </>
+        )}
       </Box>
     </div>
   );

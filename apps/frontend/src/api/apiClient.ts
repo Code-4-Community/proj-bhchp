@@ -7,9 +7,12 @@ import {
   AppStatus,
   AvailabilityFields,
   CandidateInfo,
+  ConfidentialityFormResponse,
+  ConfidentialityTemplateResponse,
   LearnerInfo,
   ProvisionAdminRequest,
   ProvisionAdminResponse,
+  UploadConfidentialityFormResponse,
   User,
 } from './types';
 
@@ -102,6 +105,31 @@ export class ApiClient {
     return this.patch(`/api/applications/${appId}/status`, {
       appStatus,
     }) as Promise<Application>;
+  }
+
+  public async getConfidentialityTemplateUrl(): Promise<ConfidentialityTemplateResponse> {
+    return this.get(
+      '/api/applications/forms/confidentiality/template',
+    ) as Promise<ConfidentialityTemplateResponse>;
+  }
+
+  public async getMyConfidentialityForm(): Promise<ConfidentialityFormResponse> {
+    return this.get(
+      '/api/applications/me/forms/confidentiality',
+    ) as Promise<ConfidentialityFormResponse>;
+  }
+
+  public async uploadMyConfidentialityForm(
+    file: File,
+  ): Promise<UploadConfidentialityFormResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.axiosInstance
+      .post('/api/applications/me/forms/confidentiality', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((response) => response.data as UploadConfidentialityFormResponse);
   }
 
   public async getTotalApplicationsCount(): Promise<number> {

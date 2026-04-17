@@ -107,6 +107,7 @@ export interface Application extends AvailabilityFields {
   elaborateOtherDiscipline?: string;
   resume: string;
   coverLetter: string;
+  confidentialityForm?: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
   emergencyContactRelationship: string;
@@ -190,4 +191,19 @@ export interface ProvisionAdminResponse {
     };
   } | null;
   notes: string[];
+}
+
+export interface ConfidentialityTemplateResponse {
+  templateUrl: string;
+}
+
+export interface ConfidentialityFormResponse {
+  fileName: string | null;
+  fileUrl: string | null;
+}
+
+export interface UploadConfidentialityFormResponse {
+  fileName: string;
+  fileUrl: string;
+  appStatus: AppStatus;
 }

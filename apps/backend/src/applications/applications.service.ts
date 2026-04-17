@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -11,6 +12,8 @@ import { AppStatus, PHONE_REGEX } from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
+import { CandidateInfoService } from '../candidate-info/candidate-info.service';
+import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 
 const STATUS_EMAIL_SUBJECTS: Partial<Record<AppStatus, string>> = {
   [AppStatus.ACCEPTED]: 'Your Application Has Been Updated',
@@ -53,12 +56,90 @@ function escapeHtml(text: string): string {
  */
 @Injectable()
 export class ApplicationsService {
+  private static readonly CONFIDENTIALITY_TEMPLATE_FILE =
+    'Confidentiality_Form.pdf';
+
   constructor(
     @InjectRepository(Application)
     private applicationRepository: Repository<Application>,
     private emailService: EmailService,
     private usersService: UsersService,
+    private candidateInfoService: CandidateInfoService,
+    private awsS3Service: AWSS3Service,
   ) {}
+
+  private ensureCanUploadConfidentialityForm(application: Application): void {
+    const allowedStatuses = [
+      AppStatus.ACCEPTED,
+      AppStatus.FORMS_SIGNED,
+      AppStatus.ACTIVE,
+    ];
+
+    if (!allowedStatuses.includes(application.appStatus)) {
+      throw new ForbiddenException(
+        'Only accepted applicants can upload confidentiality forms.',
+      );
+    }
+  }
+
+  private async findCurrentUserApplication(
+    email: string,
+  ): Promise<Application> {
+    const candidateInfo = await this.candidateInfoService.findOne(email);
+    return this.findById(candidateInfo.appId);
+  }
+
+  async getConfidentialityTemplateUrl(): Promise<{ templateUrl: string }> {
+    return {
+      templateUrl: this.awsS3Service.createObjectLink(
+        ApplicationsService.CONFIDENTIALITY_TEMPLATE_FILE,
+      ),
+    };
+  }
+
+  async getConfidentialityForm(email: string): Promise<{
+    fileName: string;
+    fileUrl: string;
+  } | null> {
+    const application = await this.findCurrentUserApplication(email);
+
+    if (!application.confidentialityForm) {
+      return null;
+    }
+
+    return {
+      fileName: application.confidentialityForm,
+      fileUrl: this.awsS3Service.createObjectLink(
+        application.confidentialityForm,
+      ),
+    };
+  }
+
+  async uploadConfidentialityForm(
+    email: string,
+    file: { buffer: Buffer; mimetype: string },
+  ): Promise<{ fileName: string; fileUrl: string; appStatus: AppStatus }> {
+    const application = await this.findCurrentUserApplication(email);
+    this.ensureCanUploadConfidentialityForm(application);
+
+    const uploadBaseName = `${application.appId}_confidentiality.pdf`;
+    const uploadResult = await this.awsS3Service.uploadWithKey(
+      file.buffer,
+      uploadBaseName,
+      file.mimetype,
+    );
+
+    application.confidentialityForm = uploadResult.key;
+    application.appStatus = AppStatus.FORMS_SIGNED;
+
+    await this.applicationRepository.save(application);
+
+    return {
+      fileName: uploadResult.key,
+      fileUrl: uploadResult.url,
+      appStatus: application.appStatus,
+    };
+  }
 
   /**
    * Validates the fields of a CreateApplicationDto.
@@ -208,7 +289,7 @@ export class ApplicationsService {
    */
   async update(
     appId: number,
-    updateData: Partial<CreateApplicationDto>,
+    updateData: Partial<Application>,
   ): Promise<Application> {
     const application = await this.findById(appId);
     if (!application) {

@@ -3,7 +3,11 @@ import { Box, Flex, Text, Button, Image } from '@chakra-ui/react';
 
 import documentIcon from '../assets/icons/Vector.svg';
 
-export type DocumentDownloadCardVariant = 'resume' | 'coverLetter' | 'syllabus';
+export type DocumentDownloadCardVariant =
+  | 'resume'
+  | 'coverLetter'
+  | 'syllabus'
+  | 'signedForm';
 
 const variantStyles: Record<
   DocumentDownloadCardVariant,
@@ -21,12 +25,17 @@ const variantStyles: Record<
     bg: '#B8AF98',
     buttonBg: '#7f7366',
   },
+  signedForm: {
+    bg: 'rgba(0, 140, 167, 0.50)',
+    buttonBg: '#008CA7',
+  },
 };
 
 const variantTitles: Record<DocumentDownloadCardVariant, string> = {
   resume: 'Resume',
   coverLetter: 'Cover Letter',
   syllabus: 'Syllabus',
+  signedForm: 'Signed Form',
 };
 
 export type DocumentDownloadCardProps = {
@@ -37,7 +46,7 @@ export type DocumentDownloadCardProps = {
 };
 
 /**
- * Reusable card for viewing and downloading an uploaded document (resume, cover letter, or syllabus).
+ * Reusable card for viewing and downloading uploaded documents.
  */
 export default function DocumentDownloadCard({
   variant,

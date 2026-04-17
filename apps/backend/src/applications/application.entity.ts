@@ -239,6 +239,12 @@ export class Application {
   coverLetter: string;
 
   /**
+   * Name of the uploaded signed confidentiality form stored in S3 with its extension.
+   */
+  @Column({ type: 'varchar', nullable: true })
+  confidentialityForm?: string;
+
+  /**
    * Name of the applicant's emergency contact
    *
    * Example:  Jane Doe
