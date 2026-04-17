@@ -37,6 +37,7 @@ const ALLOWED_UPLOAD_STATUSES = new Set<AppStatus>([
   AppStatus.ACCEPTED,
   AppStatus.FORMS_SIGNED,
   AppStatus.ACTIVE,
+  AppStatus.INACTIVE,
 ]);
 
 // Interface for a form submission and its form URL

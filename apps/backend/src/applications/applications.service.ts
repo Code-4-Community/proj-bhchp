@@ -58,6 +58,8 @@ function escapeHtml(text: string): string {
 export class ApplicationsService {
   private static readonly CONFIDENTIALITY_TEMPLATE_FILE =
     'Confidentiality_Form.pdf';
+  private static readonly CONFIDENTIALITY_UPLOAD_FOLDER =
+    'confidentiality-forms';
 
   constructor(
     @InjectRepository(Application)
@@ -122,7 +124,7 @@ export class ApplicationsService {
     const application = await this.findCurrentUserApplication(email);
     this.ensureCanUploadConfidentialityForm(application);
 
-    const uploadBaseName = `${application.appId}_confidentiality.pdf`;
+    const uploadBaseName = `${ApplicationsService.CONFIDENTIALITY_UPLOAD_FOLDER}/${application.appId}_confidentiality.pdf`;
     const uploadResult = await this.awsS3Service.uploadWithKey(
       file.buffer,
       uploadBaseName,

@@ -128,7 +128,8 @@ const AdminViewApplication: React.FC = () => {
         />
 
         {(application.appStatus === AppStatus.FORMS_SIGNED ||
-          application.appStatus === AppStatus.ACTIVE) && (
+          application.appStatus === AppStatus.ACTIVE ||
+          application.appStatus === AppStatus.INACTIVE) && (
           <SignedFormMaterial
             frameProps={{
               signedForm: application.confidentialityForm,
