@@ -22,11 +22,11 @@ const ADMIN_INFO_SEED = [
     discipline: DISCIPLINE_VALUES.RN,
   },
   {
-    email: 'linda.johnson@northeastern.edu',
+    email: 'publichealthadmin@c4cneu.com',
     discipline: DISCIPLINE_VALUES.PublicHealth,
   },
   {
-    email: 'lucine.armen@northeastern.edu',
+    email: 'socialworkadmin@c4cneu.com',
     discipline: DISCIPLINE_VALUES.SocialWork,
   },
 ];
@@ -62,13 +62,13 @@ const USER_SEED: User[] = [
     userType: UserType.ADMIN,
   },
   {
-    email: 'linda.johnson@northeastern.edu',
+    email: 'publichealthadmin@c4cneu.com',
     firstName: 'linda',
     lastName: 'johnson',
     userType: UserType.ADMIN,
   },
   {
-    email: 'lucine.armen@northeastern.edu',
+    email: 'socialworkadmin@c4cneu.com',
     firstName: 'lucine',
     lastName: 'armen',
     userType: UserType.ADMIN,
