@@ -20,7 +20,7 @@ function normalizeS3BucketAddr(value: string): string {
 const s3BucketAddr = normalizeS3BucketAddr(s3BucketAddrRaw);
 
 const toS3Url = (filename: string | undefined): string | undefined =>
-  filename ? `${s3BucketAddr}${filename}` : undefined;
+  filename && s3BucketAddr ? `${s3BucketAddr}${filename}` : undefined;
 
 interface SignedFormMaterialProps {
   signedForm?: string;
