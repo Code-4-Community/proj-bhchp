@@ -24,7 +24,13 @@ export const toS3Url = (
     return undefined;
   }
 
-  return `${normalizeS3BucketAddr(bucketAddr)}${filename}`;
+  const normalizedBucketAddr = normalizeS3BucketAddr(bucketAddr);
+
+  if (!normalizedBucketAddr) {
+    return undefined;
+  }
+
+  return `${normalizedBucketAddr}${filename}`;
 };
 
 const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
