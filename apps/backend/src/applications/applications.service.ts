@@ -79,7 +79,7 @@ export class ApplicationsService {
 
     if (!allowedStatuses.includes(application.appStatus)) {
       throw new ForbiddenException(
-        'Only accepted applicants can upload confidentiality forms.',
+        'Only applicants with accepted, forms signed, or active status can upload confidentiality forms.',
       );
     }
   }
