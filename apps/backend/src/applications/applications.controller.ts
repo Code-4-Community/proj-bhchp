@@ -32,7 +32,6 @@ import { ApplicationValidationEmailFilter } from './filters/application-validati
 import { ApplicationCreationErrorFilter } from './filters/application-creation-validation.filter';
 import { User } from '../users/user.entity';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
-import { EmailService } from '../util/email/email.service';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about the app's applications.
@@ -47,7 +46,6 @@ export class ApplicationsController {
   constructor(
     private applicationsService: ApplicationsService,
     private candidateInfoService: CandidateInfoService,
-    private emailService: EmailService,
   ) {}
 
   /**
@@ -167,25 +165,6 @@ export class ApplicationsController {
   ): Promise<Application> {
     const application = await this.applicationsService.create(
       createApplicationDto,
-    );
-
-    const name = application.email.split('@')[0];
-    const applicantName = name
-      .split('.')
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-
-    const emailBody = `Hello ${applicantName},
-
-      Thank you for submitting your application! You can now create an account here on the portal to track your status. Please use the same name and email as your application.
-
-      Thank you,
-      BHCHP`;
-
-    await this.emailService.queueEmail(
-      application.email,
-      'Your Application Has Been Received',
-      emailBody,
     );
 
     return application;
