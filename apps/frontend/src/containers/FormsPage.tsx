@@ -13,26 +13,10 @@ import NavBar from '@components/NavBar/NavBar';
 import { AppStatus, UserType } from '@api/types';
 import apiClient from '@api/apiClient';
 import documentIcon from '../assets/icons/Vector.svg';
+import { s3BucketAddr } from '@utils/s3';
 
 const FORM_NAME = 'Confidentiality Form';
 const TEMPLATE_FILE_NAME = 'Confidentiality_Form.pdf';
-const s3BucketAddrRaw = import.meta.env.VITE_S3_BUCKET_ADDR ?? '';
-
-function normalizeS3BucketAddr(value: string): string {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return '';
-  }
-
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-
-  return withProtocol.endsWith('/') ? withProtocol : `${withProtocol}/`;
-}
-
-const s3BucketAddr = normalizeS3BucketAddr(s3BucketAddrRaw);
 const ALLOWED_UPLOAD_STATUSES = new Set<AppStatus>([
   AppStatus.ACCEPTED,
   AppStatus.FORMS_SIGNED,

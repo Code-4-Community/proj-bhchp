@@ -1,7 +1,7 @@
 import NavBar from '@components/NavBar/NavBar';
 import { useParams } from 'react-router-dom';
 import apiClient from '@api/apiClient';
-import { Box, Spinner, Text } from '@chakra-ui/react';
+import { Box, Heading, Spinner, Text } from '@chakra-ui/react';
 import AvailabilityTable from '@components/AvailabilityTable';
 import { useEffect, useState } from 'react';
 import {
@@ -15,13 +15,16 @@ import {
 } from '@api/types';
 import QuestionFrame from '@components/QuestionFrame';
 import RequirementsFrame from '@components/RequirementsFrame';
-import UploadedMaterial from '@components/UploadedMaterial';
 import SignedFormMaterial from '@components/SignedFormMaterial';
 import SchoolAffiliationFrame from '@components/SchoolAffiliationFrame';
 
 import EmergencyContactFrame from '@components/EmergencyContactFrame';
 import ApplicationProfileHeader from '@components/ApplicationProfileHeader';
 import ApplicantStageControl from '@components/ApplicantStageControl';
+import DocumentDownloadCard, {
+  type DocumentDownloadItem,
+} from '@components/DocumentDownloadCard';
+import { toS3Url } from '@utils/s3';
 
 const AdminViewApplication: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
@@ -33,6 +36,26 @@ const AdminViewApplication: React.FC = () => {
 
   const pronouns = application?.pronouns;
   const discipline = application?.discipline;
+  const uploadedDocuments: DocumentDownloadItem[] = [
+    {
+      variant: 'resume',
+      downloadUrl: toS3Url(application?.resume),
+    },
+    {
+      variant: 'coverLetter',
+      downloadUrl: toS3Url(application?.coverLetter),
+    },
+  ];
+
+  if (
+    application?.applicantType === ApplicantType.LEARNER &&
+    learnerInfo?.syllabus !== undefined
+  ) {
+    uploadedDocuments.push({
+      variant: 'syllabus',
+      downloadUrl: toS3Url(learnerInfo.syllabus),
+    });
+  }
 
   useEffect(() => {
     if (!appId) return;
@@ -171,17 +194,12 @@ const AdminViewApplication: React.FC = () => {
           />
         </Box>
 
-        <UploadedMaterial
-          frameProps={{
-            resume: application.resume,
-            coverLetter: application.coverLetter,
-            syllabus:
-              application.applicantType === ApplicantType.LEARNER &&
-              learnerInfo !== null
-                ? learnerInfo.syllabus
-                : undefined,
-          }}
-        />
+        <Box borderWidth="1px" borderRadius="lg" p={6} bg="white">
+          <Heading as="h2" size="md" mb={4}>
+            Uploaded Material
+          </Heading>
+          <DocumentDownloadCard documents={uploadedDocuments} />
+        </Box>
 
         {application.applicantType === ApplicantType.LEARNER &&
           learnerInfo !== null && (

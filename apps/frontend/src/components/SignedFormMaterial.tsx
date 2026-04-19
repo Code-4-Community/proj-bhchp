@@ -1,26 +1,6 @@
 import { Box, Flex, Heading } from '@chakra-ui/react';
 import DocumentDownloadCard from './DocumentDownloadCard';
-
-const s3BucketAddrRaw = import.meta.env.VITE_S3_BUCKET_ADDR ?? '';
-
-function normalizeS3BucketAddr(value: string): string {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return '';
-  }
-
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-
-  return withProtocol.endsWith('/') ? withProtocol : `${withProtocol}/`;
-}
-
-const s3BucketAddr = normalizeS3BucketAddr(s3BucketAddrRaw);
-
-const toS3Url = (filename: string | undefined): string | undefined =>
-  filename ? `${s3BucketAddr}${filename}` : undefined;
+import { toS3Url } from '../utils/s3';
 
 interface SignedFormMaterialProps {
   signedForm?: string;

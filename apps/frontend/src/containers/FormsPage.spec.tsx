@@ -23,6 +23,10 @@ vi.mock('../auth/cognito', () => ({
   signOutUser: vi.fn(),
 }));
 
+vi.mock('@utils/s3', () => ({
+  s3BucketAddr: 'https://bucket.s3.us-east-2.amazonaws.com/',
+}));
+
 class ResizeObserverMock {
   observe() {}
   unobserve() {}
@@ -41,10 +45,6 @@ function renderFormsPage() {
 
 describe('FormsPage', () => {
   beforeEach(() => {
-    vi.stubEnv(
-      'VITE_S3_BUCKET_ADDR',
-      'https://bucket.s3.us-east-2.amazonaws.com/',
-    );
     vi.stubGlobal('ResizeObserver', ResizeObserverMock);
     vi.stubGlobal('open', vi.fn());
 
@@ -65,7 +65,6 @@ describe('FormsPage', () => {
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
     vi.clearAllMocks();
   });

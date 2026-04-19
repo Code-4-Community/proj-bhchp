@@ -9,6 +9,11 @@ export type DocumentDownloadCardVariant =
   | 'syllabus'
   | 'signedForm';
 
+export type DocumentDownloadItem = {
+  variant: DocumentDownloadCardVariant;
+  downloadUrl?: string | null;
+};
+
 const variantStyles: Record<
   DocumentDownloadCardVariant,
   { bg: string; buttonBg: string }
@@ -38,7 +43,31 @@ const variantTitles: Record<DocumentDownloadCardVariant, string> = {
   signedForm: 'Signed Form',
 };
 
-export type DocumentDownloadCardProps = {
+type SingleDocumentDownloadCardProps = {
+  variant: DocumentDownloadCardVariant;
+  downloadUrl?: string | null;
+  className?: string;
+  style?: React.CSSProperties;
+  documents?: never;
+};
+
+type MultipleDocumentDownloadCardProps = {
+  documents: DocumentDownloadItem[];
+  className?: string;
+  style?: React.CSSProperties;
+  variant?: never;
+  downloadUrl?: never;
+};
+
+export type DocumentDownloadCardProps =
+  | SingleDocumentDownloadCardProps
+  | MultipleDocumentDownloadCardProps;
+
+const isMultipleDocumentProps = (
+  props: DocumentDownloadCardProps,
+): props is MultipleDocumentDownloadCardProps => Array.isArray(props.documents);
+
+type SingleCardProps = {
   variant: DocumentDownloadCardVariant;
   downloadUrl?: string | null;
   className?: string;
@@ -48,12 +77,12 @@ export type DocumentDownloadCardProps = {
 /**
  * Reusable card for viewing and downloading uploaded documents.
  */
-export default function DocumentDownloadCard({
+function SingleDocumentCard({
   variant,
   downloadUrl,
   className,
   style,
-}: DocumentDownloadCardProps) {
+}: SingleCardProps) {
   const { bg, buttonBg } = variantStyles[variant];
   const title = variantTitles[variant];
 
@@ -122,5 +151,38 @@ export default function DocumentDownloadCard({
         Download File
       </Button>
     </Box>
+  );
+}
+
+export default function DocumentDownloadCard(props: DocumentDownloadCardProps) {
+  if (isMultipleDocumentProps(props) && props.documents.length > 0) {
+    return (
+      <Flex
+        className={props.className}
+        style={props.style}
+        gap={4}
+        alignItems="center"
+        flexWrap="wrap"
+      >
+        {props.documents.slice(0, 3).map((document, index) => (
+          <SingleDocumentCard
+            key={`${document.variant}-${index}`}
+            variant={document.variant}
+            downloadUrl={document.downloadUrl}
+          />
+        ))}
+      </Flex>
+    );
+  }
+
+  const singleDocumentProps = props as SingleDocumentDownloadCardProps;
+
+  return (
+    <SingleDocumentCard
+      variant={singleDocumentProps.variant}
+      downloadUrl={singleDocumentProps.downloadUrl}
+      className={singleDocumentProps.className}
+      style={singleDocumentProps.style}
+    />
   );
 }
