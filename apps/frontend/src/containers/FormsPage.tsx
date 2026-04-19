@@ -39,7 +39,7 @@ const FormsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isFormsAccessAllowed, setIsFormsAccessAllowed] = useState(true);
+  const [isFormsAccessAllowed, setIsFormsAccessAllowed] = useState(false);
   const [canUpload, setCanUpload] = useState(false);
   const [canDownload, setCanDownload] = useState(false);
   const [templateUrl, setTemplateUrl] = useState('');
