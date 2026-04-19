@@ -325,7 +325,9 @@ export class ApplicationsController {
 
   @Post('/me/forms/confidentiality')
   @Roles(UserType.STANDARD)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
   async uploadCurrentUserConfidentialityForm(
     @Req() req: { user?: User },
     @UploadedFile(
