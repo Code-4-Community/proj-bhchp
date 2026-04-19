@@ -277,7 +277,27 @@ export class ApplicationsService {
   ): Promise<Application> {
     this.validateApplicationDto(createApplicationDto);
     const application = this.applicationRepository.create(createApplicationDto);
-    return await this.applicationRepository.save(application);
+    const saved = await this.applicationRepository.save(application);
+
+    const name = String(saved.email).split('@')[0];
+    const applicantName = name
+      .split('.')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+
+    const emailBody = `<p>Hello ${applicantName},</p>
+
+      <p>Thank you for submitting your application! You can now create an account here on the portal to track your status. Please use the same name and email as your application.</p>
+
+      <p>Thank you,<br/>BHCHP</p>`;
+
+    await this.emailService.queueEmail(
+      saved.email,
+      'Your Application Has Been Received',
+      emailBody,
+    );
+
+    return saved;
   }
 
   /**

@@ -5,7 +5,12 @@ import { NotFoundException } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
-import { AppStatus, InterestArea, ApplicantType } from './types';
+import {
+  AppStatus,
+  InterestArea,
+  ApplicantType,
+  DesiredExperience,
+} from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
@@ -22,7 +27,7 @@ const dummyApplication: Application = {
   fridayAvailability: 'Sometime between 4-6',
   saturdayAvailability: 'no availability',
   interest: [InterestArea.WOMENS_HEALTH],
-  license: null,
+  license: '',
   applicantType: ApplicantType.LEARNER,
   phone: '123-456-7890',
   email: 'test@example.com',
@@ -32,8 +37,7 @@ const dummyApplication: Application = {
   weeklyHours: 20,
   pronouns: 'they/them',
   nonEnglishLangs: 'some french, native spanish speaker',
-  desiredExperience:
-    'I want to give back to the boston community and learn to talk better with patients',
+  desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
   confidentialityForm: undefined,
@@ -52,7 +56,7 @@ const dummyCreateApplicationDto: CreateApplicationDto = {
   fridayAvailability: 'Sometime between 4-6',
   saturdayAvailability: 'no availability',
   interest: [InterestArea.WOMENS_HEALTH],
-  license: null,
+  license: '',
   applicantType: ApplicantType.LEARNER,
   phone: '123-456-7890',
   email: 'test@example.com',
@@ -63,8 +67,7 @@ const dummyCreateApplicationDto: CreateApplicationDto = {
   weeklyHours: 20,
   pronouns: 'they/them',
   nonEnglishLangs: 'some chinese',
-  desiredExperience:
-    'I want to give back to the boston community and learn to talk better with patients',
+  desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
   emergencyContactName: 'Jane Doe',
@@ -283,7 +286,7 @@ describe('ApplicationsService', () => {
         fridayAvailability: 'Sometime between 4-6',
         saturdayAvailability: 'no availability',
         interest: [InterestArea.WOMENS_HEALTH],
-        license: null,
+        license: '',
         applicantType: ApplicantType.LEARNER,
         phone: '123-456-7890',
         email: 'test@example.com',
@@ -292,8 +295,7 @@ describe('ApplicationsService', () => {
         weeklyHours: 20,
         pronouns: 'they/them',
         nonEnglishLangs: 'none',
-        desiredExperience:
-          'I want to give back to the boston community and learn to talk better with patients',
+        desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
         emergencyContactName: 'Jane Doe',
@@ -450,6 +452,52 @@ describe('ApplicationsService', () => {
       await expect(service.create(createApplicationDto)).rejects.toThrow();
     });
 
+    it('should send an email when creating an application', async () => {
+      const savedApplication: Application = {
+        appId: 2,
+        ...dummyCreateApplicationDto,
+        email: 'jane.doe@example.com',
+        proposedStartDate: new Date('2024-01-01'),
+        endDate: new Date('2024-06-30'),
+        resume: 'janedoe_resume_2_6_2026.pdf',
+        coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        actualStartDate: undefined,
+      };
+
+      mockRepository.save.mockResolvedValue(savedApplication);
+
+      const result = await service.create(dummyCreateApplicationDto);
+
+      expect(repository.save).toHaveBeenCalled();
+      expect(result).toEqual(savedApplication);
+      expect(mockEmailService.queueEmail).toHaveBeenCalledWith(
+        savedApplication.email,
+        'Your Application Has Been Received',
+        expect.stringContaining('Thank you for submitting'),
+      );
+    });
+
+    it('should pass along email service errors without information loss', async () => {
+      const savedApplication: Application = {
+        appId: 3,
+        ...dummyCreateApplicationDto,
+        email: 'fail@example.com',
+        proposedStartDate: new Date('2024-01-01'),
+        endDate: new Date('2024-06-30'),
+        resume: 'janedoe_resume_2_6_2026.pdf',
+        coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        actualStartDate: undefined,
+      };
+
+      mockRepository.save.mockResolvedValue(savedApplication);
+      mockEmailService.queueEmail.mockRejectedValueOnce(
+        new Error('Failed to send email'),
+      );
+
+      await expect(service.create(dummyCreateApplicationDto)).rejects.toThrow(
+        'Failed to send email',
+      );
+    });
     it('should not accept weekly hours greater than one week', async () => {
       const createApplicationDto: CreateApplicationDto = {
         ...dummyCreateApplicationDto,
@@ -869,7 +917,7 @@ describe('ApplicationsService', () => {
           fridayAvailability: 'Sometime between 4-6',
           saturdayAvailability: 'no availability',
           interest: [InterestArea.WOMENS_HEALTH],
-          license: null,
+          license: '',
           proposedStartDate: new Date('2025-11-12'),
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
@@ -879,8 +927,7 @@ describe('ApplicationsService', () => {
           weeklyHours: 20,
           pronouns: 'they/them',
           nonEnglishLangs: 'some french, native spanish speaker',
-          desiredExperience:
-            'I want to give back to the boston community and learn to talk better with patients',
+          desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
           resume: 'janedoe_resume_2_6_2026.pdf',
           coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
           emergencyContactName: 'Jane Doe',
@@ -899,7 +946,7 @@ describe('ApplicationsService', () => {
           saturdayAvailability: 'no availability',
           interest: [InterestArea.WOMENS_HEALTH],
           proposedStartDate: new Date('2025-11-12'),
-          license: null,
+          license: '',
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
           email: 'test@example.com',
@@ -908,8 +955,7 @@ describe('ApplicationsService', () => {
           weeklyHours: 20,
           pronouns: 'they/them',
           nonEnglishLangs: 'some french, native spanish speaker',
-          desiredExperience:
-            'I want to give back to the boston community and learn to talk better with patients',
+          desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
           resume: 'janedoe_resume_2_6_2026.pdf',
           coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
           emergencyContactName: 'Jane Doe',
@@ -1223,7 +1269,7 @@ describe('ApplicationsService', () => {
         'Jane Applicant',
         {
           ...dummyCreateApplicationDto,
-          desiredExperience: '<script>alert("x")</script>',
+          emergencyContactName: '<script>alert("x")</script>',
         },
         'Bad field: <invalid>',
         'https://example.com/form?x=<bad>',

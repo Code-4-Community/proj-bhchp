@@ -9,6 +9,7 @@ export interface ApplicationRow {
   proposedStartDate: string;
   actualStartDate: string;
   discipline: string;
+  desiredExperience: string;
   applicantType: string;
   status: string;
 }
@@ -34,6 +35,7 @@ function toRows(
       proposedStartDate: app.proposedStartDate,
       actualStartDate: app.actualStartDate ?? '',
       discipline: app.discipline,
+      desiredExperience: app.desiredExperience,
       applicantType: app.applicantType,
       status: app.appStatus,
     };

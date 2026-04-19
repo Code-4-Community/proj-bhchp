@@ -8,6 +8,7 @@ import {
   InterestArea,
   ApplicantType,
   HeardAboutFrom,
+  DesiredExperience,
 } from '../applications/types';
 import { LearnerInfo } from '../learner-info/learner-info.entity';
 import { School } from '../learner-info/types';
@@ -128,8 +129,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 20,
     pronouns: 'she/her',
     nonEnglishLangs: 'spoken chinese only',
-    desiredExperience:
-      'I want to give back to the boston community and learn to talk better with patients',
+    desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
     resume: 'janedoe_resume_2_6_2026.pdf',
     coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
     emergencyContactName: 'Bob Doe',
@@ -158,8 +158,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 20,
     pronouns: 'he/him',
     nonEnglishLangs: 'spoken chinese only',
-    desiredExperience:
-      'I want to give back to the boston community and learn to talk better with patients',
+    desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
     resume: 'johndoe_resume_2_6_2026.pdf',
     coverLetter: 'johndoe_coverLetter_2_6_2026.pdf',
     emergencyContactName: 'Bob Doe',
@@ -188,8 +187,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 20,
     pronouns: 'they/them',
     nonEnglishLangs: 'spoken chinese only',
-    desiredExperience:
-      'I want to give back to the boston community and learn to talk better with patients',
+    desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
     resume: 'sam_resume_2_6_2026.pdf',
     coverLetter: 'sam_coverLetter_2_6_2026.pdf',
     emergencyContactName: 'sam senior',
@@ -218,7 +216,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 10,
     pronouns: 'they/them',
     nonEnglishLangs: 'French',
-    desiredExperience: 'Interested in service learning and community health',
+    desiredExperience: DesiredExperience.PRACTICUM,
     resume: 'rejected_learner_resume.pdf',
     coverLetter: 'rejected_learner_cover_letter.pdf',
     emergencyContactName: 'Pat Learner',
@@ -247,7 +245,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 15,
     pronouns: 'she/her',
     nonEnglishLangs: 'Spanish',
-    desiredExperience: 'Looking to support behavioral health outreach',
+    desiredExperience: DesiredExperience.VOLUNTEER_INTERN,
     resume: 'approved_learner_resume.pdf',
     coverLetter: 'approved_learner_cover_letter.pdf',
     emergencyContactName: 'Morgan Learner',

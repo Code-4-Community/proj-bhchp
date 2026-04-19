@@ -17,6 +17,7 @@ import {
   InterestArea,
   ApplicantType,
   HeardAboutFrom,
+  DesiredExperience,
 } from '../types';
 import { DISCIPLINE_VALUES } from '../../disciplines/disciplines.constants';
 
@@ -236,9 +237,9 @@ export class CreateApplicationDto {
    *
    * Example: I want to give back to the boston community and learn to talk better with patients
    */
-  @IsString()
+  @IsEnum(DesiredExperience)
   @IsDefined()
-  desiredExperience: string;
+  desiredExperience: DesiredExperience;
 
   /**
    * Field for someone to elaborate on their discipline if they chose other for discipline dropdown
