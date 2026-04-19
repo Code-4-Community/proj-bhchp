@@ -9,7 +9,7 @@ import { EmailController } from './email/email.controller';
 @Module({
   imports: [forwardRef(() => AuthModule), forwardRef(() => UsersModule)],
   providers: [EmailService, amazonSESClientFactory, AmazonSESWrapper],
-  exports: [EmailService],
+  exports: [EmailService, AmazonSESWrapper],
   controllers: [EmailController],
 })
 export class UtilModule {}

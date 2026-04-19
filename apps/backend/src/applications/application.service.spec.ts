@@ -1229,6 +1229,96 @@ describe('ApplicationsService', () => {
   });
 
   describe('private helpers', () => {
+    describe('confidentiality form status access', () => {
+      beforeEach(() => {
+        mockCandidateInfoService.findOne.mockResolvedValue({
+          appId: 1,
+          email: dummyApplication.email,
+        });
+      });
+
+      it('allows upload for accepted applicants', async () => {
+        mockRepository.findOne.mockResolvedValue({
+          ...dummyApplication,
+          appStatus: AppStatus.ACCEPTED,
+        });
+        mockS3Service.uploadWithKey.mockResolvedValue({
+          key: 'confidentiality-forms/1_confidentiality-123.pdf',
+          url: 'https://bucket.s3.us-east-2.amazonaws.com/confidentiality-forms/1_confidentiality-123.pdf',
+        });
+        mockRepository.save.mockResolvedValue({
+          ...dummyApplication,
+          appStatus: AppStatus.FORMS_SIGNED,
+          confidentialityForm:
+            'confidentiality-forms/1_confidentiality-123.pdf',
+        });
+
+        await expect(
+          service.uploadConfidentialityForm(dummyApplication.email, {
+            buffer: Buffer.from('pdf-content'),
+            mimetype: 'application/pdf',
+          }),
+        ).resolves.toEqual({
+          fileName: 'confidentiality-forms/1_confidentiality-123.pdf',
+          fileUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/confidentiality-forms/1_confidentiality-123.pdf',
+          appStatus: AppStatus.FORMS_SIGNED,
+        });
+      });
+
+      it('forbids upload for active applicants', async () => {
+        mockRepository.findOne.mockResolvedValue({
+          ...dummyApplication,
+          appStatus: AppStatus.ACTIVE,
+        });
+
+        await expect(
+          service.uploadConfidentialityForm(dummyApplication.email, {
+            buffer: Buffer.from('pdf-content'),
+            mimetype: 'application/pdf',
+          }),
+        ).rejects.toThrow(
+          'Only accepted or forms-signed applicants can upload confidentiality forms.',
+        );
+      });
+
+      it('allows confidentiality form download for inactive applicants', async () => {
+        mockRepository.findOne.mockResolvedValue({
+          ...dummyApplication,
+          appStatus: AppStatus.INACTIVE,
+          confidentialityForm:
+            'confidentiality-forms/1_confidentiality-1713281234567-a1b2c3.pdf',
+        });
+        mockS3Service.createObjectLink.mockReturnValue(
+          'https://bucket.s3.us-east-2.amazonaws.com/confidentiality-forms/1_confidentiality-1713281234567-a1b2c3.pdf',
+        );
+
+        await expect(
+          service.getConfidentialityForm(dummyApplication.email),
+        ).resolves.toEqual({
+          fileName:
+            'confidentiality-forms/1_confidentiality-1713281234567-a1b2c3.pdf',
+          fileUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/confidentiality-forms/1_confidentiality-1713281234567-a1b2c3.pdf',
+        });
+      });
+
+      it('forbids confidentiality form download for forms-signed applicants', async () => {
+        mockRepository.findOne.mockResolvedValue({
+          ...dummyApplication,
+          appStatus: AppStatus.FORMS_SIGNED,
+          confidentialityForm:
+            'confidentiality-forms/1_confidentiality-1713281234567-a1b2c3.pdf',
+        });
+
+        await expect(
+          service.getConfidentialityForm(dummyApplication.email),
+        ).rejects.toThrow(
+          'Only active or inactive applicants can download confidentiality forms.',
+        );
+      });
+    });
+
     it('should validate application dto phone and hours', () => {
       expect(() =>
         (

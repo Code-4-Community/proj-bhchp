@@ -71,15 +71,21 @@ export class ApplicationsService {
   ) {}
 
   private ensureCanUploadConfidentialityForm(application: Application): void {
-    const allowedStatuses = [
-      AppStatus.ACCEPTED,
-      AppStatus.FORMS_SIGNED,
-      AppStatus.ACTIVE,
-    ];
+    const allowedStatuses = [AppStatus.ACCEPTED, AppStatus.FORMS_SIGNED];
 
     if (!allowedStatuses.includes(application.appStatus)) {
       throw new ForbiddenException(
-        'Only accepted applicants can upload confidentiality forms.',
+        'Only accepted or forms-signed applicants can upload confidentiality forms.',
+      );
+    }
+  }
+
+  private ensureCanDownloadConfidentialityForm(application: Application): void {
+    const allowedStatuses = [AppStatus.ACTIVE, AppStatus.INACTIVE];
+
+    if (!allowedStatuses.includes(application.appStatus)) {
+      throw new ForbiddenException(
+        'Only active or inactive applicants can download confidentiality forms.',
       );
     }
   }
@@ -104,6 +110,7 @@ export class ApplicationsService {
     fileUrl: string;
   } | null> {
     const application = await this.findCurrentUserApplication(email);
+    this.ensureCanDownloadConfidentialityForm(application);
 
     if (!application.confidentialityForm) {
       return null;

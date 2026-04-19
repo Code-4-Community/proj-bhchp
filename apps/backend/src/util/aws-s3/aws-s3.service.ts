@@ -47,8 +47,6 @@ export class AWSS3Service {
    *          or 'janedoe-application.pdf'; the file extension is always a pdf.
    *
    * Does not throw beyond TypeScript errors.
-   *
-   * TODO: Remove hard-coded region in the url
    */
   createLink(person: string, type: string): string {
     const fileName = `${person}-${type}.pdf`;
