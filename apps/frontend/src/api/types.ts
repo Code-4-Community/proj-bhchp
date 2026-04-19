@@ -156,6 +156,13 @@ export interface CandidateInfo {
   appId: number;
 }
 
+export interface AdminInfo {
+  email: string;
+  discipline: DISCIPLINE_VALUES;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ProvisionAdminRequest {
   email: string;
   firstName: string;

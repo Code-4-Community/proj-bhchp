@@ -52,10 +52,27 @@ export function useApplications(): UseApplicationsResult {
       setLoading(true);
       setError(null);
       try {
-        const [apps, applicants] = await Promise.all([
-          apiClient.getApplications(),
+        const [currentUser, applicants] = await Promise.all([
+          apiClient.getCurrentUser(),
           apiClient.getApplicants(),
         ]);
+
+        if (!currentUser?.email) {
+          throw new Error('Failed to determine current admin user');
+        }
+
+        const adminInfo = await apiClient.getAdminInfoByEmail(
+          currentUser.email,
+        );
+
+        if (!adminInfo?.discipline) {
+          throw new Error('Failed to determine admin discipline');
+        }
+
+        const apps = await apiClient.getApplicationsByDiscipline(
+          adminInfo.discipline,
+        );
+
         if (!cancelled) {
           const usersByEmail = new Map(
             applicants.map((a) => [a.email, a] as const),
