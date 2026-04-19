@@ -26,3 +26,23 @@ export const toS3Url = (
 
   return `${normalizeS3BucketAddr(bucketAddr)}${filename}`;
 };
+
+const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
+
+export const toS3FolderUrl = (
+  filename: string | undefined | null,
+  folder: string,
+  bucketAddr: string = s3BucketAddr,
+): string | undefined => {
+  if (!filename) {
+    return undefined;
+  }
+
+  const normalizedFolder = trimSlashes(folder);
+  const normalizedFilename = filename.replace(/^\/+/, '');
+  const key = normalizedFilename.startsWith(`${normalizedFolder}/`)
+    ? normalizedFilename
+    : `${normalizedFolder}/${normalizedFilename}`;
+
+  return toS3Url(key, bucketAddr);
+};
