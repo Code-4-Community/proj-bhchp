@@ -60,7 +60,8 @@ describe('AWSS3Service', () => {
 
     const url = await service.upload(buffer, fileName, mimeType);
     const commandCall = s3Mock.call(0);
-    const uploadedKey = commandCall.args[0].input.Key;
+    const putObjectCommand = commandCall.args[0] as PutObjectCommand;
+    const uploadedKey = putObjectCommand.input.Key;
 
     expect(s3Mock.calls()).toHaveLength(1);
     expect(uploadedKey).toMatch(/^file-\d{13}-[a-z0-9]{6}\.pdf$/);

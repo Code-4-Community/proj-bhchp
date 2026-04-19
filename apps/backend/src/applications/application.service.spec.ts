@@ -12,6 +12,23 @@ import { UsersService } from '../users/users.service';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 
+jest.mock('../util/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+      region: 'us-east-2',
+      bucketName: 'bucket',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 const dummyApplication: Application = {
   appId: 1,
   appStatus: AppStatus.APP_SUBMITTED,
