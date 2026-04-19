@@ -126,9 +126,7 @@ export class ApiClient {
     formData.append('file', file);
 
     return this.axiosInstance
-      .post('/api/applications/me/forms/confidentiality', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      .post('/api/applications/me/forms/confidentiality', formData)
       .then((response) => response.data as UploadConfidentialityFormResponse);
   }
 
