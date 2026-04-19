@@ -17,7 +17,7 @@ const mockApplications: ApplicationRow[] = [
     actualStartDate: '2026-02-01',
     discipline: 'RN',
     applicantType: 'Learner',
-    status: 'App submitted',
+    status: 'App Submitted',
   },
   {
     appId: 2,
@@ -58,7 +58,7 @@ describe('ApplicationTable', () => {
     expect(screen.getByText('Social Work')).toBeDefined();
     expect(screen.getByText('Learner')).toBeDefined();
     expect(screen.getByText('Volunteer')).toBeDefined();
-    expect(screen.getByText('App submitted')).toBeDefined();
+    expect(screen.getByText('Submitted')).toBeDefined();
     expect(screen.getByText('Accepted')).toBeDefined();
   });
 
