@@ -49,7 +49,16 @@ function readPersistedCache(): PersistedCache | null {
 
 function persistCache(cache: PersistedCache): void {
   if (!isBrowser()) return;
-  localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch (err) {
+    // Fail open: if localStorage is unavailable (private mode, quota, disabled),
+    // keep using the in-memory cache and don't crash the app.
+    console.info(
+      '[cache] persistCache: localStorage unavailable, using in-memory only',
+      { err },
+    );
+  }
 }
 
 function writeCache(

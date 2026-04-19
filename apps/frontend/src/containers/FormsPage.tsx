@@ -16,7 +16,6 @@ import documentIcon from '../assets/icons/Vector.svg';
 
 const FORM_NAME = 'Confidentiality Form';
 const TEMPLATE_FILE_NAME = 'Confidentiality_Form.pdf';
-const s3BucketAddrRaw = import.meta.env.VITE_S3_BUCKET_ADDR ?? '';
 
 function normalizeS3BucketAddr(value: string): string {
   const trimmed = value.trim();
@@ -32,7 +31,6 @@ function normalizeS3BucketAddr(value: string): string {
   return withProtocol.endsWith('/') ? withProtocol : `${withProtocol}/`;
 }
 
-const s3BucketAddr = normalizeS3BucketAddr(s3BucketAddrRaw);
 const ALLOWED_UPLOAD_STATUSES = new Set<AppStatus>([
   AppStatus.ACCEPTED,
   AppStatus.FORMS_SIGNED,
@@ -50,6 +48,8 @@ interface FormSubmission {
 const UploadFileLabel = chakra('label');
 
 const FormsPage: React.FC = () => {
+  const s3BucketAddrRaw = import.meta.env.VITE_S3_BUCKET_ADDR ?? '';
+  const s3BucketAddr = normalizeS3BucketAddr(s3BucketAddrRaw);
   const [submission, setSubmission] = useState<FormSubmission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
