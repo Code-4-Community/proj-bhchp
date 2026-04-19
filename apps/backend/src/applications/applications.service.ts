@@ -73,13 +73,14 @@ export class ApplicationsService {
   private ensureCanUploadConfidentialityForm(application: Application): void {
     const allowedStatuses = [
       AppStatus.ACCEPTED,
+      AppStatus.INACTIVE,
       AppStatus.FORMS_SIGNED,
       AppStatus.ACTIVE,
     ];
 
     if (!allowedStatuses.includes(application.appStatus)) {
       throw new ForbiddenException(
-        'Only accepted applicants can upload confidentiality forms.',
+        'Only accepted, inactive, forms-signed, or active applicants can upload confidentiality forms.',
       );
     }
   }
