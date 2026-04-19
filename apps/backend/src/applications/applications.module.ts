@@ -11,6 +11,7 @@ import { ApplicationCreationErrorFilter } from './filters/application-creation-v
 import { UtilModule } from '../util/util.module';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { CandidateInfo } from '../candidate-info/candidate-info.entity';
+import { EmailService } from '../util/email/email.service';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CandidateInfo } from '../candidate-info/candidate-info.entity';
   providers: [
     ApplicationsService,
     CandidateInfoService,
+    EmailService,
     CurrentUserInterceptor,
     ApplicationValidationEmailFilter,
     ApplicationCreationErrorFilter,

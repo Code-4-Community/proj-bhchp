@@ -137,6 +137,34 @@ const AdminViewApplication: React.FC = () => {
           />
         )}
 
+        <QuestionFrame
+          frameProps={{
+            question: 'Other than English, what languages do you speak?',
+            answers: application.nonEnglishLangs
+              ? [application.nonEnglishLangs]
+              : [],
+          }}
+        />
+        {application.applicantType === ApplicantType.LEARNER &&
+        learnerInfo !== null ? (
+          <QuestionFrame
+            frameProps={{
+              question:
+                'Are you applying for yourself or are you a supervisor/instructor?',
+              answers: [
+                learnerInfo.isSupervisorApplying ? 'Supervisor' : 'Myself',
+              ],
+            }}
+          />
+        ) : (
+          <QuestionFrame
+            frameProps={{
+              question:
+                'Are you applying for yourself or are you a supervisor/instructor?',
+              answers: ['Myself'],
+            }}
+          />
+        )}
         <SchoolAffiliationFrame
           isLearner={application.applicantType === ApplicantType.LEARNER}
           schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
@@ -144,6 +172,7 @@ const AdminViewApplication: React.FC = () => {
             (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'
           }
           license={application.license || 'N/A'}
+          desiredExperience={application.desiredExperience || 'N/A'}
           areaOfInterest={
             Array.isArray(application.interest)
               ? application.interest.join(', ')
@@ -199,34 +228,6 @@ const AdminViewApplication: React.FC = () => {
             answers: application.heardAboutFrom,
           }}
         />
-        <QuestionFrame
-          frameProps={{
-            question: 'Other than English, what languages do you speak?',
-            answers: application.nonEnglishLangs
-              ? [application.nonEnglishLangs]
-              : [],
-          }}
-        />
-        {application.applicantType === ApplicantType.LEARNER &&
-        learnerInfo !== null ? (
-          <QuestionFrame
-            frameProps={{
-              question:
-                'Are you applying for yourself or are you a supervisor/instructor?',
-              answers: [
-                learnerInfo.isSupervisorApplying ? 'Supervisor' : 'Myself',
-              ],
-            }}
-          />
-        ) : (
-          <QuestionFrame
-            frameProps={{
-              question:
-                'Are you applying for yourself or are you a supervisor/instructor?',
-              answers: ['Myself'],
-            }}
-          />
-        )}
         <EmergencyContactFrame
           name={application.emergencyContactName}
           phone={application.emergencyContactPhone}

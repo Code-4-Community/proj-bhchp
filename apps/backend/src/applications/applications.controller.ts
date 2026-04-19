@@ -167,7 +167,11 @@ export class ApplicationsController {
   async createApplication(
     @Body() createApplicationDto: CreateApplicationDto,
   ): Promise<Application> {
-    return await this.applicationsService.create(createApplicationDto);
+    const application = await this.applicationsService.create(
+      createApplicationDto,
+    );
+
+    return application;
   }
 
   /**

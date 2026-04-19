@@ -4,6 +4,7 @@ export interface SchoolAffiliationProps {
   schoolName: string;
   schoolDepartment: string;
   license: string;
+  desiredExperience: string;
   areaOfInterest: string;
   proposedStartDate: string;
   actualStartDate: string;
@@ -16,6 +17,7 @@ const SchoolAffiliationFrame = ({
   schoolName,
   schoolDepartment,
   license,
+  desiredExperience,
   areaOfInterest,
   proposedStartDate,
   actualStartDate,
@@ -28,11 +30,12 @@ const SchoolAffiliationFrame = ({
       direction="column"
       w="100%"
       minH="277px"
-      p={{ base: '16px', md: '20px 40px' }}
+      p={{ base: '20px', md: '24px 48px' }}
       gap="21px"
       bg="#F5F5F5"
       boxSizing="border-box"
       mb="24px"
+      pb={{ base: '300px', md: '300px' }}
     >
       <Flex
         justify="space-between"
@@ -75,6 +78,12 @@ const SchoolAffiliationFrame = ({
                 </Text>
               </Text>
               <Text fontSize="sm" fontWeight="bold">
+                Desired Experience:{' '}
+                <Text as="span" fontWeight="normal">
+                  {desiredExperience}
+                </Text>
+              </Text>
+              <Text fontSize="sm" fontWeight="bold">
                 Area of Interest:{' '}
                 <Text as="span" fontWeight="normal">
                   {areaOfInterest}
@@ -97,6 +106,12 @@ const SchoolAffiliationFrame = ({
               License:{' '}
               <Text as="span" fontWeight="normal">
                 {license}
+              </Text>
+            </Text>
+            <Text fontSize="sm" fontWeight="bold">
+              Desired Experience:{' '}
+              <Text as="span" fontWeight="normal">
+                {desiredExperience}
               </Text>
             </Text>
           </Flex>
