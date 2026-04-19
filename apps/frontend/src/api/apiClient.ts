@@ -14,6 +14,7 @@ import {
   ProvisionAdminRequest,
   ProvisionAdminResponse,
   UploadConfidentialityFormResponse,
+  DisciplineAdminMap,
   User,
 } from './types';
 
@@ -94,6 +95,12 @@ export class ApiClient {
     return this.get(
       `/api/admin-info/by-email/${encodeURIComponent(email)}`,
     ) as Promise<AdminInfo | null>;
+  }
+
+  public async getDisciplineAdminMap(): Promise<DisciplineAdminMap> {
+    return this.get(
+      '/api/admin-info/discipline-admin-map',
+    ) as Promise<DisciplineAdminMap>;
   }
 
   public async provisionAdmin(

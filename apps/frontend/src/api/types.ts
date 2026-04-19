@@ -174,6 +174,13 @@ export interface AdminInfo {
   updatedAt: string;
 }
 
+export interface DisciplineAdmin {
+  firstName: string;
+  lastName: string;
+}
+
+export type DisciplineAdminMap = Record<string, DisciplineAdmin>;
+
 export interface ProvisionAdminRequest {
   email: string;
   firstName: string;

@@ -7,6 +7,7 @@ import { CreateAdminInfoDto } from './dto/create-admin.dto';
 import { UpdateAdminInfoEmailDto } from './dto/update-admin-email.dto';
 import { AdminInfo } from './admin-info.entity';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
+import { UsersService } from '../users/users.service';
 
 describe('AdminInfoService', () => {
   let service: AdminInfoService;
@@ -18,6 +19,11 @@ describe('AdminInfoService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     remove: jest.fn(),
+    createQueryBuilder: jest.fn(),
+  };
+
+  const mockUsersService = {
+    findOne: jest.fn(),
   };
 
   const mockAdminInfo: AdminInfo = {
@@ -35,6 +41,10 @@ describe('AdminInfoService', () => {
           provide: getRepositoryToken(AdminInfo),
           useValue: mockRepository,
         },
+        {
+          provide: UsersService,
+          useValue: mockUsersService,
+        },
       ],
     }).compile();
 
@@ -46,6 +56,77 @@ describe('AdminInfoService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('getOldestDisciplineAdminMap', () => {
+    it('should return one oldest admin per discipline with names', async () => {
+      const qb = {
+        distinctOn: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([
+          {
+            email: 'oldest-rn@example.com',
+            discipline: DISCIPLINE_VALUES.RN,
+          },
+          {
+            email: 'oldest-sw@example.com',
+            discipline: DISCIPLINE_VALUES.SocialWork,
+          },
+        ]),
+      };
+      mockRepository.createQueryBuilder.mockReturnValue(qb);
+      mockUsersService.findOne
+        .mockResolvedValueOnce({
+          email: 'oldest-rn@example.com',
+          firstName: 'Alex',
+          lastName: 'Kim',
+          userType: 'ADMIN',
+        })
+        .mockResolvedValueOnce({
+          email: 'oldest-sw@example.com',
+          firstName: 'Jo',
+          lastName: 'Rivera',
+          userType: 'ADMIN',
+        });
+
+      await expect(service.getOldestDisciplineAdminMap()).resolves.toEqual({
+        [DISCIPLINE_VALUES.RN]: { firstName: 'Alex', lastName: 'Kim' },
+        [DISCIPLINE_VALUES.SocialWork]: {
+          firstName: 'Jo',
+          lastName: 'Rivera',
+        },
+      });
+
+      expect(mockRepository.createQueryBuilder).toHaveBeenCalledWith('admin');
+      expect(qb.distinctOn).toHaveBeenCalledWith(['admin.discipline']);
+      expect(qb.orderBy).toHaveBeenCalledWith('admin.discipline', 'ASC');
+      expect(qb.addOrderBy).toHaveBeenCalledWith('admin.createdAt', 'ASC');
+      expect(qb.addOrderBy).toHaveBeenCalledWith('admin.email', 'ASC');
+    });
+
+    it('should fall back to email when user record is missing', async () => {
+      const qb = {
+        distinctOn: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        addOrderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([
+          {
+            email: 'oldest-rn@example.com',
+            discipline: DISCIPLINE_VALUES.RN,
+          },
+        ]),
+      };
+      mockRepository.createQueryBuilder.mockReturnValue(qb);
+      mockUsersService.findOne.mockResolvedValue(null);
+
+      await expect(service.getOldestDisciplineAdminMap()).resolves.toEqual({
+        [DISCIPLINE_VALUES.RN]: {
+          firstName: 'oldest-rn@example.com',
+          lastName: '',
+        },
+      });
+    });
   });
 
   describe('create', () => {

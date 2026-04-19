@@ -7,6 +7,7 @@ import {
   signUp,
 } from 'aws-amplify/auth';
 import { clearCurrentSessionUserType } from './session';
+import { clearDisciplineAdminMapCache } from '@utils/disciplineAdminCache';
 
 export type SignInWithPasswordResult =
   | {
@@ -92,6 +93,7 @@ export const signOutUser = async (): Promise<void> => {
     '[auth] signOutUser: clearing session and calling Cognito signOut',
   );
   clearCurrentSessionUserType();
+  clearDisciplineAdminMapCache();
   await signOut();
 };
 

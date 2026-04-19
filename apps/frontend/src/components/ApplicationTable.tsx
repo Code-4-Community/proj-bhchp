@@ -6,9 +6,10 @@ const COLUMNS = [
   'Name',
   'Proposed Date',
   'Actual Start Date',
-  'Discipline',
   'Desired Experience',
   'Applicant Type',
+  'Discipline',
+  'Discipline Admin',
   'Status',
 ];
 
@@ -97,11 +98,14 @@ export function ApplicationTable({
             </Table.Cell>
             <Table.Cell>{formatDate(application.proposedStartDate)}</Table.Cell>
             <Table.Cell>{formatDate(application.actualStartDate)}</Table.Cell>
-            <Table.Cell>{application.discipline}</Table.Cell>
             <Table.Cell>
               {formatDesiredExperience(application.desiredExperience)}
             </Table.Cell>
             <Table.Cell>{application.applicantType}</Table.Cell>
+            <Table.Cell>{application.discipline}</Table.Cell>
+            <Table.Cell>
+              {titleCaseName(application.disciplineAdminName)}
+            </Table.Cell>
             <Table.Cell>
               <StatusPill variant={application.status as StatusVariant}>
                 {StatusPillConfig[application.status as StatusVariant].label}

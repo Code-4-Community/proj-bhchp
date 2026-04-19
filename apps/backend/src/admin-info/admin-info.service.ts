@@ -4,6 +4,15 @@ import { Repository } from 'typeorm';
 import { AdminInfo } from './admin-info.entity';
 import { CreateAdminInfoDto } from './dto/create-admin.dto';
 import { UpdateAdminInfoEmailDto } from './dto/update-admin-email.dto';
+import { UsersService } from '../users/users.service';
+
+export type DisciplineAdminMap = Record<
+  string,
+  {
+    firstName: string;
+    lastName: string;
+  }
+>;
 
 /**
  * Service to interface with the admin repository.
@@ -13,7 +22,29 @@ export class AdminInfoService {
   constructor(
     @InjectRepository(AdminInfo)
     private readonly adminRepository: Repository<AdminInfo>,
+    private readonly usersService: UsersService,
   ) {}
+
+  async getOldestDisciplineAdminMap(): Promise<DisciplineAdminMap> {
+    const oldestAdmins = await this.adminRepository
+      .createQueryBuilder('admin')
+      .distinctOn(['admin.discipline'])
+      .orderBy('admin.discipline', 'ASC')
+      .addOrderBy('admin.createdAt', 'ASC')
+      .addOrderBy('admin.email', 'ASC')
+      .getMany();
+
+    const mappedEntries = await Promise.all(
+      oldestAdmins.map(async (admin) => {
+        const user = await this.usersService.findOne(admin.email);
+        const firstName = user?.firstName ?? admin.email;
+        const lastName = user?.lastName ?? '';
+        return [admin.discipline, { firstName, lastName }] as const;
+      }),
+    );
+
+    return Object.fromEntries(mappedEntries);
+  }
 
   /**
    * Creates an admin in the system.

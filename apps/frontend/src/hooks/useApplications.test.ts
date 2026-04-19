@@ -11,6 +11,7 @@ import {
   type Application,
   type User,
 } from '@api/types';
+import { getDisciplineAdminMapCached } from '@utils/disciplineAdminCache';
 
 const mockApplications: Application[] = [
   {
@@ -102,9 +103,17 @@ vi.mock('@api/apiClient', () => {
   };
 });
 
+vi.mock('@utils/disciplineAdminCache', () => ({
+  getDisciplineAdminMapCached: vi.fn(),
+}));
+
 describe('useApplications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getDisciplineAdminMapCached).mockResolvedValue({
+      [DISCIPLINE_VALUES.RN]: { firstName: 'Alex', lastName: 'Kim' },
+      [DISCIPLINE_VALUES.SocialWork]: { firstName: 'Jo', lastName: 'Rivera' },
+    });
     vi.mocked(apiClient.getCurrentUser).mockResolvedValue(mockCurrentAdmin);
     vi.mocked(apiClient.getAdminInfoByEmail).mockResolvedValue(mockAdminInfo);
     vi.mocked(apiClient.getApplicants).mockResolvedValue(mockApplicants);
@@ -141,6 +150,7 @@ describe('useApplications', () => {
     expect(first.proposedStartDate).toBe('2024-01-15');
     expect(first.actualStartDate).toBe('2024-02-01');
     expect(first.discipline).toBe(DISCIPLINE_VALUES.RN);
+    expect(first.disciplineAdminName).toBe('Alex Kim');
     expect(first.status).toBe(AppStatus.APP_SUBMITTED);
     expect(first.applicantType).toBe(ApplicantType.LEARNER);
 
@@ -149,6 +159,7 @@ describe('useApplications', () => {
     expect(second.name).toBe('noname@example.com');
     expect(second.proposedStartDate).toBe('2024-03-01');
     expect(second.actualStartDate).toBe('');
+    expect(second.disciplineAdminName).toBe('Jo Rivera');
   });
 
   it('should fall back to email when user not found', async () => {
