@@ -14,7 +14,7 @@ import {
 import DocumentDownloadCard, {
   type DocumentDownloadItem,
 } from '../components/DocumentDownloadCard';
-import { toS3Url } from '../utils/s3';
+import { toS3FolderUrl } from '../utils/s3';
 import QuestionFrame from '../components/QuestionFrame';
 import RequirementsFrame from '../components/RequirementsFrame';
 import SchoolAffiliationFrame from '../components/SchoolAffiliationFrame';
@@ -32,11 +32,11 @@ const CandidateViewApplication: React.FC = () => {
   const uploadedDocuments: DocumentDownloadItem[] = [
     {
       variant: 'resume',
-      downloadUrl: toS3Url(application?.resume),
+      downloadUrl: toS3FolderUrl(application?.resume, 'resumes'),
     },
     {
       variant: 'coverLetter',
-      downloadUrl: toS3Url(application?.coverLetter),
+      downloadUrl: toS3FolderUrl(application?.coverLetter, 'cover-letters'),
     },
   ];
 
@@ -46,7 +46,7 @@ const CandidateViewApplication: React.FC = () => {
   ) {
     uploadedDocuments.push({
       variant: 'syllabus',
-      downloadUrl: toS3Url(learnerInfo.syllabus),
+      downloadUrl: toS3FolderUrl(learnerInfo.syllabus, 'syllabus'),
     });
   }
 

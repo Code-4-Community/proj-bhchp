@@ -24,7 +24,7 @@ import ApplicantStageControl from '@components/ApplicantStageControl';
 import DocumentDownloadCard, {
   type DocumentDownloadItem,
 } from '@components/DocumentDownloadCard';
-import { toS3Url } from '@utils/s3';
+import { toS3FolderUrl } from '@utils/s3';
 
 const AdminViewApplication: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
@@ -39,11 +39,11 @@ const AdminViewApplication: React.FC = () => {
   const uploadedDocuments: DocumentDownloadItem[] = [
     {
       variant: 'resume',
-      downloadUrl: toS3Url(application?.resume),
+      downloadUrl: toS3FolderUrl(application?.resume, 'resumes'),
     },
     {
       variant: 'coverLetter',
-      downloadUrl: toS3Url(application?.coverLetter),
+      downloadUrl: toS3FolderUrl(application?.coverLetter, 'cover-letters'),
     },
   ];
 
@@ -53,7 +53,7 @@ const AdminViewApplication: React.FC = () => {
   ) {
     uploadedDocuments.push({
       variant: 'syllabus',
-      downloadUrl: toS3Url(learnerInfo.syllabus),
+      downloadUrl: toS3FolderUrl(learnerInfo.syllabus, 'syllabus'),
     });
   }
 
