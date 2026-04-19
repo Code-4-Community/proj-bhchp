@@ -10,6 +10,7 @@ import {
 } from '@chakra-ui/react';
 import { useMemo, useState } from 'react';
 import { BsChevronDown, BsChevronUp } from 'react-icons/bs';
+import ConfirmationPopoverContent from './ConfirmationPopoverContent';
 
 const STATUS_CONFIG: Record<
   AppStatus,
@@ -228,97 +229,21 @@ const ApplicantStageControl: React.FC<ApplicantStageControlProps> = ({
           </Portal>
         </Menu.Root>
 
-        <Portal>
-          <Popover.Positioner>
-            <Popover.Content
-              width="470px"
-              maxW="calc(100vw - 32px)"
-              borderRadius="12px"
-              border="1px solid #686868"
-              boxShadow="0 10px 30px rgba(0, 0, 0, 0.18)"
-              p={{ base: '24px', md: '32px' }}
-            >
-              <Popover.Arrow />
-              <Popover.Body p="0">
-                <Flex direction="column" align="center" textAlign="center">
-                  <Box
-                    width="56px"
-                    height="56px"
-                    borderRadius="full"
-                    bg="#E7EEFF"
-                    color="#4C6EDB"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontSize="28px"
-                    mb="18px"
-                  >
-                    !
-                  </Box>
-                  <Text
-                    fontFamily="Lato, sans-serif"
-                    fontSize={{ base: '30px', md: '38px' }}
-                    fontWeight="700"
-                    lineHeight="1.1"
-                    color="#000000"
-                  >
-                    Confirm Status
-                  </Text>
-                  <Text
-                    fontFamily="Lato, sans-serif"
-                    fontSize={{ base: '30px', md: '38px' }}
-                    fontWeight="700"
-                    lineHeight="1.1"
-                    color="#000000"
-                    mb="16px"
-                  >
-                    Change
-                  </Text>
-                  <Text
-                    fontFamily="Lato, sans-serif"
-                    fontSize="16px"
-                    color="#2D2D2D"
-                    mb="24px"
-                  >
-                    {pendingStatusConfig
-                      ? `This will change the stage to ${pendingStatusConfig.label} and may notify the applicant via email.`
-                      : 'This will notify the applicant via email.'}
-                  </Text>
-
-                  <Flex gap="16px" wrap="wrap" justify="center">
-                    <Button
-                      bg="#013594"
-                      color="white"
-                      minW="140px"
-                      borderRadius="12px"
-                      onClick={handleConfirm}
-                      loading={isSaving}
-                      _hover={{ bg: '#012A74' }}
-                    >
-                      Confirm
-                    </Button>
-                    <Button
-                      variant="outline"
-                      borderColor="#686868"
-                      minW="140px"
-                      borderRadius="12px"
-                      onClick={handleCancel}
-                      disabled={isSaving}
-                    >
-                      Cancel
-                    </Button>
-                  </Flex>
-
-                  {errorMessage && (
-                    <Text mt="16px" color="red.500" fontSize="sm">
-                      {errorMessage}
-                    </Text>
-                  )}
-                </Flex>
-              </Popover.Body>
-            </Popover.Content>
-          </Popover.Positioner>
-        </Portal>
+        <ConfirmationPopoverContent
+          titleLines={['Confirm Status', 'Change']}
+          message={
+            pendingStatusConfig
+              ? `This will change the stage to ${pendingStatusConfig.label} and may notify the applicant via email.`
+              : 'This will notify the applicant via email.'
+          }
+          confirmText="Confirm"
+          cancelText="Cancel"
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+          confirmLoading={isSaving}
+          cancelDisabled={isSaving}
+          errorMessage={errorMessage}
+        />
       </Popover.Root>
     </Flex>
   );

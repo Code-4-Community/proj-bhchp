@@ -16,6 +16,7 @@ import RequirementsFrame from '../components/RequirementsFrame';
 import UploadedMaterial from '../components/UploadedMaterial';
 import SchoolAffiliationFrame from '../components/SchoolAffiliationFrame';
 import ApplicationProfileHeader from '@components/ApplicationProfileHeader';
+import EmergencyContactFrame from '@components/EmergencyContactFrame';
 
 const CandidateViewApplication: React.FC = () => {
   const [application, setApplication] = useState<Application | null>(null);
@@ -52,19 +53,19 @@ const CandidateViewApplication: React.FC = () => {
       console.debug('CandidateViewApplication: load started');
 
       try {
-        await apiClient
-          .getCurrentUser()
-          .then(setUser)
-          .catch(() => setError('Failed to load user'));
+        const currentUser = await apiClient.getCurrentUser();
+        if (cancelled) return;
 
-        if (!user) {
+        if (!currentUser || !('email' in currentUser) || !currentUser.email) {
           setError('Unable to determine user');
           return;
         }
 
-        const candidateInfo = await apiClient
-          .getCandidateInfoByEmail(user.email)
-          .catch(() => setError('Failed to load candidate info'));
+        setUser(currentUser);
+
+        const candidateInfo = await apiClient.getCandidateInfoByEmail(
+          currentUser.email,
+        );
 
         if (!candidateInfo) {
           setError("Unable to get user's application id");
@@ -81,14 +82,11 @@ const CandidateViewApplication: React.FC = () => {
           appId: candidateInfo.appId,
         });
 
-        await apiClient
-          .getCurrentApplication()
-          .then(setApplication)
-          .catch(() => setError('Failed to load application'));
-
+        const app = await apiClient.getCurrentApplication();
         if (cancelled) return;
+        setApplication(app);
 
-        if (!application) {
+        if (!app) {
           console.debug(
             '[application] No backend application found for current user',
           );
@@ -96,11 +94,11 @@ const CandidateViewApplication: React.FC = () => {
         }
 
         console.debug('CandidateViewApplication: application loaded', {
-          appId: application.appId,
-          applicantType: application.applicantType,
+          appId: app.appId,
+          applicantType: app.applicantType,
         });
 
-        if (application.applicantType === ApplicantType.LEARNER) {
+        if (app.applicantType === ApplicantType.LEARNER) {
           try {
             console.debug('CandidateViewApplication: requesting learner info', {
               appId: candidateInfo.appId,
@@ -184,12 +182,42 @@ const CandidateViewApplication: React.FC = () => {
           phone={application.phone || 'N/A'}
           over18={learnerInfo?.isLegalAdult}
         />
+        <QuestionFrame
+          frameProps={{
+            question: 'Other than English, what languages do you speak?',
+            answers: application.nonEnglishLangs
+              ? [application.nonEnglishLangs]
+              : [],
+          }}
+        />
+        {application.applicantType === ApplicantType.LEARNER &&
+        learnerInfo !== null ? (
+          <QuestionFrame
+            frameProps={{
+              question:
+                'Are you applying for yourself or are you a supervisor/instructor?',
+              answers: [
+                learnerInfo.isSupervisorApplying ? 'Supervisor' : 'Myself',
+              ],
+            }}
+          />
+        ) : (
+          <QuestionFrame
+            frameProps={{
+              question:
+                'Are you applying for yourself or are you a supervisor/instructor?',
+              answers: ['Myself'],
+            }}
+          />
+        )}
         <SchoolAffiliationFrame
+          isLearner={application.applicantType === ApplicantType.LEARNER}
           schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
           schoolDepartment={
             (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'
           }
           license={application.license || 'N/A'}
+          desiredExperience={application.desiredExperience || 'N/A'}
           areaOfInterest={
             Array.isArray(application.interest)
               ? application.interest.join(', ')
@@ -241,41 +269,17 @@ const CandidateViewApplication: React.FC = () => {
               }}
             />
           )}
-
         <QuestionFrame
           frameProps={{
             question: 'How did you hear about us?',
             answers: application.heardAboutFrom,
           }}
         />
-        <QuestionFrame
-          frameProps={{
-            question: 'Other than English, what languages do you speak?',
-            answers: application.nonEnglishLangs
-              ? [application.nonEnglishLangs]
-              : [],
-          }}
+        <EmergencyContactFrame
+          name={application.emergencyContactName}
+          phone={application.emergencyContactPhone}
+          relationship={application.emergencyContactRelationship}
         />
-        {application.applicantType === ApplicantType.LEARNER &&
-        learnerInfo !== null ? (
-          <QuestionFrame
-            frameProps={{
-              question:
-                'Are you applying for yourself or are you a supervisor/instructor?',
-              answers: [
-                learnerInfo.isSupervisorApplying ? 'Supervisor' : 'Myself',
-              ],
-            }}
-          />
-        ) : (
-          <QuestionFrame
-            frameProps={{
-              question:
-                'Are you applying for yourself or are you a supervisor/instructor?',
-              answers: ['Myself'],
-            }}
-          />
-        )}
       </Box>
     </div>
   );

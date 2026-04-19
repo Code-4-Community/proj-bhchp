@@ -9,9 +9,8 @@ import RequireRole from './auth/RequireRole';
 import RoleHomeRedirect from './auth/RoleHomeRedirect';
 import { UserType } from './api/types';
 import Login from './containers/login';
-import Signup from './containers/signup';
-import Logout from './containers/logout';
 import FormsPage from '@containers/FormsPage';
+import CreateNewAdmin from '@containers/CreateNewAdmin';
 
 export const App: React.FC = () => {
   return (
@@ -24,8 +23,6 @@ export const App: React.FC = () => {
       >
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/logout" element={<Logout />} />
 
           <Route element={<RequireAuth />}>
             <Route path="/" element={<RoleHomeRedirect />} />
@@ -40,6 +37,7 @@ export const App: React.FC = () => {
                   element={<AdminViewApplication />}
                 />
                 <Route path="settings" />
+                <Route path="create" element={<CreateNewAdmin />} />
               </Route>
             </Route>
 

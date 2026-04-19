@@ -6,7 +6,7 @@ import usersIcon from '../assets/icons/users.svg';
 import clockIcon from '../assets/icons/clock.svg';
 import crossIcon from '../assets/icons/cross.svg';
 import checkmarkIcon from '../assets/icons/checkmark.svg';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, Spinner, Text } from '@chakra-ui/react';
 import { useState } from 'react';
 import PageTransitionButton from '@components/PageTransitionButton';
 import Searchbar from '@components/TableSearchBar';
@@ -19,6 +19,7 @@ import {
   useRejectedApplicationsCount,
   useTotalApplicationsCount,
 } from '@api/apiClient';
+import { useApplications } from '@hooks/useApplications';
 
 const AdminLanding: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,10 +29,12 @@ const AdminLanding: React.FC = () => {
   const { count: inReviewCount } = useInReviewApplicationsCount();
   const { count: rejectedCount } = useRejectedApplicationsCount();
   const { count: approvedCount } = useApprovedApplicationsCount();
+  const { applications, loading, error } = useApplications();
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSearchQuery(e.target.value);
   }
+
   return (
     <div className="flex flex-row h-screen overflow-hidden">
       <NavBar logo={'BHCHP'} userType={UserType.ADMIN} />
@@ -108,7 +111,14 @@ const AdminLanding: React.FC = () => {
             transition: 'padding-right 0.2s ease',
           }}
         >
-          <ApplicationTable searchQuery={searchQuery} />
+          {loading && <Spinner size="xl" alignSelf="center" mt="10" />}
+          {error && <Text color="red.500">{error}</Text>}
+          {!loading && !error && (
+            <ApplicationTable
+              applications={applications}
+              searchQuery={searchQuery}
+            />
+          )}
         </Box>
 
         <Flex justify="space-between" align="center" mt="4" mb="4">

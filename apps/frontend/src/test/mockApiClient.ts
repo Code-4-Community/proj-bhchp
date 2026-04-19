@@ -26,6 +26,7 @@ export function createMockApiClientModule(
       approved: number;
     };
     getHelloValue: string;
+    provisionAdmin: ReturnType<typeof vi.fn>;
   }>,
 ) {
   const counts = overrides?.dashboardCounts ?? {
@@ -38,9 +39,13 @@ export function createMockApiClientModule(
   return {
     default: {
       getHello: vi.fn().mockResolvedValue(overrides?.getHelloValue ?? 'Hello'),
+      getApplications: vi.fn().mockResolvedValue([]),
       getApplication: vi.fn(),
+      getApplicants: vi.fn().mockResolvedValue([]),
       getLearnerInfo: vi.fn(),
       getCurrentUser: vi.fn().mockResolvedValue(null),
+      provisionAdmin:
+        overrides?.provisionAdmin ?? vi.fn().mockResolvedValue(undefined),
       updateAvailability: vi.fn(),
       getTotalApplicationsCount: vi.fn().mockResolvedValue(counts.total),
       getInReviewApplicationsCount: vi.fn().mockResolvedValue(counts.inReview),

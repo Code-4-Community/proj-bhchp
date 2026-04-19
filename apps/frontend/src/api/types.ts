@@ -40,6 +40,17 @@ export enum ApplicantType {
 }
 
 /**
+ * Type of experience the applicant is seeking.
+ */
+export enum DesiredExperience {
+  PRE_LICENSURE_PLACEMENT = 'Pre-Licensure Placement (NP/PA, Nursing, Behavioral Health, Psychiatry)',
+  PRACTICUM = 'Practicum',
+  PUBLIC_HEALTH_PROJECT = 'Public Health Project',
+  SHADOWING = 'Shadowing',
+  VOLUNTEER_INTERN = 'Volunteer/Intern',
+}
+
+/**
  * Phone number regex pattern for ###-###-#### format validation
  * @see https://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number
  */
@@ -83,6 +94,8 @@ export interface AvailabilityFields {
 export interface Application extends AvailabilityFields {
   appId: number;
   email: string;
+  proposedStartDate: string;
+  actualStartDate?: string;
   discipline: DISCIPLINE_VALUES;
   otherDisciplineDescription?: string;
   appStatus: AppStatus;
@@ -101,7 +114,7 @@ export interface Application extends AvailabilityFields {
   weeklyHours: number;
   pronouns: string;
   nonEnglishLangs?: string;
-  desiredExperience: string;
+  desiredExperience: DesiredExperience;
   elaborateOtherDiscipline?: string;
   resume: string;
   coverLetter: string;
@@ -109,8 +122,6 @@ export interface Application extends AvailabilityFields {
   emergencyContactPhone: string;
   emergencyContactRelationship: string;
   heardAboutFrom: HeardAboutFrom[];
-  proposedStartDate: Date;
-  actualStartDate?: Date;
   endDate?: Date;
 }
 
@@ -153,4 +164,41 @@ export interface User {
 export interface CandidateInfo {
   email: string;
   appId: number;
+}
+
+export interface ProvisionAdminRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  discipline: DISCIPLINE_VALUES;
+}
+
+export interface ProvisionAdminResponse {
+  mode: 'live';
+  status:
+    | 'SUCCESS'
+    | 'COGNITO_CREATE_FAILED'
+    | 'DATABASE_WRITE_FAILED_ROLLED_BACK'
+    | 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED';
+  cognito: {
+    attemptedCreate: boolean;
+    attemptedRollback: boolean;
+    cognitoUsername?: string;
+    userStatus?: string;
+    rollbackSucceeded?: boolean;
+  };
+  database: {
+    attemptedTransaction: boolean;
+    committed: boolean;
+  };
+  records: {
+    user: User;
+    adminInfo: {
+      email: string;
+      discipline: DISCIPLINE_VALUES;
+      createdAt: string;
+      updatedAt: string;
+    };
+  } | null;
+  notes: string[];
 }

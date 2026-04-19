@@ -5,7 +5,12 @@ import { NotFoundException } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
-import { AppStatus, InterestArea, ApplicantType } from './types';
+import {
+  AppStatus,
+  InterestArea,
+  ApplicantType,
+  DesiredExperience,
+} from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
@@ -30,8 +35,7 @@ const dummyApplication: Application = {
   weeklyHours: 20,
   pronouns: 'they/them',
   nonEnglishLangs: 'some french, native spanish speaker',
-  desiredExperience:
-    'I want to give back to the boston community and learn to talk better with patients',
+  desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
   emergencyContactName: 'Jane Doe',
@@ -60,8 +64,7 @@ const dummyCreateApplicationDto: CreateApplicationDto = {
   weeklyHours: 20,
   pronouns: 'they/them',
   nonEnglishLangs: 'some chinese',
-  desiredExperience:
-    'I want to give back to the boston community and learn to talk better with patients',
+  desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
   emergencyContactName: 'Jane Doe',
@@ -198,6 +201,32 @@ describe('ApplicationsService', () => {
       });
       expect(result).toBe(102);
     });
+
+    it('should pass along repository errors for total count', async () => {
+      mockRepository.count.mockRejectedValueOnce(new Error('Count failed'));
+
+      await expect(service.countAll()).rejects.toThrow('Count failed');
+    });
+
+    it('should pass along repository errors for in-review count', async () => {
+      mockRepository.count.mockRejectedValueOnce(new Error('Count failed'));
+
+      await expect(service.countInReview()).rejects.toThrow('Count failed');
+    });
+
+    it('should pass along repository errors for rejected count', async () => {
+      mockRepository.count.mockRejectedValueOnce(new Error('Count failed'));
+
+      await expect(service.countRejected()).rejects.toThrow('Count failed');
+    });
+
+    it('should pass along repository errors for approved or active count', async () => {
+      mockRepository.count.mockRejectedValueOnce(new Error('Count failed'));
+
+      await expect(service.countApprovedOrActive()).rejects.toThrow(
+        'Count failed',
+      );
+    });
   });
 
   describe('findById', () => {
@@ -244,8 +273,7 @@ describe('ApplicationsService', () => {
         weeklyHours: 20,
         pronouns: 'they/them',
         nonEnglishLangs: 'none',
-        desiredExperience:
-          'I want to give back to the boston community and learn to talk better with patients',
+        desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
         emergencyContactName: 'Jane Doe',
@@ -448,6 +476,16 @@ describe('ApplicationsService', () => {
         'Failed to send email',
       );
     });
+    it('should not accept weekly hours greater than one week', async () => {
+      const createApplicationDto: CreateApplicationDto = {
+        ...dummyCreateApplicationDto,
+        weeklyHours: 169,
+      };
+
+      await expect(service.create(createApplicationDto)).rejects.toThrow(
+        'Weekly hours must be greater than 0 and less than 7 * 24 hours',
+      );
+    });
   });
 
   describe('update', () => {
@@ -606,6 +644,12 @@ describe('ApplicationsService', () => {
       );
     });
 
+    it('should throw error if application id is missing', async () => {
+      await expect(
+        service.updateProposedStartDate(0, updatedproposedStartDate),
+      ).rejects.toThrow('Application ID is required');
+    });
+
     it('should throw error if start date is invalid', async () => {
       await expect(
         service.updateProposedStartDate(1, new Date('not-a-date')),
@@ -685,6 +729,12 @@ describe('ApplicationsService', () => {
       );
     });
 
+    it('should throw error if application id is missing', async () => {
+      await expect(
+        service.updateActualStartDate(0, updatedproposedStartDate),
+      ).rejects.toThrow('Application ID is required');
+    });
+
     it('should throw error if start date is invalid', async () => {
       await expect(
         service.updateActualStartDate(1, new Date('not-a-date')),
@@ -761,6 +811,12 @@ describe('ApplicationsService', () => {
       );
     });
 
+    it('should throw error if application id is missing', async () => {
+      await expect(service.updateEndDate(0, updatedEndDate)).rejects.toThrow(
+        'Application ID is required',
+      );
+    });
+
     it('should throw error if end date is invalid', async () => {
       await expect(
         service.updateEndDate(1, new Date('not-a-date')),
@@ -813,6 +869,17 @@ describe('ApplicationsService', () => {
       });
       expect(repository.remove).not.toHaveBeenCalled();
     });
+
+    it('should pass along repository remove errors during delete', async () => {
+      mockRepository.findOne.mockResolvedValue(dummyApplication);
+      mockRepository.remove.mockRejectedValueOnce(
+        new Error('There was a problem removing the info'),
+      );
+
+      await expect(service.delete(1)).rejects.toThrow(
+        'There was a problem removing the info',
+      );
+    });
   });
 
   describe('findByDiscipline', () => {
@@ -838,8 +905,7 @@ describe('ApplicationsService', () => {
           weeklyHours: 20,
           pronouns: 'they/them',
           nonEnglishLangs: 'some french, native spanish speaker',
-          desiredExperience:
-            'I want to give back to the boston community and learn to talk better with patients',
+          desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
           resume: 'janedoe_resume_2_6_2026.pdf',
           coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
           emergencyContactName: 'Jane Doe',
@@ -867,8 +933,7 @@ describe('ApplicationsService', () => {
           weeklyHours: 20,
           pronouns: 'they/them',
           nonEnglishLangs: 'some french, native spanish speaker',
-          desiredExperience:
-            'I want to give back to the boston community and learn to talk better with patients',
+          desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
           resume: 'janedoe_resume_2_6_2026.pdf',
           coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
           emergencyContactName: 'Jane Doe',
@@ -1099,6 +1164,100 @@ describe('ApplicationsService', () => {
       await expect(service.updateStatus(1, AppStatus.ACCEPTED)).rejects.toThrow(
         'Failed to send email',
       );
+    });
+
+    it('should use the database user name in title case when available', async () => {
+      mockRepository.findOne.mockResolvedValue(dummyApplication);
+      mockRepository.save.mockResolvedValue({
+        ...dummyApplication,
+        appStatus: AppStatus.ACCEPTED,
+      });
+      mockUsersService.findOne.mockResolvedValueOnce({
+        email: dummyApplication.email,
+        firstName: 'jANE',
+        lastName: 'doE',
+        userType: 'STANDARD',
+      });
+
+      await service.updateStatus(1, AppStatus.ACCEPTED);
+
+      expect(mockEmailService.queueEmail).toHaveBeenCalledWith(
+        dummyApplication.email,
+        'Your Application Has Been Updated',
+        expect.stringContaining('Hello Jane Doe'),
+      );
+    });
+  });
+
+  describe('private helpers', () => {
+    it('should validate application dto phone and hours', () => {
+      expect(() =>
+        (
+          service as unknown as {
+            validateApplicationDto: (dto: CreateApplicationDto) => void;
+          }
+        ).validateApplicationDto(dummyCreateApplicationDto),
+      ).not.toThrow();
+    });
+
+    it('should throw for invalid private application dto validation', () => {
+      expect(() =>
+        (
+          service as unknown as {
+            validateApplicationDto: (dto: CreateApplicationDto) => void;
+          }
+        ).validateApplicationDto({
+          ...dummyCreateApplicationDto,
+          phone: 'bad-phone',
+        }),
+      ).toThrow('Phone number must be in ###-###-#### format');
+    });
+
+    it('should validate private discipline helper', () => {
+      expect(() =>
+        (
+          service as unknown as {
+            validateDiscipline: (discipline: string) => void;
+          }
+        ).validateDiscipline(DISCIPLINE_VALUES.RN),
+      ).not.toThrow();
+    });
+
+    it('should throw for invalid private discipline helper input', () => {
+      expect(() =>
+        (
+          service as unknown as {
+            validateDiscipline: (discipline: string) => void;
+          }
+        ).validateDiscipline('Invalid'),
+      ).toThrow('Invalid discipline: Invalid');
+    });
+
+    it('should build and escape the submission error email body', () => {
+      const result = (
+        service as unknown as {
+          buildApplicationSubmissionErrorEmailBody: (
+            applicantName: string,
+            applicantDto: CreateApplicationDto,
+            errorMessage: string,
+            pandaDocLink: string,
+          ) => string;
+        }
+      ).buildApplicationSubmissionErrorEmailBody(
+        'Jane Applicant',
+        {
+          ...dummyCreateApplicationDto,
+          emergencyContactName: '<script>alert("x")</script>',
+        },
+        'Bad field: <invalid>',
+        'https://example.com/form?x=<bad>',
+      );
+
+      expect(result).toContain('Hello Jane Applicant');
+      expect(result).toContain('Bad field: &lt;invalid&gt;');
+      expect(result).toContain('&lt;script&gt;alert(');
+      expect(result).toContain('&lt;/script&gt;');
+      expect(result).toContain('href="https://example.com/form?x=&lt;bad&gt;"');
     });
   });
 });

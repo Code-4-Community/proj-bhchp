@@ -8,9 +8,13 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-import { signInWithEmailPassword, signOutUser } from '../auth/cognito';
+import {
+  confirmSignInWithNewPassword,
+  signInWithEmailPassword,
+  signOutUser,
+} from '../auth/cognito';
 import {
   fetchAndStoreCurrentSessionUserType,
   getCurrentSessionUserType,
@@ -26,14 +30,33 @@ const Login: React.FC = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isNewPasswordRequired, setIsNewPasswordRequired] = useState(false);
 
   const landingForUserType = useCallback((userType: UserType): string => {
     return userType === UserType.ADMIN
       ? '/admin/landing'
       : '/candidate/view-application';
   }, []);
+
+  const completeBackendRoleResolution = useCallback(async (): Promise<void> => {
+    console.debug('[ui] Login: resolving backend userType after Cognito auth');
+    const userType = await fetchAndStoreCurrentSessionUserType();
+
+    console.debug('[ui] Login: fetchAndStoreCurrentSessionUserType returned', {
+      userType,
+    });
+
+    if (!userType) {
+      await signOutUser();
+      throw new Error('Unable to determine the account type for this user.');
+    }
+
+    navigate('/', { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     // If an existing session already has a backend userType cached, send the user
@@ -66,7 +89,32 @@ const Login: React.FC = () => {
 
     try {
       console.debug('[ui] Login: attempting signIn', { email });
-      await signInWithEmailPassword(email.trim(), password);
+      const signInResult = await signInWithEmailPassword(
+        email.trim(),
+        password,
+      );
+
+      if (signInResult.kind === 'NEW_PASSWORD_REQUIRED') {
+        console.debug(
+          '[ui] Login: Cognito requires a new password before routing',
+        );
+        setIsNewPasswordRequired(true);
+        setLoading(false);
+        return;
+      }
+
+      if (signInResult.kind === 'UNSUPPORTED_CHALLENGE') {
+        console.error('[ui] Login: unsupported Cognito sign-in challenge', {
+          signInStep: signInResult.signInStep,
+        });
+        setError(
+          signInResult.signInStep
+            ? `This sign-in flow requires an unsupported challenge (${signInResult.signInStep}).`
+            : 'This sign-in flow requires an unsupported Cognito challenge.',
+        );
+        setLoading(false);
+        return;
+      }
     } catch (err: unknown) {
       const message =
         err instanceof Error
@@ -79,23 +127,7 @@ const Login: React.FC = () => {
     }
 
     try {
-      console.debug('[ui] Login: signIn succeeded, fetching backend userType');
-      // Cognito confirms the identity here; the backend determines whether
-      // that identity maps to an ADMIN or STANDARD user in this app.
-      const userType = await fetchAndStoreCurrentSessionUserType();
-
-      console.debug(
-        '[ui] Login: fetchAndStoreCurrentSessionUserType returned',
-        { userType },
-      );
-
-      if (!userType) {
-        await signOutUser();
-        setError('Unable to determine the account type for this user.');
-        return;
-      }
-
-      navigate('/', { replace: true });
+      await completeBackendRoleResolution();
     } catch (err: unknown) {
       await signOutUser().catch(() => undefined);
 
@@ -115,6 +147,37 @@ const Login: React.FC = () => {
     }
   };
 
+  const onNewPasswordSubmit = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+
+    if (newPassword !== confirmNewPassword) {
+      setError('New password and confirmation must match.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await confirmSignInWithNewPassword(newPassword);
+      await completeBackendRoleResolution();
+    } catch (err: unknown) {
+      await signOutUser().catch(() => undefined);
+      setIsNewPasswordRequired(false);
+
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Unable to finish setting the new password.';
+      setError(message);
+      console.error('[ui] Login: new-password challenge failed', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box
       minH="100vh"
@@ -123,40 +186,83 @@ const Login: React.FC = () => {
       justifyContent="center"
       px="4"
     >
-      <form onSubmit={onSubmit} style={{ width: '100%', maxWidth: '420px' }}>
+      <form
+        onSubmit={isNewPasswordRequired ? onNewPasswordSubmit : onSubmit}
+        style={{ width: '100%', maxWidth: '420px' }}
+      >
         <Box w="100%" p="8" borderWidth="1px" borderRadius="md">
           <Stack gap="4">
-            <Heading size="lg">Sign In</Heading>
-            <Text color="gray.600">Use your Cognito account to continue.</Text>
-
-            {error ? <Alert.Root status="error">{error}</Alert.Root> : null}
-
-            <Input
-              type="email"
-              name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              required
-              autoComplete="email"
-            />
-
-            <Input
-              type="password"
-              name="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              required
-              autoComplete="current-password"
-            />
-
-            <Button type="submit" loading={loading} colorPalette="blue">
-              Sign In
-            </Button>
-            <Text>
-              <RouterLink to="/signup">Create an account</RouterLink>
+            <Heading size="lg">
+              {isNewPasswordRequired ? 'Set Your Password' : 'Sign In'}
+            </Heading>
+            <Text color="gray.600">
+              {isNewPasswordRequired
+                ? 'Create a new password to finish signing in with your invited admin account.'
+                : 'Use your Cognito account to continue.'}
             </Text>
+
+            {error ? (
+              <Alert.Root status="error">
+                <Alert.Indicator />
+                <Alert.Content>
+                  <Alert.Description>{error}</Alert.Description>
+                </Alert.Content>
+              </Alert.Root>
+            ) : null}
+
+            {!isNewPasswordRequired ? (
+              <>
+                <Input
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  required
+                  autoComplete="email"
+                />
+
+                <Input
+                  type="password"
+                  name="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  autoComplete="current-password"
+                />
+
+                <Button type="submit" loading={loading} colorPalette="blue">
+                  Sign In
+                </Button>
+              </>
+            ) : (
+              <>
+                <Input
+                  type="password"
+                  name="newPassword"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="New Password"
+                  required
+                  autoComplete="new-password"
+                />
+
+                <Input
+                  type="password"
+                  name="confirmNewPassword"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="Confirm New Password"
+                  required
+                  autoComplete="new-password"
+                />
+
+                <Button type="submit" loading={loading} colorPalette="blue">
+                  Set Password
+                </Button>
+              </>
+            )}
           </Stack>
         </Box>
       </form>

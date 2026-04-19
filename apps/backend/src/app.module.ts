@@ -14,6 +14,7 @@ import { ConfigModule } from '@nestjs/config';
 import { DisciplinesModule } from './disciplines/disciplines.module';
 import { AdminInfoModule } from './admin-info/admin-info.module';
 import { CandidateInfoModule } from './candidate-info/candidate-info.module';
+import { AdminProvisioningModule } from './admin-provisioning/admin-provisioning.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CandidateInfoModule } from './candidate-info/candidate-info.module';
     TypeOrmModule.forFeature([Application]),
     DisciplinesModule,
     CandidateInfoModule,
+    AdminProvisioningModule,
     LearnerInfoModule,
     ApplicationsModule,
   ],

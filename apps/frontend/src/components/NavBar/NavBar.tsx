@@ -1,13 +1,15 @@
 import React from 'react';
-import { Box, Heading, Flex, Link, Text } from '@chakra-ui/react';
+import { Box, Heading, Flex } from '@chakra-ui/react';
 import NavbarItem from './NavBarItem';
 import {
   FaHouse,
   FaPerson,
   FaRegFile,
   FaRightFromBracket,
+  FaUserPlus,
 } from 'react-icons/fa6';
 import { UserType } from '@api/types';
+import { signOutUser } from '../../auth/cognito';
 
 export type NavBarProps = {
   logo: React.ReactNode;
@@ -15,6 +17,17 @@ export type NavBarProps = {
 };
 
 export default function NavBar({ logo, userType }: NavBarProps) {
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Sign out failed', err);
+    } finally {
+      window.location.replace('/login');
+    }
+  };
+
   return (
     <Box
       display="flex"
@@ -36,9 +49,16 @@ export default function NavBar({ logo, userType }: NavBarProps) {
         <Flex direction="column" width="100%" paddingTop="16px">
           {userType === UserType.ADMIN && (
             <NavbarItem
-              href="#dashboard"
+              href="/admin/landing"
               label="Dashboard"
               icon={<FaHouse />}
+            />
+          )}
+          {userType === UserType.ADMIN && (
+            <NavbarItem
+              href="/admin/create"
+              label="Create New Admin"
+              icon={<FaUserPlus />}
             />
           )}
           {userType === UserType.STANDARD && (
@@ -59,7 +79,7 @@ export default function NavBar({ logo, userType }: NavBarProps) {
       </Box>
 
       <NavbarItem
-        href="/logout"
+        onClick={handleLogout}
         label="Log Out"
         icon={<FaRightFromBracket />}
       />

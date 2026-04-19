@@ -43,4 +43,47 @@ describe('EmailService', () => {
       service.queueEmail('recipient@email.com', 'Subject', '<h1>body</h1>'),
     ).rejects.toThrow('Error in sending email.');
   });
+
+  it('should call the private sendEmail helper with attachments', async () => {
+    mockAmazonSESWrapper.sendEmails.mockResolvedValue({
+      MessageId: 'test',
+      $metadata: {},
+    });
+
+    const attachments = [
+      {
+        filename: 'resume.pdf',
+        content: Buffer.from('test'),
+        contentType: 'application/pdf',
+      },
+    ];
+
+    await expect(
+      (
+        service as unknown as {
+          sendEmail: (
+            recipientEmail: string,
+            subject: string,
+            bodyHTML: string,
+            attachments?: unknown[],
+          ) => Promise<unknown>;
+        }
+      ).sendEmail(
+        'recipient@email.com',
+        'Subject',
+        '<h1>body</h1>',
+        attachments,
+      ),
+    ).resolves.toEqual({
+      MessageId: 'test',
+      $metadata: {},
+    });
+
+    expect(mockAmazonSESWrapper.sendEmails).toHaveBeenCalledWith(
+      ['recipient@email.com'],
+      'Subject',
+      '<h1>body</h1>',
+      attachments,
+    );
+  });
 });

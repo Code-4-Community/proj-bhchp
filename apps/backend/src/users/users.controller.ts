@@ -31,6 +31,24 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   /**
+   * Exposes an endpoint to get all users.
+   * @returns {User[]} All users in the system.
+   */
+  @Get()
+  async getAllUsers(): Promise<User[]> {
+    return this.usersService.findAll();
+  }
+
+  /**
+   * Exposes an endpoint to get all users of standard type.
+   * @returns {User[]} All users in the system of standard type.
+   */
+  @Get('standard')
+  async getAllStandardUsers(): Promise<User[]> {
+    return this.usersService.findStandard();
+  }
+
+  /**
    * Exposes an endpoint to get a user's information by their email.
    * @param email The email of the desired user (URL-encoded).
    * @returns {User} The user with the corresponding email or null if not found.
