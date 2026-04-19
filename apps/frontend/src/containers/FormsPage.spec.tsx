@@ -84,7 +84,7 @@ describe('FormsPage', () => {
     );
   });
 
-  it('uploads a pdf and then shows preview state', async () => {
+  it('uploads a pdf and does not show Preview', async () => {
     const { container } = renderFormsPage();
 
     await screen.findByText('Download Template');
