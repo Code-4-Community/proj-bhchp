@@ -178,9 +178,8 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                           cursor="pointer"
                           borderBottom="1px solid"
                           borderColor="gray.100"
-                          bg={isOpen ? '#173685' : 'transparent'}
-                          color={isOpen ? 'white' : 'gray.800'}
-                          _hover={{ bg: isOpen ? '#173685' : 'gray.50' }}
+                          bg="#173685"
+                          color="white"
                         >
                           {/* Caret dropdown */}
                           <Box
