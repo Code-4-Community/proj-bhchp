@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import Login from './login';
-import { UserType } from '../api/types';
+import { DISCIPLINE_VALUES, UserType } from '../api/types';
 
 const { signInWithEmailPasswordMock, confirmSignInWithNewPasswordMock } =
   vi.hoisted(() => ({
@@ -20,6 +20,10 @@ const {
   getCurrentSessionUserTypeMock: vi.fn(),
 }));
 
+const { prefetchDisciplineAdminMapMock } = vi.hoisted(() => ({
+  prefetchDisciplineAdminMapMock: vi.fn(),
+}));
+
 vi.mock('../auth/cognito', () => ({
   signInWithEmailPassword: signInWithEmailPasswordMock,
   confirmSignInWithNewPassword: confirmSignInWithNewPasswordMock,
@@ -29,6 +33,10 @@ vi.mock('../auth/cognito', () => ({
 vi.mock('../auth/current-session-user-type', () => ({
   fetchAndStoreCurrentSessionUserType: fetchAndStoreCurrentSessionUserTypeMock,
   getCurrentSessionUserType: getCurrentSessionUserTypeMock,
+}));
+
+vi.mock('@utils/disciplineAdminCache', () => ({
+  prefetchDisciplineAdminMap: prefetchDisciplineAdminMapMock,
 }));
 
 function renderLogin() {
@@ -73,6 +81,10 @@ describe('Login', () => {
     await waitFor(() => {
       expect(fetchAndStoreCurrentSessionUserTypeMock).toHaveBeenCalledTimes(1);
     });
+    expect(prefetchDisciplineAdminMapMock).toHaveBeenCalledWith(
+      undefined,
+      Object.values(DISCIPLINE_VALUES),
+    );
     expect(confirmSignInWithNewPasswordMock).not.toHaveBeenCalled();
   });
 

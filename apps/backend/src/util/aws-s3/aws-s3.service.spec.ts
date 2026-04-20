@@ -9,6 +9,7 @@ import {
   S3ServiceException,
   waitUntilObjectNotExists,
   PutObjectCommand,
+  PutObjectCommandInput,
   GetObjectCommand,
   NoSuchKey,
 } from '@aws-sdk/client-s3';

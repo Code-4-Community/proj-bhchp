@@ -18,6 +18,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { UserType } from '../users/types';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { DisciplineAdminMap } from './admin-info.service';
 
 /**
  * Controller to expose callable HTTP endpoints to interface
@@ -29,6 +30,16 @@ import { Roles } from '../auth/roles.decorator';
 @Roles(UserType.ADMIN)
 export class AdminInfoController {
   constructor(private readonly adminsService: AdminInfoService) {}
+
+  /**
+   * Exposes an endpoint that returns one admin per discipline.
+   * For disciplines with multiple admins, the oldest admin record is selected.
+   * @returns a discipline -> admin name map used by admin landing table rendering.
+   */
+  @Get('discipline-admin-map')
+  async getDisciplineAdminMap(): Promise<DisciplineAdminMap> {
+    return await this.adminsService.getOldestDisciplineAdminMap();
+  }
 
   /**
    * Exposes an endpoint to create an admin in the system.

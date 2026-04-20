@@ -16,6 +16,8 @@ const mockApplications: ApplicationRow[] = [
     proposedStartDate: '2026-01-15',
     actualStartDate: '2026-02-01',
     discipline: 'RN',
+    disciplineAdminName: 'Alex Kim',
+    desiredExperience: 'Shadowing',
     applicantType: 'Learner',
     status: 'App Submitted',
   },
@@ -26,6 +28,8 @@ const mockApplications: ApplicationRow[] = [
     proposedStartDate: '2026-03-01',
     actualStartDate: '',
     discipline: 'Social Work',
+    disciplineAdminName: 'Jo Rivera',
+    desiredExperience: 'Public Health Project',
     applicantType: 'Volunteer',
     status: 'Accepted',
   },
@@ -40,6 +44,8 @@ describe('ApplicationTable', () => {
       'Proposed Date',
       'Actual Start Date',
       'Discipline',
+      'Discipline Admin',
+      'Desired Experience',
       'Applicant Type',
       'Status',
     ];
@@ -56,6 +62,8 @@ describe('ApplicationTable', () => {
     expect(screen.getByText('John Smith')).toBeDefined();
     expect(screen.getByText('RN')).toBeDefined();
     expect(screen.getByText('Social Work')).toBeDefined();
+    expect(screen.getByText('Alex Kim')).toBeDefined();
+    expect(screen.getByText('Jo Rivera')).toBeDefined();
     expect(screen.getByText('Learner')).toBeDefined();
     expect(screen.getByText('Volunteer')).toBeDefined();
     expect(screen.getByText('Submitted')).toBeDefined();

@@ -167,6 +167,20 @@ export interface CandidateInfo {
   appId: number;
 }
 
+export interface AdminInfo {
+  email: string;
+  discipline: DISCIPLINE_VALUES;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DisciplineAdmin {
+  firstName: string;
+  lastName: string;
+}
+
+export type DisciplineAdminMap = Record<string, DisciplineAdmin>;
+
 export interface ProvisionAdminRequest {
   email: string;
   firstName: string;

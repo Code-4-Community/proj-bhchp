@@ -19,7 +19,8 @@ import {
   fetchAndStoreCurrentSessionUserType,
   getCurrentSessionUserType,
 } from '../auth/current-session-user-type';
-import { UserType } from '../api/types';
+import { DISCIPLINE_VALUES, UserType } from '../api/types';
+import { prefetchDisciplineAdminMap } from '@utils/disciplineAdminCache';
 
 /**
  * Sign-in screen that authenticates with Cognito and resolves backend role
@@ -53,6 +54,13 @@ const Login: React.FC = () => {
     if (!userType) {
       await signOutUser();
       throw new Error('Unable to determine the account type for this user.');
+    }
+
+    if (userType === UserType.ADMIN) {
+      void prefetchDisciplineAdminMap(
+        undefined,
+        Object.values(DISCIPLINE_VALUES),
+      );
     }
 
     navigate('/', { replace: true });

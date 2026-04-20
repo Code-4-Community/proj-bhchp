@@ -11,6 +11,7 @@ const mockAdminInfoService = {
   create: jest.fn(),
   findOne: jest.fn(),
   findByEmail: jest.fn(),
+  getOldestDisciplineAdminMap: jest.fn(),
   updateEmail: jest.fn(),
   remove: jest.fn(),
 };
@@ -71,6 +72,20 @@ describe('AdminInfoController', () => {
 
     await expect(controller.create(dto)).resolves.toEqual(mockAdminInfo);
     expect(mockAdminInfoService.create).toHaveBeenCalledWith(dto);
+  });
+
+  it('should return the discipline-admin map', async () => {
+    const map = {
+      [DISCIPLINE_VALUES.RN]: { firstName: 'Alex', lastName: 'Kim' },
+      [DISCIPLINE_VALUES.SocialWork]: {
+        firstName: 'Jo',
+        lastName: 'Rivera',
+      },
+    };
+    mockAdminInfoService.getOldestDisciplineAdminMap.mockResolvedValue(map);
+
+    await expect(controller.getDisciplineAdminMap()).resolves.toEqual(map);
+    expect(mockAdminInfoService.getOldestDisciplineAdminMap).toHaveBeenCalled();
   });
 
   it('should find an admin by email', async () => {

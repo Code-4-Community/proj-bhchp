@@ -809,9 +809,7 @@ describe('ApplicationsController', () => {
       const mockFile = {
         buffer: Buffer.from('pdf'),
         mimetype: 'application/pdf',
-      } as Parameters<
-        ApplicationsController['uploadCurrentUserConfidentialityForm']
-      >[1];
+      };
 
       await expect(
         controller.uploadCurrentUserConfidentialityForm(

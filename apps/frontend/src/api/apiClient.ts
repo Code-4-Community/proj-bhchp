@@ -3,6 +3,7 @@ import axios, { type AxiosInstance } from 'axios';
 import { getIdToken } from '../auth/cognito';
 import { useCallback, useEffect, useState } from 'react';
 import {
+  AdminInfo,
   Application,
   AppStatus,
   AvailabilityFields,
@@ -13,6 +14,7 @@ import {
   ProvisionAdminRequest,
   ProvisionAdminResponse,
   UploadConfidentialityFormResponse,
+  DisciplineAdminMap,
   User,
 } from './types';
 
@@ -57,6 +59,16 @@ export class ApiClient {
     return this.get('/api/applications') as Promise<Application[]>;
   }
 
+  public async getApplicationsByDiscipline(
+    discipline: string,
+  ): Promise<Application[]> {
+    return this.get(
+      `/api/applications/by-discipline?discipline=${encodeURIComponent(
+        discipline,
+      )}`,
+    ) as Promise<Application[]>;
+  }
+
   public async getApplication(appId: number): Promise<Application> {
     return this.get(`/api/applications/${appId}`) as Promise<Application>;
   }
@@ -77,6 +89,18 @@ export class ApiClient {
 
   public async getUser(email: string): Promise<User> {
     return this.get(`/api/users/email/${email}`) as Promise<User>;
+  }
+
+  public async getAdminInfoByEmail(email: string): Promise<AdminInfo | null> {
+    return this.get(
+      `/api/admin-info/by-email/${encodeURIComponent(email)}`,
+    ) as Promise<AdminInfo | null>;
+  }
+
+  public async getDisciplineAdminMap(): Promise<DisciplineAdminMap> {
+    return this.get(
+      '/api/admin-info/discipline-admin-map',
+    ) as Promise<DisciplineAdminMap>;
   }
 
   public async provisionAdmin(
