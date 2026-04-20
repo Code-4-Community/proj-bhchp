@@ -9,6 +9,7 @@ import {
   S3ServiceException,
   waitUntilObjectNotExists,
   PutObjectCommand,
+  PutObjectCommandInput,
   GetObjectCommand,
   NoSuchKey,
 } from '@aws-sdk/client-s3';
@@ -60,7 +61,8 @@ describe('AWSS3Service', () => {
 
     const url = await service.upload(buffer, fileName, mimeType);
     const commandCall = s3Mock.call(0);
-    const uploadedKey = commandCall.args[0].input.Key;
+    const uploadedKey = (commandCall.args[0].input as PutObjectCommandInput)
+      .Key;
 
     expect(s3Mock.calls()).toHaveLength(1);
     expect(uploadedKey).toMatch(/^file-\d{13}-[a-z0-9]{6}\.pdf$/);
