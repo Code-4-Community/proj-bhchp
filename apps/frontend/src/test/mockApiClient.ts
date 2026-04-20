@@ -52,6 +52,9 @@ export function createMockApiClientModule(
         fileName: null,
         fileUrl: null,
       }),
+      // New API methods used by `useApplications` and admin views
+      getAdminInfoByEmail: vi.fn().mockResolvedValue(null),
+      getApplicationsByDiscipline: vi.fn().mockResolvedValue([]),
       uploadMyConfidentialityForm: vi.fn(),
       provisionAdmin:
         overrides?.provisionAdmin ?? vi.fn().mockResolvedValue(undefined),
