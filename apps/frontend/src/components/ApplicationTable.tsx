@@ -1,6 +1,11 @@
 import { Table } from '@chakra-ui/react';
 import type { ApplicationRow } from '@hooks/useApplications';
 import StatusPill, { StatusPillConfig, StatusVariant } from './StatusPill';
+import {
+  EMPTY_APPLICATION_FILTERS,
+  matchesApplicationFilters,
+  type ApplicationFilters,
+} from '@utils/applicationFilters';
 
 const COLUMNS = [
   'Name',
@@ -20,6 +25,7 @@ const PRE_LICENSURE_SHORT_LABEL = 'Pre-Licensure Placement';
 interface ApplicationTableProps {
   applications: ApplicationRow[];
   searchQuery?: string;
+  filters?: ApplicationFilters;
 }
 
 function formatDate(dateStr: string): string {
@@ -57,16 +63,23 @@ function formatDesiredExperience(value: string): string {
 export function ApplicationTable({
   applications,
   searchQuery = '',
+  filters = EMPTY_APPLICATION_FILTERS,
 }: ApplicationTableProps) {
   const filteredApplications = applications.filter((application) => {
-    if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
+      !searchQuery ||
       application.name.toLowerCase().includes(query) ||
       application.discipline.toLowerCase().includes(query) ||
       application.status.toLowerCase().includes(query) ||
-      application.email.toLowerCase().includes(query)
+      application.email.toLowerCase().includes(query);
+
+    const matchesStructuredFilters = matchesApplicationFilters(
+      application,
+      filters,
     );
+
+    return matchesSearch && matchesStructuredFilters;
   });
 
   return (
@@ -107,9 +120,13 @@ export function ApplicationTable({
               {titleCaseName(application.disciplineAdminName)}
             </Table.Cell>
             <Table.Cell>
-              <StatusPill variant={application.status as StatusVariant}>
-                {StatusPillConfig[application.status as StatusVariant].label}
-              </StatusPill>
+              {StatusPillConfig[application.status as StatusVariant] ? (
+                <StatusPill variant={application.status as StatusVariant}>
+                  {StatusPillConfig[application.status as StatusVariant].label}
+                </StatusPill>
+              ) : (
+                application.status
+              )}
             </Table.Cell>
           </Table.Row>
         ))}

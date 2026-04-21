@@ -20,16 +20,34 @@ import {
   useTotalApplicationsCount,
 } from '@api/apiClient';
 import { useApplications } from '@hooks/useApplications';
+import {
+  EMPTY_APPLICATION_FILTERS,
+  type ApplicationFilters,
+} from '@utils/applicationFilters';
 
 const AdminLanding: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [applicationFilters, setApplicationFilters] =
+    useState<ApplicationFilters>(EMPTY_APPLICATION_FILTERS);
   const { count: totalCount } = useTotalApplicationsCount();
   const { count: inReviewCount } = useInReviewApplicationsCount();
   const { count: rejectedCount } = useRejectedApplicationsCount();
   const { count: approvedCount } = useApprovedApplicationsCount();
   const { applications, loading, error } = useApplications();
+
+  const disciplineAdminOptions = Array.from(
+    new Set(
+      applications
+        .map((application) => application.disciplineAdminName)
+        .filter((name) => Boolean(name?.trim())),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  function onResetFilters() {
+    setApplicationFilters(EMPTY_APPLICATION_FILTERS);
+  }
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSearchQuery(e.target.value);
@@ -97,7 +115,14 @@ const AdminLanding: React.FC = () => {
           <Box flex="1">
             <Searchbar value={searchQuery} onChange={onChange}></Searchbar>
           </Box>
-          <FilterPopUp open={isFilterOpen} onOpenChange={setIsFilterOpen} />
+          <FilterPopUp
+            open={isFilterOpen}
+            onOpenChange={setIsFilterOpen}
+            filters={applicationFilters}
+            onFiltersChange={setApplicationFilters}
+            onResetFilters={onResetFilters}
+            disciplineAdminOptions={disciplineAdminOptions}
+          />
         </Flex>
 
         <Box
@@ -117,6 +142,7 @@ const AdminLanding: React.FC = () => {
             <ApplicationTable
               applications={applications}
               searchQuery={searchQuery}
+              filters={applicationFilters}
             />
           )}
         </Box>

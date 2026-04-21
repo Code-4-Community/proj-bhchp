@@ -26,7 +26,7 @@ export const StatusPillConfig: Record<
     border: '#B8AF98',
   },
   [StatusVariant.IN_REVIEW]: {
-    label: 'Review',
+    label: 'In Review',
     background: '#DBEAFE',
     border: '#2563EB',
   },
