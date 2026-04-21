@@ -28,6 +28,10 @@ interface FilterableApplication {
   actualStartDate: string;
 }
 
+export type ApplicationFilterPredicate = (
+  application: FilterableApplication,
+) => boolean;
+
 function normalizeText(value: string): string {
   return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
@@ -119,62 +123,82 @@ export function matchesApplicationFilters(
   application: FilterableApplication,
   filters: ApplicationFilters,
 ): boolean {
-  if (filters.statuses.length > 0) {
-    const allowedStatuses = new Set(
-      filters.statuses.map((status) => normalizeText(status)),
-    );
-    if (!allowedStatuses.has(normalizeText(application.status))) {
-      return false;
-    }
-  }
+  return compileApplicationFilterPredicate(filters)(application);
+}
 
-  if (filters.disciplines.length > 0) {
-    const allowedDisciplines = new Set(
-      filters.disciplines.map((discipline) => normalizeText(discipline)),
-    );
-    if (!allowedDisciplines.has(normalizeText(application.discipline))) {
-      return false;
-    }
-  }
+export function compileApplicationFilterPredicate(
+  filters: ApplicationFilters,
+): ApplicationFilterPredicate {
+  const allowedStatuses =
+    filters.statuses.length > 0
+      ? new Set(filters.statuses.map((status) => normalizeText(status)))
+      : undefined;
 
-  if (filters.disciplineAdminNames.length > 0) {
-    const allowedAdmins = new Set(
-      filters.disciplineAdminNames.map((name) => normalizeText(name)),
-    );
-    if (!allowedAdmins.has(normalizeText(application.disciplineAdminName))) {
-      return false;
-    }
-  }
+  const allowedDisciplines =
+    filters.disciplines.length > 0
+      ? new Set(
+          filters.disciplines.map((discipline) => normalizeText(discipline)),
+        )
+      : undefined;
+
+  const allowedAdmins =
+    filters.disciplineAdminNames.length > 0
+      ? new Set(filters.disciplineAdminNames.map((name) => normalizeText(name)))
+      : undefined;
 
   const normalizedProposedFilter = normalizeDateToDay(
     filters.proposedStartDate,
   );
-  const normalizedProposedApplicationDate = normalizeDateToDay(
-    application.proposedStartDate,
-  );
-  if (
-    !matchesDateDirection(
-      normalizedProposedApplicationDate,
-      normalizedProposedFilter,
-      filters.proposedStartDateDirection,
-    )
-  ) {
-    return false;
-  }
-
   const normalizedActualFilter = normalizeDateToDay(filters.actualStartDate);
-  const normalizedActualApplicationDate = normalizeDateToDay(
-    application.actualStartDate,
-  );
-  if (
-    !matchesDateDirection(
-      normalizedActualApplicationDate,
-      normalizedActualFilter,
-      filters.actualStartDateDirection,
-    )
-  ) {
-    return false;
-  }
 
-  return true;
+  return (application: FilterableApplication): boolean => {
+    if (
+      allowedStatuses &&
+      !allowedStatuses.has(normalizeText(application.status))
+    ) {
+      return false;
+    }
+
+    if (
+      allowedDisciplines &&
+      !allowedDisciplines.has(normalizeText(application.discipline))
+    ) {
+      return false;
+    }
+
+    if (
+      allowedAdmins &&
+      !allowedAdmins.has(normalizeText(application.disciplineAdminName))
+    ) {
+      return false;
+    }
+
+    const normalizedProposedApplicationDate = normalizeDateToDay(
+      application.proposedStartDate,
+    );
+    if (
+      !matchesDateDirection(
+        normalizedProposedApplicationDate,
+        normalizedProposedFilter,
+        filters.proposedStartDateDirection,
+      )
+    ) {
+      return false;
+    }
+
+    const normalizedActualApplicationDate = normalizeDateToDay(
+      application.actualStartDate,
+    );
+    if (
+      !matchesDateDirection(
+        normalizedActualApplicationDate,
+        normalizedActualFilter,
+        filters.actualStartDateDirection,
+      )
+    ) {
+      return false;
+    }
+
+    return true;
+  };
 }

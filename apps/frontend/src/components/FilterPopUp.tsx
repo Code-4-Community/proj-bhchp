@@ -19,6 +19,7 @@ import StatusPill, { StatusPillConfig, StatusVariant } from './StatusPill';
 import {
   countActiveFilters,
   type DateFilterDirection,
+  normalizeDateToDay,
   EMPTY_APPLICATION_FILTERS,
   type ApplicationFilters,
 } from '@utils/applicationFilters';
@@ -92,11 +93,11 @@ const FilterPopUp = ({
 
   const getSectionFilterCount = (category: string) => {
     if (category === 'Proposed Start Date') {
-      return filters.proposedStartDate ? 1 : 0;
+      return normalizeDateToDay(filters.proposedStartDate) ? 1 : 0;
     }
 
     if (category === 'Actual Start Date') {
-      return filters.actualStartDate ? 1 : 0;
+      return normalizeDateToDay(filters.actualStartDate) ? 1 : 0;
     }
 
     if (category === 'Discipline') {

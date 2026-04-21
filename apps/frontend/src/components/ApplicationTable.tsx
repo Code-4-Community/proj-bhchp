@@ -1,9 +1,10 @@
+import { useMemo } from 'react';
 import { Table } from '@chakra-ui/react';
 import type { ApplicationRow } from '@hooks/useApplications';
 import StatusPill, { StatusPillConfig, StatusVariant } from './StatusPill';
 import {
+  compileApplicationFilterPredicate,
   EMPTY_APPLICATION_FILTERS,
-  matchesApplicationFilters,
   type ApplicationFilters,
 } from '@utils/applicationFilters';
 
@@ -65,6 +66,11 @@ export function ApplicationTable({
   searchQuery = '',
   filters = EMPTY_APPLICATION_FILTERS,
 }: ApplicationTableProps) {
+  const matchesStructuredFilters = useMemo(
+    () => compileApplicationFilterPredicate(filters),
+    [filters],
+  );
+
   const filteredApplications = applications.filter((application) => {
     const query = searchQuery.toLowerCase();
     const matchesSearch =
@@ -74,12 +80,7 @@ export function ApplicationTable({
       application.status.toLowerCase().includes(query) ||
       application.email.toLowerCase().includes(query);
 
-    const matchesStructuredFilters = matchesApplicationFilters(
-      application,
-      filters,
-    );
-
-    return matchesSearch && matchesStructuredFilters;
+    return matchesSearch && matchesStructuredFilters(application);
   });
 
   return (
