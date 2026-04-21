@@ -92,86 +92,23 @@ const FilterPopUp = ({
 
   const getSectionFilterCount = (category: string) => {
     if (category === 'Proposed Start Date') {
-      return filters.proposedStartDate ? 1 : 0;
+      return proposedStartDate ? 1 : 0;
     }
 
     if (category === 'Actual Start Date') {
-      return filters.actualStartDate ? 1 : 0;
+      return actualStartDate ? 1 : 0;
     }
 
     if (category === 'Discipline') {
-      return filters.disciplines.length;
+      return selectedDISCIPLINE_VALUES.length;
     }
 
     if (category === 'Status') {
-      return filters.statuses.length;
-    }
-
-    if (category === 'Discipline Admin Name') {
-      return filters.disciplineAdminNames.length;
+      return selectedStatuses.length;
     }
 
     return 0;
   };
-
-  const normalizedSearch = optionSearchQuery.trim().toLowerCase();
-
-  const visibleDisciplines = useMemo(() => {
-    if (!normalizedSearch) {
-      return [...DISCIPLINE_VALUES];
-    }
-
-    return DISCIPLINE_VALUES.filter((discipline) =>
-      discipline.toLowerCase().includes(normalizedSearch),
-    );
-  }, [normalizedSearch]);
-
-  const visibleStatuses = useMemo(() => {
-    if (!normalizedSearch) {
-      return STATUS_OPTIONS;
-    }
-
-    return STATUS_OPTIONS.filter(
-      (status) =>
-        status.value.toLowerCase().includes(normalizedSearch) ||
-        status.label.toLowerCase().includes(normalizedSearch),
-    );
-  }, [normalizedSearch]);
-
-  const visibleDisciplineAdmins = useMemo(() => {
-    if (!normalizedSearch) {
-      return disciplineAdminOptions;
-    }
-
-    return disciplineAdminOptions.filter((name) =>
-      name.toLowerCase().includes(normalizedSearch),
-    );
-  }, [disciplineAdminOptions, normalizedSearch]);
-
-  function getDateDirection(category: string): DateFilterDirection {
-    if (category === 'Proposed Start Date') {
-      return filters.proposedStartDateDirection ?? 'after';
-    }
-
-    return filters.actualStartDateDirection ?? 'after';
-  }
-
-  function onDateDirectionChange(category: string, checked: boolean) {
-    const direction: DateFilterDirection = checked ? 'after' : 'before';
-
-    if (category === 'Proposed Start Date') {
-      onFiltersChange({
-        ...filters,
-        proposedStartDateDirection: direction,
-      });
-      return;
-    }
-
-    onFiltersChange({
-      ...filters,
-      actualStartDateDirection: direction,
-    });
-  }
 
   return (
     <Popover.Root
@@ -264,6 +201,7 @@ const FilterPopUp = ({
                 {filterCategories.map((category) => {
                   const isOpen = openSections.includes(category);
                   const sectionFilterCount = getSectionFilterCount(category);
+                  const sectionFilterCount = getSectionFilterCount(category);
 
                   return (
                     <Collapsible.Root
@@ -298,9 +236,26 @@ const FilterPopUp = ({
                             fontSize="sm"
                             fontWeight={isOpen ? 'medium' : 'normal'}
                             flex="1"
+                            flex="1"
                           >
                             {category}
                           </Text>
+                          {sectionFilterCount > 0 && (
+                            <Flex
+                              align="center"
+                              justify="center"
+                              bg="white"
+                              color="#173685"
+                              borderRadius="full"
+                              minW="24px"
+                              h="24px"
+                              px="2"
+                              fontSize="sm"
+                              fontWeight="bold"
+                            >
+                              {sectionFilterCount}
+                            </Flex>
+                          )}
                           {sectionFilterCount > 0 && (
                             <Flex
                               align="center"
