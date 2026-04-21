@@ -75,6 +75,26 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
     'Status',
   ];
 
+  const getSectionFilterCount = (category: string) => {
+    if (category === 'Proposed Start Date') {
+      return proposedStartDate ? 1 : 0;
+    }
+
+    if (category === 'Actual Start Date') {
+      return actualStartDate ? 1 : 0;
+    }
+
+    if (category === 'Discipline') {
+      return selectedDISCIPLINE_VALUES.length;
+    }
+
+    if (category === 'Status') {
+      return selectedStatuses.length;
+    }
+
+    return 0;
+  };
+
   return (
     <Popover.Root
       open={open}
@@ -161,6 +181,7 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
               <Box overflowY="auto" flexGrow="1" minH="0">
                 {filterCategories.map((category) => {
                   const isOpen = openSections.includes(category);
+                  const sectionFilterCount = getSectionFilterCount(category);
 
                   return (
                     <Collapsible.Root
@@ -194,9 +215,26 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                           <Text
                             fontSize="sm"
                             fontWeight={isOpen ? 'medium' : 'normal'}
+                            flex="1"
                           >
                             {category}
                           </Text>
+                          {sectionFilterCount > 0 && (
+                            <Flex
+                              align="center"
+                              justify="center"
+                              bg="white"
+                              color="#173685"
+                              borderRadius="full"
+                              minW="24px"
+                              h="24px"
+                              px="2"
+                              fontSize="sm"
+                              fontWeight="bold"
+                            >
+                              {sectionFilterCount}
+                            </Flex>
+                          )}
                         </Flex>
                       </Collapsible.Trigger>
 
