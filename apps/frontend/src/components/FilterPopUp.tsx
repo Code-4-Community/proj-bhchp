@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Popover,
   Button,
@@ -15,6 +15,8 @@ import {
   For,
 } from '@chakra-ui/react';
 import StatusPill, { StatusPillConfig, StatusVariant } from './StatusPill';
+import type { DisciplineAdminMap } from '@api/types';
+import { getDisciplineAdminMapCached } from '../utils/disciplineAdminCache';
 
 export const DISCIPLINE_VALUES = [
   'MD/Medical Student/Pre-Med',
@@ -39,12 +41,33 @@ interface FilterPopUpProps {
 }
 
 const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const [selectedDISCIPLINE_VALUES, setSelectedDISCIPLINE_VALUES] = useState<
     string[]
   >([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedDisciplineAdmins, setSelectedDisciplineAdmins] = useState<
+    string[]
+  >([]);
+  const [disciplineAdminMap, setDisciplineAdminMap] =
+    useState<DisciplineAdminMap | null>(null);
   const [proposedStartDate, setProposedStartDate] = useState('');
   const [actualStartDate, setActualStartDate] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    getDisciplineAdminMapCached()
+      .then((map) => {
+        if (mounted) setDisciplineAdminMap(map);
+      })
+      .catch(() => {
+        /* ignore */
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const [openSections, setOpenSections] = useState<string[]>([
     'Proposed Start Date',
     'Actual Start Date',
@@ -56,6 +79,7 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
   const totalFilters =
     selectedDISCIPLINE_VALUES.length +
     selectedStatuses.length +
+    selectedDisciplineAdmins.length +
     (proposedStartDate ? 1 : 0) +
     (actualStartDate ? 1 : 0);
 
@@ -90,6 +114,10 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
 
     if (category === 'Status') {
       return selectedStatuses.length;
+    }
+
+    if (category === 'Discipline Admin Name') {
+      return selectedDisciplineAdmins.length;
     }
 
     return 0;
@@ -322,6 +350,51 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                                         </Checkbox.Root>
                                       )}
                                     </For>
+                                  </Fieldset.Content>
+                                </CheckboxGroup>
+                              </Fieldset.Root>
+                            </Stack>
+                          ) : category === 'Discipline Admin Name' ? (
+                            <Stack gap="3">
+                              <Fieldset.Root>
+                                <CheckboxGroup
+                                  name="discipline_admins"
+                                  value={selectedDisciplineAdmins}
+                                  onValueChange={setSelectedDisciplineAdmins}
+                                >
+                                  <Fieldset.Content>
+                                    {Object.entries(disciplineAdminMap || {})
+                                      .length === 0 ? (
+                                      <Text color="gray.600">
+                                        No admins available
+                                      </Text>
+                                    ) : (
+                                      <For
+                                        each={Object.entries(
+                                          disciplineAdminMap || {},
+                                        )}
+                                      >
+                                        {(entry) => {
+                                          const discipline = entry[0];
+                                          const admin = entry[1];
+                                          const label = `${capitalize(
+                                            admin.firstName,
+                                          )} ${capitalize(admin.lastName)}`;
+                                          return (
+                                            <Checkbox.Root
+                                              key={discipline}
+                                              value={discipline}
+                                            >
+                                              <Checkbox.HiddenInput />
+                                              <Checkbox.Control />
+                                              <Checkbox.Label>
+                                                {label}
+                                              </Checkbox.Label>
+                                            </Checkbox.Root>
+                                          );
+                                        }}
+                                      </For>
+                                    )}
                                   </Fieldset.Content>
                                 </CheckboxGroup>
                               </Fieldset.Root>
