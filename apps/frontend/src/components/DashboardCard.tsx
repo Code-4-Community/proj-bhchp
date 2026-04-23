@@ -7,6 +7,7 @@ export type DashboardCardProps = {
   icon: string;
   title: string;
   value: number;
+  color: string;
 };
 
 export default function DashboardCard({
@@ -15,13 +16,14 @@ export default function DashboardCard({
   description,
   icon,
   className,
+  color,
 }: DashboardCardProps) {
   return (
     <Card.Root
       borderRadius="18px"
       borderWidth="2px"
       borderColor="black"
-      bg="white"
+      bg={color}
       pl={3}
       pr={3}
       className={className}

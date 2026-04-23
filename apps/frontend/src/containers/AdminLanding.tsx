@@ -71,6 +71,7 @@ const AdminLanding: React.FC = () => {
             value={totalCount}
             description="All time submissions"
             icon={usersIcon}
+            color="#FFF9E6"
           />
 
           <DashboardCard
@@ -79,6 +80,7 @@ const AdminLanding: React.FC = () => {
             value={inReviewCount}
             description="Awaiting decision"
             icon={clockIcon}
+            color="#DBEAFE"
           />
 
           <DashboardCard
@@ -87,6 +89,7 @@ const AdminLanding: React.FC = () => {
             value={rejectedCount}
             description="Not matched"
             icon={crossIcon}
+            color="#FFD1D2"
           />
 
           <DashboardCard
@@ -95,6 +98,7 @@ const AdminLanding: React.FC = () => {
             value={approvedCount}
             description="Active volunteers"
             icon={checkmarkIcon}
+            color="#d4f7e7ff"
           />
         </Box>
         <div
