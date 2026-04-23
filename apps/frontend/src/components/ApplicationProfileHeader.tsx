@@ -24,31 +24,36 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
   statusControl,
 }) => {
   return (
-    <Box className="space-y-4" p="5">
+    <Box className="space-y-4">
       <Box
         position="relative"
-        className="text-white p-6 flex items-center gap-6 rounded-t-md"
-        pt="10"
+        className="text-white p-6 flex items-center gap-6 "
+        pt="20"
         pl="5"
+        mt="-10"
+        ml="-10"
+        mr="-20"
         bg="#013594"
       >
-        <Float offsetY="20" placement="top-start" offsetX="20">
-          <Box
-            className="w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0"
-            bg="#013594"
-            borderWidth="5px"
-            borderColor="white"
+        <Box
+          position="absolute"
+          bottom="-48px"
+          left="35px"
+          zIndex="2"
+          className="w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0"
+          bg="#013594"
+          borderWidth="5px"
+          borderColor="white"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-14 h-14 text-white"
+            viewBox="0 0 24 24"
+            fill="currentColor"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-14 h-14 text-white"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-            </svg>
-          </Box>
-        </Float>
+            <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
+          </svg>
+        </Box>
         <Text textStyle="4xl" textTransform="capitalize" pl="130px" pb="3">
           {firstName} {lastName}
         </Text>
@@ -57,7 +62,7 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
       <Box
         className="bg-white p-6 border border-gray-200 rounded-b-md space-y-2 text-sm"
         p="6"
-        pl="150px"
+        pl="110px"
       >
         <Flex align="center" gap="6">
           <Box flex="1">
