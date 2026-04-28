@@ -167,6 +167,7 @@ const AdminViewApplication: React.FC = () => {
               ? [application.nonEnglishLangs]
               : [],
           }}
+          bgColor="gray.50"
         />
         {application.applicantType === ApplicantType.LEARNER &&
         learnerInfo !== null ? (
@@ -178,6 +179,7 @@ const AdminViewApplication: React.FC = () => {
                 learnerInfo.isSupervisorApplying ? 'Supervisor' : 'Myself',
               ],
             }}
+            bgColor="white"
           />
         ) : (
           <QuestionFrame
@@ -186,6 +188,7 @@ const AdminViewApplication: React.FC = () => {
                 'Are you applying for yourself or are you a supervisor/instructor?',
               answers: ['Myself'],
             }}
+            bgColor="white"
           />
         )}
         <SchoolAffiliationFrame
@@ -223,7 +226,7 @@ const AdminViewApplication: React.FC = () => {
           />
         </Box>
 
-        <Box borderWidth="1px" borderRadius="lg" p={6} bg="white">
+        <Box borderWidth="1px" borderRadius="lg" p={6} bg="gray.50">
           <Heading as="h2" size="md" mb={4}>
             Uploaded Material
           </Heading>
@@ -245,6 +248,7 @@ const AdminViewApplication: React.FC = () => {
             question: 'How did you hear about us?',
             answers: application.heardAboutFrom,
           }}
+          bgColor="white"
         />
         <EmergencyContactFrame
           name={application.emergencyContactName}
