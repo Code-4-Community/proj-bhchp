@@ -114,6 +114,7 @@ export const AvailabilityTable: React.FC<AvailabilityTableProps> = ({
             alignItems="center"
             px="6"
             py="4"
+            bg={index % 2 === 0 ? 'gray.50' : 'white'}
             borderTop={index === 0 ? 'none' : '1px solid'}
             borderColor="gray.100"
             _hover={{ bg: 'gray.50' }}
