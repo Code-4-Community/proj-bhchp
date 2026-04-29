@@ -1,7 +1,6 @@
 import { DeepPartial, Repository } from 'typeorm';
 import dataSource from '../data-source';
 import { Discipline } from '../disciplines/disciplines.entity';
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { Application } from '../applications/application.entity';
 import {
   AppStatus,
@@ -14,32 +13,86 @@ import { LearnerInfo } from '../learner-info/learner-info.entity';
 import { School } from '../learner-info/types';
 import { CandidateInfo } from '../candidate-info/candidate-info.entity';
 import { AdminInfo } from '../admin-info/admin-info.entity';
+import { AdminDisciplineMap } from '../admin-info/admin-discipline-map.entity';
 import { User } from '../users/user.entity';
 import { UserType } from '../users/types';
+
+const DISCIPLINE_KEYS = {
+  mdMedicalStudentPreMed: 'md-medical-student-pre-med',
+  medicalNpPa: 'medical-np-pa',
+  psychiatryOrPsychiatricNpPa: 'psychiatry-or-psychiatric-np-pa',
+  publicHealth: 'public-health',
+  rn: 'rn',
+  socialWork: 'social-work',
+  other: 'other',
+} as const;
+
+const DISCIPLINE_SEED: DeepPartial<Discipline>[] = [
+  {
+    key: DISCIPLINE_KEYS.mdMedicalStudentPreMed,
+    label: 'MD/Medical Student/Pre-Med',
+  },
+  {
+    key: DISCIPLINE_KEYS.medicalNpPa,
+    label: 'Medical NP/PA',
+  },
+  {
+    key: DISCIPLINE_KEYS.psychiatryOrPsychiatricNpPa,
+    label: 'Psychiatry or Psychiatric NP/PA',
+  },
+  {
+    key: DISCIPLINE_KEYS.publicHealth,
+    label: 'Public Health',
+  },
+  {
+    key: DISCIPLINE_KEYS.rn,
+    label: 'RN',
+  },
+  {
+    key: DISCIPLINE_KEYS.socialWork,
+    label: 'Social Work',
+  },
+  {
+    key: DISCIPLINE_KEYS.other,
+    label: 'Other',
+  },
+];
 
 const ADMIN_INFO_SEED = [
   {
     email: 'superadmin@c4cneu.com',
-    discipline: DISCIPLINE_VALUES.RN,
   },
   {
     email: 'publichealthadmin@c4cneu.com',
-    discipline: DISCIPLINE_VALUES.PublicHealth,
   },
   {
     email: 'socialworkadmin@c4cneu.com',
-    discipline: DISCIPLINE_VALUES.SocialWork,
+  },
+];
+
+const ADMIN_DISCIPLINE_MAP_SEED: DeepPartial<AdminDisciplineMap>[] = [
+  {
+    adminEmail: 'superadmin@c4cneu.com',
+    disciplineKey: DISCIPLINE_KEYS.rn,
+  },
+  {
+    adminEmail: 'publichealthadmin@c4cneu.com',
+    disciplineKey: DISCIPLINE_KEYS.publicHealth,
+  },
+  {
+    adminEmail: 'socialworkadmin@c4cneu.com',
+    disciplineKey: DISCIPLINE_KEYS.socialWork,
   },
 ];
 
 const EXTRA_DISCIPLINES = [
-  DISCIPLINE_VALUES.RN,
-  DISCIPLINE_VALUES.SocialWork,
-  DISCIPLINE_VALUES.PublicHealth,
-  DISCIPLINE_VALUES.Medical_NP_PA,
-  DISCIPLINE_VALUES.Psychiatry_or_Psychiatric_NP_PA,
-  DISCIPLINE_VALUES.MD_MedicalStudent_PreMed,
-  DISCIPLINE_VALUES.Other,
+  DISCIPLINE_KEYS.rn,
+  DISCIPLINE_KEYS.socialWork,
+  DISCIPLINE_KEYS.publicHealth,
+  DISCIPLINE_KEYS.medicalNpPa,
+  DISCIPLINE_KEYS.psychiatryOrPsychiatricNpPa,
+  DISCIPLINE_KEYS.mdMedicalStudentPreMed,
+  DISCIPLINE_KEYS.other,
 ];
 
 const EXTRA_STATUSES = [
@@ -206,7 +259,7 @@ const APPLICATION_SEED: Application[] = [
     applicantType: ApplicantType.LEARNER,
     phone: '123-456-7890',
     email: 'janedoe@gmail.com',
-    discipline: DISCIPLINE_VALUES.Psychiatry_or_Psychiatric_NP_PA,
+    discipline: DISCIPLINE_KEYS.psychiatryOrPsychiatricNpPa,
     referred: false,
     weeklyHours: 20,
     pronouns: 'she/her',
@@ -235,7 +288,7 @@ const APPLICATION_SEED: Application[] = [
     applicantType: ApplicantType.VOLUNTEER,
     phone: '123-456-7890',
     email: 'standard@c4cneu.com',
-    discipline: DISCIPLINE_VALUES.RN,
+    discipline: DISCIPLINE_KEYS.rn,
     referred: false,
     weeklyHours: 20,
     pronouns: 'he/him',
@@ -264,7 +317,7 @@ const APPLICATION_SEED: Application[] = [
     applicantType: ApplicantType.VOLUNTEER,
     phone: '123-456-7890',
     email: 'sam@example.com',
-    discipline: DISCIPLINE_VALUES.SocialWork,
+    discipline: DISCIPLINE_KEYS.socialWork,
     referred: false,
     weeklyHours: 20,
     pronouns: 'they/them',
@@ -293,7 +346,7 @@ const APPLICATION_SEED: Application[] = [
     applicantType: ApplicantType.LEARNER,
     phone: '555-555-5555',
     email: 'rejected.learner@example.com',
-    discipline: DISCIPLINE_VALUES.PublicHealth,
+    discipline: DISCIPLINE_KEYS.publicHealth,
     referred: false,
     weeklyHours: 10,
     pronouns: 'they/them',
@@ -322,7 +375,7 @@ const APPLICATION_SEED: Application[] = [
     applicantType: ApplicantType.LEARNER,
     phone: '555-555-1212',
     email: 'approved.learner@example.com',
-    discipline: DISCIPLINE_VALUES.RN,
+    discipline: DISCIPLINE_KEYS.rn,
     referred: true,
     weeklyHours: 15,
     pronouns: 'she/her',
@@ -427,12 +480,7 @@ async function seed() {
 
     // Create disciplines
     console.log('📚 Creating disciplines...');
-    await dataSource.getRepository(Discipline).save(
-      Object.values(DISCIPLINE_VALUES).map((name) => ({
-        name,
-        admin_emails: [],
-      })),
-    );
+    await dataSource.getRepository(Discipline).save(DISCIPLINE_SEED);
     console.log('✅ Disciplines created');
 
     // Create user test data
@@ -449,6 +497,17 @@ async function seed() {
       ADMIN_INFO_SEED as DeepPartial<AdminInfo>[],
     );
     console.log(`✅ Created ${admins.length} admin infos`);
+
+    // Create admin discipline map test data
+    console.log('Creating admin discipline mappings...');
+    const adminDisciplineMapRepo: Repository<AdminDisciplineMap> =
+      dataSource.getRepository(AdminDisciplineMap);
+    const adminDisciplineMappings = await adminDisciplineMapRepo.save(
+      ADMIN_DISCIPLINE_MAP_SEED,
+    );
+    console.log(
+      `Created ${adminDisciplineMappings.length} admin discipline mappings`,
+    );
 
     // Create candidate info test data
     console.log('📋 Creating applicants...');

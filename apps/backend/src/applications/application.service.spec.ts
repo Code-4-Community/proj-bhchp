@@ -11,11 +11,11 @@ import {
   ApplicantType,
   DesiredExperience,
 } from './types';
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
+import { DisciplinesService } from '../disciplines/disciplines.service';
 
 jest.mock('../util/aws-exports', () => ({
   __esModule: true,
@@ -34,6 +34,11 @@ jest.mock('../util/aws-exports', () => ({
   },
 }));
 
+const disciplineKeys = {
+  rn: 'rn',
+  publicHealth: 'public-health',
+};
+
 const dummyApplication: Application = {
   appId: 1,
   appStatus: AppStatus.APP_SUBMITTED,
@@ -48,7 +53,7 @@ const dummyApplication: Application = {
   applicantType: ApplicantType.LEARNER,
   phone: '123-456-7890',
   email: 'test@example.com',
-  discipline: DISCIPLINE_VALUES.RN,
+  discipline: disciplineKeys.rn,
   proposedStartDate: new Date('2024-01-01'),
   referred: false,
   weeklyHours: 20,
@@ -79,7 +84,7 @@ const dummyCreateApplicationDto: CreateApplicationDto = {
   email: 'test@example.com',
   proposedStartDate: '2024-01-01',
   endDate: '2024-06-30',
-  discipline: DISCIPLINE_VALUES.RN,
+  discipline: disciplineKeys.rn,
   referred: false,
   weeklyHours: 20,
   pronouns: 'they/them',
@@ -118,6 +123,17 @@ describe('ApplicationsService', () => {
     findOne: jest.fn(),
   };
 
+  const mockDisciplinesService = {
+    findAll: jest.fn(),
+    findAllIncludingInactive: jest.fn(),
+    findOne: jest.fn(),
+    getActiveDisciplineKeys: jest.fn(),
+    ensureActiveDisciplineKey: jest.fn(),
+    ensureActiveDisciplineKeys: jest.fn(),
+    create: jest.fn(),
+    remove: jest.fn(),
+  };
+
   const mockS3Service = {
     createObjectLink: jest.fn(
       (key: string) => `https://bucket.s3.us-east-2.amazonaws.com/${key}`,
@@ -144,6 +160,10 @@ describe('ApplicationsService', () => {
         {
           provide: CandidateInfoService,
           useValue: mockCandidateInfoService,
+        },
+        {
+          provide: DisciplinesService,
+          useValue: mockDisciplinesService,
         },
         {
           provide: AWSS3Service,
@@ -307,7 +327,7 @@ describe('ApplicationsService', () => {
         applicantType: ApplicantType.LEARNER,
         phone: '123-456-7890',
         email: 'test@example.com',
-        discipline: DISCIPLINE_VALUES.RN,
+        discipline: disciplineKeys.rn,
         proposedStartDate: new Date('2024-01-01'),
         weeklyHours: 20,
         pronouns: 'they/them',
@@ -939,7 +959,7 @@ describe('ApplicationsService', () => {
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
           email: 'test@example.com',
-          discipline: DISCIPLINE_VALUES.RN,
+          discipline: disciplineKeys.rn,
           referred: false,
           weeklyHours: 20,
           pronouns: 'they/them',
@@ -967,7 +987,7 @@ describe('ApplicationsService', () => {
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
           email: 'test@example.com',
-          discipline: DISCIPLINE_VALUES.RN,
+          discipline: disciplineKeys.rn,
           referred: false,
           weeklyHours: 20,
           pronouns: 'they/them',
@@ -984,10 +1004,10 @@ describe('ApplicationsService', () => {
 
       mockRepository.find.mockResolvedValue(mockApplications);
 
-      const result = await service.findByDiscipline(DISCIPLINE_VALUES.RN);
+      const result = await service.findByDiscipline(disciplineKeys.rn);
 
       expect(repository.find).toHaveBeenCalledWith({
-        where: { discipline: DISCIPLINE_VALUES.RN },
+        where: { discipline: disciplineKeys.rn },
       });
       expect(result).toEqual(mockApplications);
     });
@@ -995,16 +1015,19 @@ describe('ApplicationsService', () => {
     it('should return an empty array when no applications match the discipline', async () => {
       mockRepository.find.mockResolvedValue([]);
 
-      const result = await service.findByDiscipline(DISCIPLINE_VALUES.RN);
+      const result = await service.findByDiscipline(disciplineKeys.rn);
 
       expect(repository.find).toHaveBeenCalledWith({
-        where: { discipline: DISCIPLINE_VALUES.RN },
+        where: { discipline: disciplineKeys.rn },
       });
       expect(result).toEqual([]);
     });
 
     it('should throw BadRequestException for invalid discipline', async () => {
       const invalidDiscipline = 'InvalidDiscipline';
+      mockDisciplinesService.ensureActiveDisciplineKey.mockRejectedValueOnce(
+        new Error('Invalid discipline: InvalidDiscipline'),
+      );
 
       await expect(service.findByDiscipline(invalidDiscipline)).rejects.toThrow(
         expect.objectContaining({
@@ -1017,39 +1040,18 @@ describe('ApplicationsService', () => {
       expect(repository.find).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException with list of valid disciplines', async () => {
-      const invalidDiscipline = 'InvalidDiscipline';
-
-      try {
-        await service.findByDiscipline(invalidDiscipline);
-        fail('Expected BadRequestException to be thrown');
-      } catch (error) {
-        expect(error.message).toContain('Invalid discipline');
-        expect(error.message).toContain('Valid disciplines are:');
-        expect(error.message).toContain('MD/Medical Student/Pre-Med');
-        expect(error.message).toContain('Medical NP/PA');
-        expect(error.message).toContain('Psychiatry or Psychiatric NP/PA');
-        expect(error.message).toContain('Public Health');
-        expect(error.message).toContain('RN');
-        expect(error.message).toContain('Social Work');
-        expect(error.message).toContain('Other');
-      }
-
-      expect(repository.find).not.toHaveBeenCalled();
-    });
-
     it('should pass along any repo errors without information loss', async () => {
       mockRepository.find.mockRejectedValue(
         new Error('There was a problem retrieving the info'),
       );
 
-      await expect(
-        service.findByDiscipline(DISCIPLINE_VALUES.RN),
-      ).rejects.toThrow(`There was a problem retrieving the info`);
+      await expect(service.findByDiscipline(disciplineKeys.rn)).rejects.toThrow(
+        `There was a problem retrieving the info`,
+      );
     });
 
     it('should work with all valid discipline values', async () => {
-      const allDisciplines = Object.values(DISCIPLINE_VALUES);
+      const allDisciplines: string[] = Object.values(disciplineKeys);
 
       for (const discipline of allDisciplines) {
         mockRepository.find.mockResolvedValue([]);
@@ -1340,26 +1342,6 @@ describe('ApplicationsService', () => {
           phone: 'bad-phone',
         }),
       ).toThrow('Phone number must be in ###-###-#### format');
-    });
-
-    it('should validate private discipline helper', () => {
-      expect(() =>
-        (
-          service as unknown as {
-            validateDiscipline: (discipline: string) => void;
-          }
-        ).validateDiscipline(DISCIPLINE_VALUES.RN),
-      ).not.toThrow();
-    });
-
-    it('should throw for invalid private discipline helper input', () => {
-      expect(() =>
-        (
-          service as unknown as {
-            validateDiscipline: (discipline: string) => void;
-          }
-        ).validateDiscipline('Invalid'),
-      ).toThrow('Invalid discipline: Invalid');
     });
 
     it('should build and escape the submission error email body', () => {

@@ -4,19 +4,21 @@ import { MemoryRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import CreateNewAdmin from './CreateNewAdmin';
-import {
-  DISCIPLINE_VALUES,
-  ProvisionAdminResponse,
-  UserType,
-} from '@api/types';
+import { ProvisionAdminResponse, UserType } from '@api/types';
 
-const { provisionAdminMock } = vi.hoisted(() => ({
+const disciplineKeys = {
+  rn: 'rn',
+} as const;
+
+const { provisionAdminMock, getDisciplinesMock } = vi.hoisted(() => ({
   provisionAdminMock: vi.fn(),
+  getDisciplinesMock: vi.fn(),
 }));
 
 vi.mock('@api/apiClient', () => ({
   default: {
     provisionAdmin: provisionAdminMock,
+    getDisciplines: getDisciplinesMock,
   },
 }));
 
@@ -40,7 +42,7 @@ function renderCreateNewAdmin() {
   );
 }
 
-function fillValidForm() {
+async function fillValidForm() {
   const emailInputs = screen.getAllByPlaceholderText('admin@bhchp.org');
   fireEvent.change(emailInputs[0], { target: { value: 'Ada@Example.com' } });
   fireEvent.change(emailInputs[1], { target: { value: 'ada@example.com' } });
@@ -50,9 +52,11 @@ function fillValidForm() {
   fireEvent.change(screen.getByPlaceholderText('Doe'), {
     target: { value: 'Lovelace' },
   });
-  fireEvent.change(screen.getByRole('combobox'), {
-    target: { value: DISCIPLINE_VALUES.RN },
-  });
+  const option = (await screen.findByRole('option', {
+    name: 'RN',
+  })) as HTMLOptionElement;
+  option.selected = true;
+  fireEvent.change(screen.getByRole('listbox'));
 }
 
 function buildSuccessResponse(): ProvisionAdminResponse {
@@ -78,7 +82,7 @@ function buildSuccessResponse(): ProvisionAdminResponse {
       },
       adminInfo: {
         email: 'ada@example.com',
-        discipline: DISCIPLINE_VALUES.RN,
+        disciplines: [disciplineKeys.rn],
         createdAt: '2026-04-15T00:00:00.000Z',
         updatedAt: '2026-04-15T00:00:00.000Z',
       },
@@ -90,6 +94,10 @@ function buildSuccessResponse(): ProvisionAdminResponse {
 describe('CreateNewAdmin', () => {
   beforeEach(() => {
     provisionAdminMock.mockReset();
+    getDisciplinesMock.mockReset();
+    getDisciplinesMock.mockResolvedValue([
+      { key: disciplineKeys.rn, label: 'RN', isActive: true },
+    ]);
     vi.stubGlobal('ResizeObserver', ResizeObserverMock);
   });
 
@@ -101,7 +109,7 @@ describe('CreateNewAdmin', () => {
     provisionAdminMock.mockResolvedValue(buildSuccessResponse());
 
     renderCreateNewAdmin();
-    fillValidForm();
+    await fillValidForm();
 
     fireEvent.click(screen.getByText('Confirm'));
     fireEvent.click(await screen.findByText('Yes'));
@@ -111,7 +119,7 @@ describe('CreateNewAdmin', () => {
         email: 'ada@example.com',
         firstName: 'Ada',
         lastName: 'Lovelace',
-        discipline: DISCIPLINE_VALUES.RN,
+        disciplines: [disciplineKeys.rn],
       });
     });
 
@@ -131,7 +139,7 @@ describe('CreateNewAdmin', () => {
     });
 
     renderCreateNewAdmin();
-    fillValidForm();
+    await fillValidForm();
 
     fireEvent.click(screen.getByText('Confirm'));
     fireEvent.click(await screen.findByText('Yes'));

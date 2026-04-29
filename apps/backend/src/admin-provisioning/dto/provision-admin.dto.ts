@@ -1,5 +1,10 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { DISCIPLINE_VALUES } from '../../disciplines/disciplines.constants';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+} from 'class-validator';
 
 /**
  * DTO for the admin provisioning endpoint.
@@ -21,7 +26,8 @@ export class ProvisionAdminDto {
   @IsNotEmpty()
   email: string;
 
-  @IsEnum(DISCIPLINE_VALUES)
-  @IsNotEmpty()
-  discipline: DISCIPLINE_VALUES;
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  disciplines: string[];
 }

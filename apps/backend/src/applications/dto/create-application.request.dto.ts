@@ -19,7 +19,6 @@ import {
   HeardAboutFrom,
   DesiredExperience,
 } from '../types';
-import { DISCIPLINE_VALUES } from '../../disciplines/disciplines.constants';
 
 /**
  * Defines the expected shape of data for creating an application.
@@ -174,9 +173,9 @@ export class CreateApplicationDto {
    *
    * Example: "Nursing"
    */
-  @IsEnum(DISCIPLINE_VALUES)
+  @IsString()
   @IsDefined()
-  discipline: DISCIPLINE_VALUES;
+  discipline: string;
 
   /**
    * Discipline or area of interest description of applicant clicked other

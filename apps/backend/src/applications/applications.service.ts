@@ -9,11 +9,11 @@ import { In, Repository } from 'typeorm';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
 import { AppStatus, PHONE_REGEX } from './types';
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
+import { DisciplinesService } from '../disciplines/disciplines.service';
 
 const STATUS_EMAIL_SUBJECTS: Partial<Record<AppStatus, string>> = {
   [AppStatus.ACCEPTED]: 'Your Application Has Been Updated',
@@ -68,6 +68,7 @@ export class ApplicationsService {
     private usersService: UsersService,
     private candidateInfoService: CandidateInfoService,
     private awsS3Service: AWSS3Service,
+    private disciplinesService: DisciplinesService,
   ) {}
 
   private ensureCanUploadConfidentialityForm(application: Application): void {
@@ -238,23 +239,8 @@ export class ApplicationsService {
     return application;
   }
 
-  /**
-   * Validates that the provided discipline is a valid DISCIPLINE_VALUES enum value.
-   * @param discipline The discipline value to validate.
-   * @throws {BadRequestException} if the discipline is not a valid DISCIPLINE_VALUES enum value.
-   */
-  private validateDiscipline(discipline: string): void {
-    if (
-      !Object.values(DISCIPLINE_VALUES).includes(
-        discipline as DISCIPLINE_VALUES,
-      )
-    ) {
-      throw new BadRequestException(
-        `Invalid discipline: ${discipline}. Valid disciplines are: ${Object.values(
-          DISCIPLINE_VALUES,
-        ).join(', ')}`,
-      );
-    }
+  private async validateDiscipline(discipline: string): Promise<void> {
+    return await this.disciplinesService.ensureActiveDisciplineKey(discipline);
   }
 
   /**
@@ -262,13 +248,27 @@ export class ApplicationsService {
    * @param discipline The discipline to filter applications by.
    * @returns A promise resolving to an array of applications with the specified discipline.
    *          Returns an empty array if no applications match the discipline.
-   * @throws {BadRequestException} if the discipline is not a valid DISCIPLINE_VALUES enum value.
+   * @throws {BadRequestException} if the discipline key does not exist in the active discipline catalog.
    * @throws {Error} which is unchanged from what repository throws.
    */
   async findByDiscipline(discipline: string): Promise<Application[]> {
-    this.validateDiscipline(discipline);
+    await this.validateDiscipline(discipline);
     return await this.applicationRepository.find({
-      where: { discipline: discipline as DISCIPLINE_VALUES },
+      where: { discipline },
+    });
+  }
+
+  async findByDisciplines(disciplines: string[]): Promise<Application[]> {
+    const uniqueDisciplines = [...new Set(disciplines.map((d) => d.trim()))];
+
+    if (!uniqueDisciplines.length) {
+      throw new BadRequestException('At least one discipline must be provided');
+    }
+
+    await this.disciplinesService.ensureActiveDisciplineKeys(uniqueDisciplines);
+
+    return this.applicationRepository.find({
+      where: { discipline: In(uniqueDisciplines) },
     });
   }
 
@@ -283,6 +283,7 @@ export class ApplicationsService {
     createApplicationDto: CreateApplicationDto,
   ): Promise<Application> {
     this.validateApplicationDto(createApplicationDto);
+    await this.validateDiscipline(createApplicationDto.discipline);
     const application = this.applicationRepository.create(createApplicationDto);
     const saved = await this.applicationRepository.save(application);
 
@@ -323,6 +324,9 @@ export class ApplicationsService {
     const application = await this.findById(appId);
     if (!application) {
       throw new NotFoundException(`Application with ID ${appId} not found`);
+    }
+    if (updateData.discipline) {
+      await this.validateDiscipline(updateData.discipline);
     }
     Object.assign(application, updateData);
     return await this.applicationRepository.save(application);

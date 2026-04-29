@@ -24,16 +24,6 @@ import {
   type ApplicationFilters,
 } from '@utils/applicationFilters';
 
-export const DISCIPLINE_VALUES = [
-  'MD/Medical Student/Pre-Med',
-  'Medical NP/PA',
-  'Psychiatry or Psychiatric NP/PA',
-  'Public Health',
-  'RN',
-  'Social Work',
-  'Other',
-] as const;
-
 export const STATUS_OPTIONS = Object.entries(StatusPillConfig).map(
   ([value, config]) => ({
     value: value as StatusVariant,
@@ -48,6 +38,7 @@ interface FilterPopUpProps {
   onFiltersChange: (next: ApplicationFilters) => void;
   onResetFilters: () => void;
   disciplineAdminOptions: string[];
+  disciplineOptions?: string[];
 }
 
 const FilterPopUp = ({
@@ -57,6 +48,7 @@ const FilterPopUp = ({
   onFiltersChange,
   onResetFilters,
   disciplineAdminOptions,
+  disciplineOptions = [],
 }: FilterPopUpProps) => {
   const capitalize = (s: string): string => {
     return s
@@ -119,13 +111,13 @@ const FilterPopUp = ({
 
   const visibleDisciplines = useMemo(() => {
     if (!normalizedSearch) {
-      return [...DISCIPLINE_VALUES];
+      return [...disciplineOptions];
     }
 
-    return DISCIPLINE_VALUES.filter((discipline) =>
+    return disciplineOptions.filter((discipline) =>
       discipline.toLowerCase().includes(normalizedSearch),
     );
-  }, [normalizedSearch]);
+  }, [disciplineOptions, normalizedSearch]);
 
   const visibleStatuses = useMemo(() => {
     if (!normalizedSearch) {
@@ -397,7 +389,7 @@ const FilterPopUp = ({
                             <Stack gap="3">
                               <Fieldset.Root>
                                 <CheckboxGroup
-                                  name="DISCIPLINE_VALUES"
+                                  name="disciplines"
                                   value={filters.disciplines}
                                   onValueChange={(value) =>
                                     onFiltersChange({
@@ -544,6 +536,7 @@ const FilterPopUp = ({
 FilterPopUp.defaultProps = {
   filters: EMPTY_APPLICATION_FILTERS,
   disciplineAdminOptions: [],
+  disciplineOptions: [],
   onFiltersChange: () => undefined,
   onResetFilters: () => undefined,
 };

@@ -12,6 +12,8 @@ import { UtilModule } from '../util/util.module';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { CandidateInfo } from '../candidate-info/candidate-info.entity';
 import { EmailService } from '../util/email/email.service';
+import { DisciplinesModule } from '../disciplines/disciplines.module';
+import { DisciplinesService } from '../disciplines/disciplines.service';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { EmailService } from '../util/email/email.service';
     AuthModule,
     UsersModule,
     UtilModule,
+    DisciplinesModule,
   ],
   controllers: [ApplicationsController],
   providers: [

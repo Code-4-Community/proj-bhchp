@@ -10,7 +10,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminInfoService } from './admin-info.service';
-import { AdminInfo } from './admin-info.entity';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { CreateAdminInfoDto } from './dto/create-admin.dto';
 import { UpdateAdminInfoEmailDto } from './dto/update-admin-email.dto';
@@ -19,6 +18,8 @@ import { UserType } from '../users/types';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { DisciplineAdminMap } from './admin-info.service';
+import { AdminInfoWithDisciplines } from './admin-info.service';
+import { UpdateAdminDisciplinesDto } from './dto/update-admin-disciplines.dto';
 
 /**
  * Controller to expose callable HTTP endpoints to interface
@@ -50,7 +51,7 @@ export class AdminInfoController {
   @Post()
   async create(
     @Body() createAdminInfoDto: CreateAdminInfoDto,
-  ): Promise<AdminInfo> {
+  ): Promise<AdminInfoWithDisciplines> {
     return await this.adminsService.create(createAdminInfoDto);
   }
 
@@ -62,7 +63,9 @@ export class AdminInfoController {
    * @throws {Error} anything that the repository throws.
    */
   @Get('email/:email')
-  async findOne(@Param('email') email: string): Promise<AdminInfo> {
+  async findOne(
+    @Param('email') email: string,
+  ): Promise<AdminInfoWithDisciplines> {
     return await this.adminsService.findOne(email);
   }
 
@@ -73,7 +76,9 @@ export class AdminInfoController {
    * @throws {Error} anything that the repository throws.
    */
   @Get('by-email/:email')
-  async findByEmail(@Param('email') email: string): Promise<AdminInfo | null> {
+  async findByEmail(
+    @Param('email') email: string,
+  ): Promise<AdminInfoWithDisciplines | null> {
     return await this.adminsService.findByEmail(email);
   }
 
@@ -88,8 +93,19 @@ export class AdminInfoController {
   async updateEmail(
     @Param('email') email: string,
     @Body() updateEmailDto: UpdateAdminInfoEmailDto,
-  ): Promise<AdminInfo> {
+  ): Promise<AdminInfoWithDisciplines> {
     return await this.adminsService.updateEmail(email, updateEmailDto);
+  }
+
+  @Patch('email/:email/disciplines')
+  async updateDisciplines(
+    @Param('email') email: string,
+    @Body() updateDisciplinesDto: UpdateAdminDisciplinesDto,
+  ): Promise<AdminInfoWithDisciplines> {
+    return await this.adminsService.updateDisciplines(
+      email,
+      updateDisciplinesDto.disciplines,
+    );
   }
 
   /**

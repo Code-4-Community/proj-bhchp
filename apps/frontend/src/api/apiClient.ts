@@ -15,6 +15,7 @@ import {
   ProvisionAdminResponse,
   UploadConfidentialityFormResponse,
   DisciplineAdminMap,
+  DisciplineCatalogItem,
   User,
 } from './types';
 
@@ -67,6 +68,21 @@ export class ApiClient {
         discipline,
       )}`,
     ) as Promise<Application[]>;
+  }
+
+  public async getApplicationsByDisciplines(
+    disciplines: string[],
+  ): Promise<Application[]> {
+    const value = disciplines.map((discipline) => discipline.trim()).join(',');
+    return this.get(
+      `/api/applications/by-disciplines?disciplines=${encodeURIComponent(
+        value,
+      )}`,
+    ) as Promise<Application[]>;
+  }
+
+  public async getDisciplines(): Promise<DisciplineCatalogItem[]> {
+    return this.get('/api/disciplines') as Promise<DisciplineCatalogItem[]>;
   }
 
   public async getApplication(appId: number): Promise<Application> {

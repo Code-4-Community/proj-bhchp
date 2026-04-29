@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Discipline } from './disciplines.entity';
@@ -19,7 +23,16 @@ export class DisciplinesService {
    * @returns a list of all disciplines in the repository
    */
   async findAll(): Promise<Discipline[]> {
-    return this.disciplinesRepository.find();
+    return this.disciplinesRepository.find({
+      where: { isActive: true },
+      order: { label: 'ASC' },
+    });
+  }
+
+  async findAllIncludingInactive(): Promise<Discipline[]> {
+    return this.disciplinesRepository.find({
+      order: { label: 'ASC' },
+    });
   }
 
   /**
@@ -27,17 +40,56 @@ export class DisciplinesService {
    * @param email the email corresponding to the desired discipline
    * @returns a discipline from the repository with the respective email
    */
-  async findOne(id: number): Promise<Discipline | null> {
-    return this.disciplinesRepository.findOneBy({ id });
+  async findOne(id: number): Promise<Discipline> {
+    const discipline = await this.disciplinesRepository.findOneBy({ id });
+    if (!discipline) {
+      throw new NotFoundException(`Discipline with id ${id} not found`);
+    }
+    return discipline;
   }
 
-  /**
-   * Creates a discipline with the requested fields
-   * @param createDto the requested fields for the new discipline to have
-   * @returns the new discipline
-   */
+  async getActiveDisciplineKeys(): Promise<string[]> {
+    const rows = await this.disciplinesRepository.find({
+      where: { isActive: true },
+      select: { key: true },
+      order: { key: 'ASC' },
+    });
+
+    return rows.map((row) => row.key);
+  }
+
+  async ensureActiveDisciplineKey(key: string): Promise<void> {
+    const isValid = await this.disciplinesRepository.exists({
+      where: { key, isActive: true },
+    });
+
+    if (!isValid) {
+      const validDisciplines = await this.getActiveDisciplineKeys();
+      throw new BadRequestException(
+        `Invalid discipline: ${key}. Valid disciplines are: ${validDisciplines.join(
+          ', ',
+        )}`,
+      );
+    }
+  }
+
+  async ensureActiveDisciplineKeys(keys: string[]): Promise<void> {
+    if (!keys.length) {
+      throw new BadRequestException('At least one discipline is required');
+    }
+
+    const uniqueKeys = [...new Set(keys)];
+    for (const key of uniqueKeys) {
+      await this.ensureActiveDisciplineKey(key);
+    }
+  }
+
   async create(createDto: CreateDisciplineRequestDto): Promise<Discipline> {
-    const discipline = this.disciplinesRepository.create(createDto);
+    const discipline = this.disciplinesRepository.create({
+      key: createDto.key.trim().toLowerCase(),
+      label: createDto.label.trim(),
+      isActive: createDto.isActive ?? true,
+    });
     return this.disciplinesRepository.save(discipline);
   }
 
@@ -50,50 +102,6 @@ export class DisciplinesService {
    */
   async remove(id: number): Promise<Discipline> {
     const discipline = await this.findOne(id);
-    if (!discipline) {
-      throw new NotFoundException(`Discipline with id ${id} not found`);
-    }
     return this.disciplinesRepository.remove(discipline);
-  }
-  /**
-   * Adds an admin email to a discipline's admin_emails array
-   * @param id the discipline id
-   * @param adminEmail the admin email to add
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
-   * @throws {Error} if the repository throws an error.
-   * @returns the updated discipline
-   */
-  async addAdmin(id: number, adminEmail: string): Promise<Discipline> {
-    const discipline = await this.findOne(id);
-    if (!discipline) {
-      throw new NotFoundException(`Discipline with id ${id} not found`);
-    }
-
-    if (!discipline.admin_emails.includes(adminEmail)) {
-      discipline.admin_emails = [...discipline.admin_emails, adminEmail];
-    }
-
-    return this.disciplinesRepository.save(discipline);
-  }
-
-  /**
-   * Removes an admin email from a discipline's admin_emails array
-   * @param id the discipline id
-   * @param adminEmail the admin email to remove
-   * @returns the updated discipline
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
-   * @throws {Error} if the repository throws an error.
-   */
-  async removeAdmin(id: number, adminEmail: string): Promise<Discipline> {
-    const discipline = await this.findOne(id);
-    if (!discipline) {
-      throw new NotFoundException(`Discipline with id ${id} not found`);
-    }
-
-    discipline.admin_emails = discipline.admin_emails.filter(
-      (aid) => aid !== adminEmail,
-    );
-
-    return this.disciplinesRepository.save(discipline);
   }
 }

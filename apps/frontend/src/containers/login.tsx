@@ -19,7 +19,7 @@ import {
   fetchAndStoreCurrentSessionUserType,
   getCurrentSessionUserType,
 } from '../auth/current-session-user-type';
-import { DISCIPLINE_VALUES, UserType } from '../api/types';
+import { UserType } from '../api/types';
 import { prefetchDisciplineAdminMap } from '@utils/disciplineAdminCache';
 
 /**
@@ -57,10 +57,7 @@ const Login: React.FC = () => {
     }
 
     if (userType === UserType.ADMIN) {
-      void prefetchDisciplineAdminMap(
-        undefined,
-        Object.values(DISCIPLINE_VALUES),
-      );
+      void prefetchDisciplineAdminMap();
     }
 
     navigate('/', { replace: true });

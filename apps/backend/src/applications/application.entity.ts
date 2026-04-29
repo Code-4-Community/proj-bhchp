@@ -7,7 +7,6 @@ import {
   ApplicantType,
   DesiredExperience,
 } from './types';
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 
 /**
  * Represents the desired columns for the database table in the repository for the system's applications.
@@ -58,8 +57,8 @@ export class Application {
    *
    * Example: "Nursing"
    */
-  @Column({ type: 'enum', enum: DISCIPLINE_VALUES })
-  discipline!: DISCIPLINE_VALUES;
+  @Column({ type: 'varchar' })
+  discipline!: string;
 
   /**
    * Discipline or area of interest description of applicant clicked other

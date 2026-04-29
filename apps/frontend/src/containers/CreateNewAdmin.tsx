@@ -15,7 +15,7 @@ import { FaUserPlus } from 'react-icons/fa6';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '@components/NavBar/NavBar';
 import ConfirmationPopoverContent from '@components/ConfirmationPopoverContent';
-import { DISCIPLINE_VALUES, UserType } from '@api/types';
+import { DisciplineCatalogItem, UserType } from '@api/types';
 import apiClient from '@api/apiClient';
 
 const CreateNewAdmin: React.FC = () => {
@@ -24,7 +24,10 @@ const CreateNewAdmin: React.FC = () => {
   const [confirmEmail, setConfirmEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [discipline, setDiscipline] = useState('');
+  const [disciplines, setDisciplines] = useState<string[]>([]);
+  const [disciplineCatalog, setDisciplineCatalog] = useState<
+    DisciplineCatalogItem[]
+  >([]);
   const [isConfirmPopoverOpen, setIsConfirmPopoverOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -37,9 +40,9 @@ const CreateNewAdmin: React.FC = () => {
       email.trim().toLowerCase() === confirmEmail.trim().toLowerCase() &&
       firstName.trim().length > 0 &&
       lastName.trim().length > 0 &&
-      discipline.trim().length > 0
+      disciplines.length > 0
     );
-  }, [email, confirmEmail, firstName, lastName, discipline]);
+  }, [email, confirmEmail, firstName, lastName, disciplines]);
 
   const onCancel = () => {
     navigate('/admin/landing');
@@ -50,8 +53,29 @@ const CreateNewAdmin: React.FC = () => {
     setConfirmEmail('');
     setFirstName('');
     setLastName('');
-    setDiscipline('');
+    setDisciplines([]);
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    apiClient
+      .getDisciplines()
+      .then((items) => {
+        if (mounted) {
+          setDisciplineCatalog(items.filter((item) => item.isActive));
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setDisciplineCatalog([]);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const onConfirm = async () => {
     if (!canConfirm || isSubmitting) {
@@ -66,14 +90,14 @@ const CreateNewAdmin: React.FC = () => {
         email,
         firstName,
         lastName,
-        discipline,
+        disciplines,
       });
 
       const response = await apiClient.provisionAdmin({
         email: email.trim().toLowerCase(),
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        discipline: discipline as DISCIPLINE_VALUES,
+        disciplines,
       });
 
       if (response.status !== 'SUCCESS') {
@@ -263,16 +287,21 @@ const CreateNewAdmin: React.FC = () => {
 
               <Box>
                 <Text fontWeight="700" fontSize="14px" color="#5E5E5E" mb="2">
-                  DISCIPLINE
+                  DISCIPLINES
                 </Text>
                 <chakra.select
-                  value={discipline}
+                  value={disciplines}
+                  multiple
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                    setDiscipline(e.target.value);
+                    const selected = Array.from(
+                      e.target.selectedOptions,
+                      (option) => option.value,
+                    );
+                    setDisciplines(selected);
                     setSubmitError(null);
                   }}
                   w="100%"
-                  h="40px"
+                  minH="120px"
                   borderWidth="1px"
                   borderStyle="solid"
                   borderColor="#676767"
@@ -280,15 +309,13 @@ const CreateNewAdmin: React.FC = () => {
                   bg="white"
                   px="3"
                   fontSize="16px"
-                  color={discipline ? '#000000' : '#777777'}
+                  color={disciplines.length ? '#000000' : '#777777'}
                   _focus={{ boxShadow: 'outline', borderColor: '#4C72C9' }}
                   _hover={{ borderColor: '#4C72C9' }}
-                  appearance="none"
                 >
-                  <option value="">Select discipline</option>
-                  {Object.values(DISCIPLINE_VALUES).map((value) => (
-                    <option key={value} value={value}>
-                      {value}
+                  {disciplineCatalog.map((value) => (
+                    <option key={value.key} value={value.key}>
+                      {value.label}
                     </option>
                   ))}
                 </chakra.select>

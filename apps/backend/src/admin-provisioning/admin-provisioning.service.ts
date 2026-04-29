@@ -14,10 +14,12 @@ import {
   ProvisionAdminResponse,
 } from './types';
 import { AdminInfo } from '../admin-info/admin-info.entity';
+import { AdminDisciplineMap } from '../admin-info/admin-discipline-map.entity';
 import { UserType } from '../users/types';
 import { User } from '../users/user.entity';
 import { COGNITO_IDENTITY_PROVIDER } from './cognito.provider';
 import envConfig from '../util/aws-exports';
+import { DisciplinesService } from '../disciplines/disciplines.service';
 
 /**
  * Service for phases 2-5 of the admin provisioning plan.
@@ -49,6 +51,9 @@ export class AdminProvisioningService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(AdminInfo)
     private readonly adminInfoRepository: Repository<AdminInfo>,
+    @InjectRepository(AdminDisciplineMap)
+    private readonly adminDisciplineMapRepository: Repository<AdminDisciplineMap>,
+    private readonly disciplinesService: DisciplinesService,
   ) {}
 
   /**
@@ -135,7 +140,10 @@ export class AdminProvisioningService {
     provisionAdminDto: ProvisionAdminDto,
   ): Promise<DatabaseCreateResult> {
     const normalizedEmail = provisionAdminDto.email.trim().toLowerCase();
+    const disciplines = [...new Set(provisionAdminDto.disciplines)];
     this.logger.debug(`Creating database admin records for ${normalizedEmail}`);
+
+    await this.disciplinesService.ensureActiveDisciplineKeys(disciplines);
 
     const manager = (
       this.userRepository as Repository<User> & {
@@ -157,6 +165,8 @@ export class AdminProvisioningService {
           transactionManager.getRepository(User);
         const transactionalAdminInfoRepository =
           transactionManager.getRepository(AdminInfo);
+        const transactionalAdminDisciplineMapRepository =
+          transactionManager.getRepository(AdminDisciplineMap);
 
         const existingUser = await transactionalUserRepository.findOneBy({
           email: normalizedEmail,
@@ -193,17 +203,25 @@ export class AdminProvisioningService {
 
         const adminInfo = transactionalAdminInfoRepository.create({
           email: normalizedEmail,
-          discipline: provisionAdminDto.discipline,
         });
         const savedAdminInfo = await transactionalAdminInfoRepository.save(
           adminInfo,
+        );
+
+        await transactionalAdminDisciplineMapRepository.save(
+          disciplines.map((disciplineKey) =>
+            transactionalAdminDisciplineMapRepository.create({
+              adminEmail: normalizedEmail,
+              disciplineKey,
+            }),
+          ),
         );
 
         return {
           user: savedUser,
           adminInfo: {
             email: savedAdminInfo.email,
-            discipline: savedAdminInfo.discipline,
+            disciplines,
             createdAt: savedAdminInfo.createdAt.toISOString(),
             updatedAt: savedAdminInfo.updatedAt.toISOString(),
           },
@@ -243,15 +261,23 @@ export class AdminProvisioningService {
 
       const adminInfo = this.adminInfoRepository.create({
         email: normalizedEmail,
-        discipline: provisionAdminDto.discipline,
       });
       const savedAdminInfo = await this.adminInfoRepository.save(adminInfo);
+
+      await this.adminDisciplineMapRepository.save(
+        disciplines.map((disciplineKey) =>
+          this.adminDisciplineMapRepository.create({
+            adminEmail: normalizedEmail,
+            disciplineKey,
+          }),
+        ),
+      );
 
       return {
         user: savedUser,
         adminInfo: {
           email: savedAdminInfo.email,
-          discipline: savedAdminInfo.discipline,
+          disciplines,
           createdAt: savedAdminInfo.createdAt.toISOString(),
           updatedAt: savedAdminInfo.updatedAt.toISOString(),
         },

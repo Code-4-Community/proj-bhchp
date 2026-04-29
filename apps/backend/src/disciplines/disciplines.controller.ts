@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { DisciplinesService } from './disciplines.service';
@@ -34,7 +35,13 @@ export class DisciplinesController {
    */
   @Get()
   @Roles(UserType.ADMIN)
-  async getAll(): Promise<Discipline[]> {
+  async getAll(
+    @Query('includeInactive') includeInactive?: string,
+  ): Promise<Discipline[]> {
+    if (includeInactive === 'true') {
+      return this.disciplinesService.findAllIncludingInactive();
+    }
+
     return this.disciplinesService.findAll();
   }
 
@@ -75,39 +82,5 @@ export class DisciplinesController {
     @Param('email', ParseIntPipe) email: number,
   ): Promise<Discipline> {
     return this.disciplinesService.remove(email);
-  }
-
-  /**
-   * Adds an admin email to a discipline
-   * @param email the discipline id
-   * @param adminemail the admin email to add
-   * @returns the updated discipline
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
-   * @throws {Error} if the repository throws an error.
-   */
-  @Post(':email/admins/:adminEmail')
-  @Roles(UserType.ADMIN)
-  async addAdmin(
-    @Param('email', ParseIntPipe) email: number,
-    @Param('adminEmail') adminEmail: string,
-  ): Promise<Discipline> {
-    return this.disciplinesService.addAdmin(email, adminEmail);
-  }
-
-  /**
-   * Removes an admin email from a discipline
-   * @param email the discipline id
-   * @param adminemail the admin email to remove
-   * @returns the updated discipline
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
-   * @throws {Error} if the repository throws an error.
-   */
-  @Delete(':email/admins/:adminEmail')
-  @Roles(UserType.ADMIN)
-  async removeAdmin(
-    @Param('email', ParseIntPipe) email: number,
-    @Param('admiEemail') adminEmail: string,
-  ): Promise<Discipline> {
-    return this.disciplinesService.removeAdmin(email, adminEmail);
   }
 }

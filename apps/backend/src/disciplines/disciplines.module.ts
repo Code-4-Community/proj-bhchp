@@ -11,5 +11,6 @@ import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor
   imports: [TypeOrmModule.forFeature([Discipline]), AuthModule, UsersModule],
   controllers: [DisciplinesController],
   providers: [DisciplinesService, CurrentUserInterceptor],
+  exports: [DisciplinesService],
 })
 export class DisciplinesModule {}

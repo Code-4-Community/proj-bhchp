@@ -1,11 +1,15 @@
-import { DISCIPLINE_VALUES } from '../disciplines.constants';
-import { IsEnum, IsNotEmpty, IsArray } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateDisciplineRequestDto {
-  @IsEnum(DISCIPLINE_VALUES)
+  @IsString()
   @IsNotEmpty()
-  name: DISCIPLINE_VALUES;
+  key: string;
 
-  @IsArray()
-  admin_emails: string[];
+  @IsString()
+  @IsNotEmpty()
+  label: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }

@@ -69,19 +69,6 @@ export enum HeardAboutFrom {
   CURRENT_OR_FORMER_STAFF = 'I am a current/former BHCHP staff member',
 }
 
-/**
- * The applicant's discipline of expertise.
- */
-export enum DISCIPLINE_VALUES {
-  MD_MedicalStudent_PreMed = 'MD/Medical Student/Pre-Med',
-  Medical_NP_PA = 'Medical NP/PA',
-  Psychiatry_or_Psychiatric_NP_PA = 'Psychiatry or Psychiatric NP/PA',
-  PublicHealth = 'Public Health',
-  RN = 'RN',
-  SocialWork = 'Social Work',
-  Other = 'Other',
-}
-
 export interface AvailabilityFields {
   mondayAvailability: string;
   tuesdayAvailability: string;
@@ -96,7 +83,7 @@ export interface Application extends AvailabilityFields {
   email: string;
   proposedStartDate: string;
   actualStartDate?: string;
-  discipline: DISCIPLINE_VALUES;
+  discipline: string;
   otherDisciplineDescription?: string;
   appStatus: AppStatus;
   mondayAvailability: string;
@@ -169,9 +156,15 @@ export interface CandidateInfo {
 
 export interface AdminInfo {
   email: string;
-  discipline: DISCIPLINE_VALUES;
+  disciplines: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DisciplineCatalogItem {
+  key: string;
+  label: string;
+  isActive: boolean;
 }
 
 export interface DisciplineAdmin {
@@ -185,7 +178,7 @@ export interface ProvisionAdminRequest {
   email: string;
   firstName: string;
   lastName: string;
-  discipline: DISCIPLINE_VALUES;
+  disciplines: string[];
 }
 
 export interface ProvisionAdminResponse {
@@ -210,7 +203,7 @@ export interface ProvisionAdminResponse {
     user: User;
     adminInfo: {
       email: string;
-      discipline: DISCIPLINE_VALUES;
+      disciplines: string[];
       createdAt: string;
       updatedAt: string;
     };

@@ -113,7 +113,7 @@ export class ApplicationsController {
    * @param req The request object from the caller (frontend). Currently not used.
    * @returns A promise of the list of applications with the specified discipline.
    *          Returns an empty array if no applications match the discipline.
-   * @throws {BadRequestException} if the discipline is not a valid DISCIPLINE_VALUES enum value.
+   * @throws {BadRequestException} if the discipline key does not exist in the active discipline catalog.
    * @throws {Error} which is unchanged from what repository throws.
    */
   @Get('by-discipline')
@@ -122,6 +122,19 @@ export class ApplicationsController {
     @Query('discipline') discipline: string,
   ): Promise<Application[]> {
     return await this.applicationsService.findByDiscipline(discipline);
+  }
+
+  @Get('by-disciplines')
+  @Roles(UserType.ADMIN)
+  async getApplicationsByDisciplines(
+    @Query('disciplines') disciplinesCsv: string,
+  ): Promise<Application[]> {
+    const disciplines = disciplinesCsv
+      ?.split(',')
+      .map((discipline) => discipline.trim())
+      .filter(Boolean);
+
+    return await this.applicationsService.findByDisciplines(disciplines ?? []);
   }
 
   /**
@@ -199,7 +212,7 @@ export class ApplicationsController {
   /**
    * Exposes an endpoint to update the application's discipline.
    * @param appId The id of the application to modify.
-   * @param updateDisciplineDto Object containing the desired new discipline (must be a valid DISCIPLINE_VALUES enum value).
+   * @param updateDisciplineDto Object containing the desired new discipline key.
    * @param req The request object from the caller (frontend). Currently not used.
    * @returns The updated application object.
    * @throws {NotFoundException} with message 'Application with ID <id> not found'
