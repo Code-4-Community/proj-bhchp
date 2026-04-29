@@ -139,24 +139,6 @@ describe('AdminInfoService', () => {
     expect(result).toEqual({ ...admin, disciplines: ['rn'] });
   });
 
-  it('updateEmail rewrites email and returns updated admin', async () => {
-    mockAdminRepository.findOne.mockResolvedValue(admin);
-    mockAdminRepository.save.mockResolvedValue({
-      ...admin,
-      email: 'new@example.com',
-    });
-
-    const result = await service.updateEmail('admin@example.com', {
-      email: 'new@example.com',
-    });
-
-    expect(result).toEqual({
-      ...admin,
-      email: 'new@example.com',
-      disciplines: ['rn', 'social-work'],
-    });
-  });
-
   it('remove deletes admin', async () => {
     mockAdminRepository.findOne.mockResolvedValue(admin);
     mockAdminRepository.remove.mockResolvedValue(undefined);

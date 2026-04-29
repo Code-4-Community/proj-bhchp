@@ -12,7 +12,6 @@ import {
 import { AdminInfoService } from './admin-info.service';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { CreateAdminInfoDto } from './dto/create-admin.dto';
-import { UpdateAdminInfoEmailDto } from './dto/update-admin-email.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { UserType } from '../users/types';
 import { RolesGuard } from '../auth/roles.guard';
@@ -76,21 +75,6 @@ export class AdminInfoController {
   @Get('by-email/:email')
   async findByEmail(@Param('email') email: string): Promise<AdminInfo | null> {
     return await this.adminsService.findByEmail(email);
-  }
-
-  /**
-   * Exposes an endpoint to update an admin's email.
-   * @param email the email of the admin to update (current primary key).
-   * @param updateEmailDto object containing the new email.
-   * @returns the updated admin object.
-   * @throws {Error} anything that the repository throws.
-   */
-  @Patch('email/:email')
-  async updateEmail(
-    @Param('email') email: string,
-    @Body() updateEmailDto: UpdateAdminInfoEmailDto,
-  ): Promise<AdminInfo> {
-    return await this.adminsService.updateEmail(email, updateEmailDto);
   }
 
   @Patch('email/:email/disciplines')

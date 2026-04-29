@@ -26,7 +26,6 @@ const mockAdminInfoService = {
   findOne: jest.fn(),
   findByEmail: jest.fn(),
   getOldestDisciplineAdminMap: jest.fn(),
-  updateEmail: jest.fn(),
   updateDisciplines: jest.fn(),
   remove: jest.fn(),
 };
@@ -121,17 +120,6 @@ describe('AdminInfoController', () => {
     await expect(
       controller.findByEmail('missing@example.com'),
     ).resolves.toBeNull();
-  });
-
-  it('updates admin email', async () => {
-    const updated = { ...mockAdmin, email: 'updated@example.com' };
-    mockAdminInfoService.updateEmail.mockResolvedValue(updated);
-
-    await expect(
-      controller.updateEmail('admin@example.com', {
-        email: 'updated@example.com',
-      }),
-    ).resolves.toEqual(updated);
   });
 
   it('updates admin disciplines', async () => {

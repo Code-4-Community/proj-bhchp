@@ -20,6 +20,11 @@ export class AdminInfo {
   @PrimaryColumn()
   email!: string;
 
+  /**
+   * The disciplines of the admin.
+   *
+   * Example: DISCIPLINE_VALUES.Nursing.
+   */
   @Column({ type: 'text', array: true, default: [] })
   disciplines?: string[];
 
