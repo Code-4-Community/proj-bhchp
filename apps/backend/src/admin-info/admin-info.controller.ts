@@ -18,7 +18,7 @@ import { UserType } from '../users/types';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { DisciplineAdminMap } from './admin-info.service';
-import { AdminInfoWithDisciplines } from './admin-info.service';
+import { AdminInfo } from './admin-info.entity';
 import { UpdateAdminDisciplinesDto } from './dto/update-admin-disciplines.dto';
 
 /**
@@ -51,7 +51,7 @@ export class AdminInfoController {
   @Post()
   async create(
     @Body() createAdminInfoDto: CreateAdminInfoDto,
-  ): Promise<AdminInfoWithDisciplines> {
+  ): Promise<AdminInfo> {
     return await this.adminsService.create(createAdminInfoDto);
   }
 
@@ -63,9 +63,7 @@ export class AdminInfoController {
    * @throws {Error} anything that the repository throws.
    */
   @Get('email/:email')
-  async findOne(
-    @Param('email') email: string,
-  ): Promise<AdminInfoWithDisciplines> {
+  async findOne(@Param('email') email: string): Promise<AdminInfo> {
     return await this.adminsService.findOne(email);
   }
 
@@ -76,9 +74,7 @@ export class AdminInfoController {
    * @throws {Error} anything that the repository throws.
    */
   @Get('by-email/:email')
-  async findByEmail(
-    @Param('email') email: string,
-  ): Promise<AdminInfoWithDisciplines | null> {
+  async findByEmail(@Param('email') email: string): Promise<AdminInfo | null> {
     return await this.adminsService.findByEmail(email);
   }
 
@@ -93,7 +89,7 @@ export class AdminInfoController {
   async updateEmail(
     @Param('email') email: string,
     @Body() updateEmailDto: UpdateAdminInfoEmailDto,
-  ): Promise<AdminInfoWithDisciplines> {
+  ): Promise<AdminInfo> {
     return await this.adminsService.updateEmail(email, updateEmailDto);
   }
 
@@ -101,7 +97,7 @@ export class AdminInfoController {
   async updateDisciplines(
     @Param('email') email: string,
     @Body() updateDisciplinesDto: UpdateAdminDisciplinesDto,
-  ): Promise<AdminInfoWithDisciplines> {
+  ): Promise<AdminInfo> {
     return await this.adminsService.updateDisciplines(
       email,
       updateDisciplinesDto.disciplines,

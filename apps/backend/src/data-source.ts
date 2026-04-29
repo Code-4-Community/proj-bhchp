@@ -1,6 +1,5 @@
 import { DataSource } from 'typeorm';
 import { AdminInfo } from './admin-info/admin-info.entity';
-import { AdminDisciplineMap } from './admin-info/admin-discipline-map.entity';
 import { User } from './users/user.entity';
 import { PluralNamingStrategy } from './strategies/plural-naming.strategy';
 import * as dotenv from 'dotenv';
@@ -22,7 +21,6 @@ const AppDataSource = new DataSource({
     Application,
     CandidateInfo,
     AdminInfo,
-    AdminDisciplineMap,
     Discipline,
     LearnerInfo,
     User,

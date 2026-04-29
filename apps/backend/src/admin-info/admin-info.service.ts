@@ -7,10 +7,6 @@ import { UpdateAdminInfoEmailDto } from './dto/update-admin-email.dto';
 import { UsersService } from '../users/users.service';
 import { DisciplinesService } from '../disciplines/disciplines.service';
 
-export type AdminInfoWithDisciplines = AdminInfo & {
-  disciplines: string[];
-};
-
 export type DisciplineAdminMap = Record<
   string,
   {
@@ -63,9 +59,7 @@ export class AdminInfoService {
    * @returns the new admin object.
    * @throws {Error} anything that the repository throws.
    */
-  async create(
-    createAdminInfoDto: CreateAdminInfoDto,
-  ): Promise<AdminInfoWithDisciplines> {
+  async create(createAdminInfoDto: CreateAdminInfoDto): Promise<AdminInfo> {
     const email = createAdminInfoDto.email.trim().toLowerCase();
     const disciplines = [...new Set(createAdminInfoDto.disciplines)];
 
@@ -82,7 +76,7 @@ export class AdminInfoService {
         return savedAdmin;
       },
     );
-    return saved as AdminInfoWithDisciplines;
+    return saved;
   }
 
   /**
@@ -90,8 +84,8 @@ export class AdminInfoService {
    * @returns a list of admin objects.
    * @throws {Error} anything that the repository throws.
    */
-  async findAll(): Promise<AdminInfoWithDisciplines[]> {
-    return (await this.adminRepository.find()) as AdminInfoWithDisciplines[];
+  async findAll(): Promise<AdminInfo[]> {
+    return this.adminRepository.find();
   }
 
   /**
@@ -101,12 +95,12 @@ export class AdminInfoService {
    * @throws {NotFoundException} if an admin with the desired email does not exist in the system.
    * @throws {Error} anything that the repository throws.
    */
-  async findOne(email: string): Promise<AdminInfoWithDisciplines> {
+  async findOne(email: string): Promise<AdminInfo> {
     const admin = await this.adminRepository.findOne({ where: { email } });
     if (!admin) {
       throw new NotFoundException(`AdminInfo with email ${email} not found`);
     }
-    return admin as AdminInfoWithDisciplines;
+    return admin;
   }
 
   /**
@@ -116,12 +110,12 @@ export class AdminInfoService {
    *          or null if an admin with the specified email does not exist in the system.
    * @throws {Error} anything that the repository throws.
    */
-  async findByEmail(email: string): Promise<AdminInfoWithDisciplines | null> {
+  async findByEmail(email: string): Promise<AdminInfo | null> {
     const admin = await this.adminRepository.findOne({ where: { email } });
     if (!admin) {
       return null;
     }
-    return admin as AdminInfoWithDisciplines;
+    return admin;
   }
 
   /**
@@ -134,7 +128,7 @@ export class AdminInfoService {
   async updateEmail(
     email: string,
     updateEmailDto: UpdateAdminInfoEmailDto,
-  ): Promise<AdminInfoWithDisciplines> {
+  ): Promise<AdminInfo> {
     const newEmail = updateEmailDto.email.trim().toLowerCase();
 
     await this.adminRepository.manager.transaction(
@@ -162,7 +156,7 @@ export class AdminInfoService {
   async updateDisciplines(
     email: string,
     disciplines: string[],
-  ): Promise<AdminInfoWithDisciplines> {
+  ): Promise<AdminInfo> {
     const uniqueDisciplines = [...new Set(disciplines)];
     await this.disciplinesService.ensureActiveDisciplineKeys(uniqueDisciplines);
 

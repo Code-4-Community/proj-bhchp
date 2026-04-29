@@ -36,8 +36,6 @@ describe('AdminProvisioningController', () => {
     findOne: jest.fn(),
   };
 
-  const mockCognitoIdentityProviderFactory: InjectionToken = jest.fn();
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AdminProvisioningController],
