@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { AdminInfo } from '../admin-info/admin-info.entity';
-import { AdminDisciplineMap } from '../admin-info/admin-discipline-map.entity';
 import { UsersModule } from '../users/users.module';
 import { User } from '../users/user.entity';
 import { AdminProvisioningController } from './admin-provisioning.controller';
@@ -12,7 +11,7 @@ import { DisciplinesModule } from '../disciplines/disciplines.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, AdminInfo, AdminDisciplineMap]),
+    TypeOrmModule.forFeature([User, AdminInfo]),
     AuthModule,
     UsersModule,
     DisciplinesModule,

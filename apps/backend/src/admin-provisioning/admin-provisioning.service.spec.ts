@@ -8,7 +8,6 @@ import { ConflictException } from '@nestjs/common';
 import { AdminProvisioningService } from './admin-provisioning.service';
 import { User } from '../users/user.entity';
 import { AdminInfo } from '../admin-info/admin-info.entity';
-import { AdminDisciplineMap } from '../admin-info/admin-discipline-map.entity';
 import { COGNITO_IDENTITY_PROVIDER } from './cognito.provider';
 import { DisciplinesService } from '../disciplines/disciplines.service';
 import { UserType } from '../users/types';
@@ -48,11 +47,6 @@ describe('AdminProvisioningService', () => {
     save: jest.fn(),
   };
 
-  const mockAdminDisciplineMapRepository = {
-    create: jest.fn(),
-    save: jest.fn(),
-  };
-
   const mockDisciplinesService = {
     ensureActiveDisciplineKeys: jest.fn(),
   };
@@ -79,10 +73,6 @@ describe('AdminProvisioningService', () => {
         {
           provide: getRepositoryToken(AdminInfo),
           useValue: mockAdminInfoRepository,
-        },
-        {
-          provide: getRepositoryToken(AdminDisciplineMap),
-          useValue: mockAdminDisciplineMapRepository,
         },
         {
           provide: DisciplinesService,
@@ -120,7 +110,7 @@ describe('AdminProvisioningService', () => {
     expect(result.cognitoUsername).toBe('ada@example.com');
   });
 
-  it('createAdminDatabaseRecords writes user, admin_info, and admin_discipline_map records', async () => {
+  it('createAdminDatabaseRecords writes user and admin_info records', async () => {
     const createdUser = {
       email: 'ada@example.com',
       firstName: 'Ada',
@@ -129,6 +119,7 @@ describe('AdminProvisioningService', () => {
     };
     const createdAdminInfo = {
       email: 'ada@example.com',
+      disciplines: ['rn', 'social-work'],
       createdAt: new Date('2026-04-14T00:00:00.000Z'),
       updatedAt: new Date('2026-04-14T00:00:00.000Z'),
     };
@@ -142,17 +133,12 @@ describe('AdminProvisioningService', () => {
     mockUserRepository.save.mockResolvedValue(createdUser);
     mockAdminInfoRepository.create.mockReturnValue(createdAdminInfo);
     mockAdminInfoRepository.save.mockResolvedValue(createdAdminInfo);
-    mockAdminDisciplineMapRepository.create.mockImplementation(
-      (v: unknown) => v,
-    );
-    mockAdminDisciplineMapRepository.save.mockResolvedValue(undefined);
 
     const result = await service.createAdminDatabaseRecords(baseDto);
 
     expect(
       mockDisciplinesService.ensureActiveDisciplineKeys,
     ).toHaveBeenCalledWith(['rn', 'social-work']);
-    expect(mockAdminDisciplineMapRepository.save).toHaveBeenCalled();
     expect(result.adminInfo.disciplines).toEqual(['rn', 'social-work']);
   });
 

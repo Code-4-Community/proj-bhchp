@@ -1,4 +1,5 @@
 import {
+  Column,
   Entity,
   PrimaryColumn,
   CreateDateColumn,
@@ -18,6 +19,9 @@ export class AdminInfo {
    */
   @PrimaryColumn()
   email!: string;
+
+  @Column({ type: 'text', array: true, default: [] })
+  disciplines?: string[];
 
   /**
    * When the admin was created stored in YYYY-MM-DD format.

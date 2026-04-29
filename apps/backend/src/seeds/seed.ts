@@ -13,7 +13,6 @@ import { LearnerInfo } from '../learner-info/learner-info.entity';
 import { School } from '../learner-info/types';
 import { CandidateInfo } from '../candidate-info/candidate-info.entity';
 import { AdminInfo } from '../admin-info/admin-info.entity';
-import { AdminDisciplineMap } from '../admin-info/admin-discipline-map.entity';
 import { User } from '../users/user.entity';
 import { UserType } from '../users/types';
 
@@ -61,27 +60,15 @@ const DISCIPLINE_SEED: DeepPartial<Discipline>[] = [
 const ADMIN_INFO_SEED = [
   {
     email: 'superadmin@c4cneu.com',
+    disciplines: [DISCIPLINE_KEYS.rn],
   },
   {
     email: 'publichealthadmin@c4cneu.com',
+    disciplines: [DISCIPLINE_KEYS.publicHealth],
   },
   {
     email: 'socialworkadmin@c4cneu.com',
-  },
-];
-
-const ADMIN_DISCIPLINE_MAP_SEED: DeepPartial<AdminDisciplineMap>[] = [
-  {
-    adminEmail: 'superadmin@c4cneu.com',
-    disciplineKey: DISCIPLINE_KEYS.rn,
-  },
-  {
-    adminEmail: 'publichealthadmin@c4cneu.com',
-    disciplineKey: DISCIPLINE_KEYS.publicHealth,
-  },
-  {
-    adminEmail: 'socialworkadmin@c4cneu.com',
-    disciplineKey: DISCIPLINE_KEYS.socialWork,
+    disciplines: [DISCIPLINE_KEYS.socialWork],
   },
 ];
 
@@ -497,17 +484,6 @@ async function seed() {
       ADMIN_INFO_SEED as DeepPartial<AdminInfo>[],
     );
     console.log(`✅ Created ${admins.length} admin infos`);
-
-    // Create admin discipline map test data
-    console.log('Creating admin discipline mappings...');
-    const adminDisciplineMapRepo: Repository<AdminDisciplineMap> =
-      dataSource.getRepository(AdminDisciplineMap);
-    const adminDisciplineMappings = await adminDisciplineMapRepo.save(
-      ADMIN_DISCIPLINE_MAP_SEED,
-    );
-    console.log(
-      `Created ${adminDisciplineMappings.length} admin discipline mappings`,
-    );
 
     // Create candidate info test data
     console.log('📋 Creating applicants...');

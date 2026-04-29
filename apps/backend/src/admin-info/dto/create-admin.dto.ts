@@ -6,8 +6,6 @@ import {
   IsString,
 } from 'class-validator';
 
-// TODO: Add class validators
-
 /**
  * Defines the expected shape of data for creating a new admin.
  */
@@ -39,6 +37,11 @@ export class CreateAdminInfoDto {
   @IsNotEmpty()
   email: string;
 
+  /**
+   * The disciplines of the admin to create.
+   *
+   * Example: DISCIPLINE_VALUES.Nursing.
+   */
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })

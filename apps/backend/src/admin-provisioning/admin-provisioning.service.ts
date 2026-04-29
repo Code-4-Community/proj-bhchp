@@ -14,7 +14,6 @@ import {
   ProvisionAdminResponse,
 } from './types';
 import { AdminInfo } from '../admin-info/admin-info.entity';
-import { AdminDisciplineMap } from '../admin-info/admin-discipline-map.entity';
 import { UserType } from '../users/types';
 import { User } from '../users/user.entity';
 import { COGNITO_IDENTITY_PROVIDER } from './cognito.provider';
@@ -51,8 +50,6 @@ export class AdminProvisioningService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(AdminInfo)
     private readonly adminInfoRepository: Repository<AdminInfo>,
-    @InjectRepository(AdminDisciplineMap)
-    private readonly adminDisciplineMapRepository: Repository<AdminDisciplineMap>,
     private readonly disciplinesService: DisciplinesService,
   ) {}
 
@@ -165,8 +162,6 @@ export class AdminProvisioningService {
           transactionManager.getRepository(User);
         const transactionalAdminInfoRepository =
           transactionManager.getRepository(AdminInfo);
-        const transactionalAdminDisciplineMapRepository =
-          transactionManager.getRepository(AdminDisciplineMap);
 
         const existingUser = await transactionalUserRepository.findOneBy({
           email: normalizedEmail,
@@ -203,18 +198,10 @@ export class AdminProvisioningService {
 
         const adminInfo = transactionalAdminInfoRepository.create({
           email: normalizedEmail,
+          disciplines,
         });
         const savedAdminInfo = await transactionalAdminInfoRepository.save(
           adminInfo,
-        );
-
-        await transactionalAdminDisciplineMapRepository.save(
-          disciplines.map((disciplineKey) =>
-            transactionalAdminDisciplineMapRepository.create({
-              adminEmail: normalizedEmail,
-              disciplineKey,
-            }),
-          ),
         );
 
         return {
@@ -261,17 +248,9 @@ export class AdminProvisioningService {
 
       const adminInfo = this.adminInfoRepository.create({
         email: normalizedEmail,
+        disciplines,
       });
       const savedAdminInfo = await this.adminInfoRepository.save(adminInfo);
-
-      await this.adminDisciplineMapRepository.save(
-        disciplines.map((disciplineKey) =>
-          this.adminDisciplineMapRepository.create({
-            adminEmail: normalizedEmail,
-            disciplineKey,
-          }),
-        ),
-      );
 
       return {
         user: savedUser,
