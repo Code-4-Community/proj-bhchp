@@ -9,14 +9,14 @@ import { DisciplinesService } from '../disciplines/disciplines.service';
 describe('AdminInfoService', () => {
   let service: AdminInfoService;
 
-  const mockAdmin: AdminInfo = {
+  const mockAdminInfo: AdminInfo = {
     email: 'admin@example.com',
     disciplines: ['rn', 'social-work'],
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   };
 
-  const mockAdminRepository = {
+  const mockRepository = {
     find: jest.fn(),
     findOne: jest.fn(),
     create: jest.fn(),
@@ -36,7 +36,7 @@ describe('AdminInfoService', () => {
   };
 
   beforeEach(async () => {
-    mockAdminRepository.manager.transaction.mockImplementation(
+    mockRepository.manager.transaction.mockImplementation(
       async (
         cb: (transactionManager: {
           getRepository: (entity: unknown) => unknown;
@@ -44,8 +44,8 @@ describe('AdminInfoService', () => {
       ) =>
         cb({
           getRepository: (entity: unknown) => {
-            if (entity === AdminInfo) return mockAdminRepository;
-            return mockAdminRepository;
+            if (entity === AdminInfo) return mockRepository;
+            return mockRepository;
           },
         }),
     );
@@ -55,7 +55,7 @@ describe('AdminInfoService', () => {
         AdminInfoService,
         {
           provide: getRepositoryToken(AdminInfo),
-          useValue: mockAdminRepository,
+          useValue: mockRepository,
         },
         {
           provide: UsersService,
@@ -81,15 +81,15 @@ describe('AdminInfoService', () => {
 
   describe('getOldestDisciplineAdminMap', () => {
     it('should return one oldest admin per discipline with names', async () => {
-      mockAdminRepository.find.mockResolvedValue([
+      mockRepository.find.mockResolvedValue([
         {
-          ...mockAdmin,
+          ...mockAdminInfo,
           email: 'oldest@example.com',
           disciplines: ['rn', 'social-work'],
           createdAt: new Date('2026-01-01T00:00:00.000Z'),
         },
         {
-          ...mockAdmin,
+          ...mockAdminInfo,
           email: 'newer@example.com',
           disciplines: ['rn'],
           createdAt: new Date('2026-02-01T00:00:00.000Z'),
@@ -109,7 +109,7 @@ describe('AdminInfoService', () => {
 
       const result = await service.getOldestDisciplineAdminMap();
 
-      expect(mockAdminRepository.find).toHaveBeenCalledWith({
+      expect(mockRepository.find).toHaveBeenCalledWith({
         order: { createdAt: 'ASC', email: 'ASC' },
       });
       expect(result).toEqual({
@@ -119,7 +119,7 @@ describe('AdminInfoService', () => {
     });
 
     it('should fall back to email when user record is missing', async () => {
-      mockAdminRepository.find.mockResolvedValue([mockAdmin]);
+      mockRepository.find.mockResolvedValue([mockAdminInfo]);
       mockUsersService.findOne.mockResolvedValue(null);
 
       await expect(service.getOldestDisciplineAdminMap()).resolves.toEqual({
@@ -134,11 +134,11 @@ describe('AdminInfoService', () => {
       mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
         undefined,
       );
-      mockAdminRepository.create.mockReturnValue({
-        ...mockAdmin,
+      mockRepository.create.mockReturnValue({
+        ...mockAdminInfo,
         disciplines: ['rn', 'social-work'],
       });
-      mockAdminRepository.save.mockResolvedValue(mockAdmin);
+      mockRepository.save.mockResolvedValue(mockAdminInfo);
 
       const result = await service.create({
         email: ' Admin@Example.com ',
@@ -150,11 +150,11 @@ describe('AdminInfoService', () => {
       expect(
         mockDisciplinesService.ensureActiveDisciplineKeys,
       ).toHaveBeenCalledWith(['rn', 'social-work']);
-      expect(mockAdminRepository.create).toHaveBeenCalledWith({
+      expect(mockRepository.create).toHaveBeenCalledWith({
         email: 'admin@example.com',
         disciplines: ['rn', 'social-work'],
       });
-      expect(result).toEqual(mockAdmin);
+      expect(result).toEqual(mockAdminInfo);
     });
 
     it('passes through discipline validation errors', async () => {
@@ -176,8 +176,8 @@ describe('AdminInfoService', () => {
       mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
         undefined,
       );
-      mockAdminRepository.create.mockReturnValue(mockAdmin);
-      mockAdminRepository.save.mockRejectedValueOnce(
+      mockRepository.create.mockReturnValue(mockAdminInfo);
+      mockRepository.save.mockRejectedValueOnce(
         new Error('There was a problem saving the entry'),
       );
 
@@ -194,17 +194,17 @@ describe('AdminInfoService', () => {
 
   describe('findAll', () => {
     it('should return an array of admins', async () => {
-      mockAdminRepository.find.mockResolvedValue([mockAdmin]);
-      await expect(service.findAll()).resolves.toEqual([mockAdmin]);
+      mockRepository.find.mockResolvedValue([mockAdminInfo]);
+      await expect(service.findAll()).resolves.toEqual([mockAdminInfo]);
     });
 
     it('should return empty array when no admins exist', async () => {
-      mockAdminRepository.find.mockResolvedValue([]);
+      mockRepository.find.mockResolvedValue([]);
       await expect(service.findAll()).resolves.toEqual([]);
     });
 
     it('should pass along any repo errors without information loss during retrieval', async () => {
-      mockAdminRepository.find.mockRejectedValueOnce(
+      mockRepository.find.mockRejectedValueOnce(
         new Error('There was a problem retrieving the entries'),
       );
       await expect(service.findAll()).rejects.toThrow(
@@ -215,17 +215,17 @@ describe('AdminInfoService', () => {
 
   describe('findOne', () => {
     it('should return an admin by email', async () => {
-      mockAdminRepository.findOne.mockResolvedValue(mockAdmin);
+      mockRepository.findOne.mockResolvedValue(mockAdminInfo);
       await expect(service.findOne('admin@example.com')).resolves.toEqual(
-        mockAdmin,
+        mockAdminInfo,
       );
-      expect(mockAdminRepository.findOne).toHaveBeenCalledWith({
+      expect(mockRepository.findOne).toHaveBeenCalledWith({
         where: { email: 'admin@example.com' },
       });
     });
 
     it('should throw NotFoundException when admin not found', async () => {
-      mockAdminRepository.findOne.mockResolvedValue(null);
+      mockRepository.findOne.mockResolvedValue(null);
       await expect(service.findOne('missing@example.com')).rejects.toThrow(
         new NotFoundException(
           'AdminInfo with email missing@example.com not found',
@@ -234,7 +234,7 @@ describe('AdminInfoService', () => {
     });
 
     it('should pass along any repo errors without information loss during retrieval', async () => {
-      mockAdminRepository.findOne.mockRejectedValueOnce(
+      mockRepository.findOne.mockRejectedValueOnce(
         new Error('There was a problem retrieving the entry'),
       );
       await expect(service.findOne('admin@example.com')).rejects.toThrow(
@@ -245,21 +245,21 @@ describe('AdminInfoService', () => {
 
   describe('findByEmail', () => {
     it('should return an admin by email', async () => {
-      mockAdminRepository.findOne.mockResolvedValue(mockAdmin);
+      mockRepository.findOne.mockResolvedValue(mockAdminInfo);
       await expect(service.findByEmail('admin@example.com')).resolves.toEqual(
-        mockAdmin,
+        mockAdminInfo,
       );
     });
 
     it('should return null when admin not found by email', async () => {
-      mockAdminRepository.findOne.mockResolvedValue(null);
+      mockRepository.findOne.mockResolvedValue(null);
       await expect(service.findByEmail('missing@example.com')).resolves.toBe(
         null,
       );
     });
 
     it('should pass along any repo errors without information loss during retrieval', async () => {
-      mockAdminRepository.findOne.mockRejectedValueOnce(
+      mockRepository.findOne.mockRejectedValueOnce(
         new Error('There was a problem retrieving the entries'),
       );
       await expect(service.findByEmail('admin@example.com')).rejects.toThrow(
@@ -270,11 +270,11 @@ describe('AdminInfoService', () => {
 
   describe('updateEmail', () => {
     it('should update admin email and return the admin', async () => {
-      mockAdminRepository.findOne
-        .mockResolvedValueOnce({ ...mockAdmin })
-        .mockResolvedValueOnce({ ...mockAdmin, email: 'new@example.com' });
-      mockAdminRepository.save.mockResolvedValue({
-        ...mockAdmin,
+      mockRepository.findOne
+        .mockResolvedValueOnce({ ...mockAdminInfo })
+        .mockResolvedValueOnce({ ...mockAdminInfo, email: 'new@example.com' });
+      mockRepository.save.mockResolvedValue({
+        ...mockAdminInfo,
         email: 'new@example.com',
       });
 
@@ -282,15 +282,15 @@ describe('AdminInfoService', () => {
         email: ' New@Example.com ',
       });
 
-      expect(mockAdminRepository.save).toHaveBeenCalledWith({
-        ...mockAdmin,
+      expect(mockRepository.save).toHaveBeenCalledWith({
+        ...mockAdminInfo,
         email: 'new@example.com',
       });
       expect(result.email).toBe('new@example.com');
     });
 
     it('should throw NotFoundException when admin not found for email update', async () => {
-      mockAdminRepository.findOne.mockResolvedValue(null);
+      mockRepository.findOne.mockResolvedValue(null);
 
       await expect(
         service.updateEmail('missing@example.com', {
@@ -304,8 +304,8 @@ describe('AdminInfoService', () => {
     });
 
     it('should pass along any repo errors without information loss during saving', async () => {
-      mockAdminRepository.findOne.mockResolvedValue({ ...mockAdmin });
-      mockAdminRepository.save.mockRejectedValueOnce(
+      mockRepository.findOne.mockResolvedValue({ ...mockAdminInfo });
+      mockRepository.save.mockRejectedValueOnce(
         new Error('There was a problem saving the entry'),
       );
 
@@ -322,11 +322,11 @@ describe('AdminInfoService', () => {
       mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
         undefined,
       );
-      mockAdminRepository.findOne
-        .mockResolvedValueOnce({ ...mockAdmin })
-        .mockResolvedValueOnce({ ...mockAdmin, disciplines: ['rn'] });
-      mockAdminRepository.save.mockResolvedValue({
-        ...mockAdmin,
+      mockRepository.findOne
+        .mockResolvedValueOnce({ ...mockAdminInfo })
+        .mockResolvedValueOnce({ ...mockAdminInfo, disciplines: ['rn'] });
+      mockRepository.save.mockResolvedValue({
+        ...mockAdminInfo,
         disciplines: ['rn'],
       });
 
@@ -338,18 +338,18 @@ describe('AdminInfoService', () => {
       expect(
         mockDisciplinesService.ensureActiveDisciplineKeys,
       ).toHaveBeenCalledWith(['rn']);
-      expect(mockAdminRepository.save).toHaveBeenCalledWith({
-        ...mockAdmin,
+      expect(mockRepository.save).toHaveBeenCalledWith({
+        ...mockAdminInfo,
         disciplines: ['rn'],
       });
-      expect(result).toEqual({ ...mockAdmin, disciplines: ['rn'] });
+      expect(result).toEqual({ ...mockAdminInfo, disciplines: ['rn'] });
     });
 
     it('throws not found when admin is missing', async () => {
       mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
         undefined,
       );
-      mockAdminRepository.findOne.mockResolvedValue(null);
+      mockRepository.findOne.mockResolvedValue(null);
 
       await expect(
         service.updateDisciplines('missing@example.com', ['rn']),
@@ -363,16 +363,16 @@ describe('AdminInfoService', () => {
 
   describe('remove', () => {
     it('should remove an admin', async () => {
-      mockAdminRepository.findOne.mockResolvedValue(mockAdmin);
-      mockAdminRepository.remove.mockResolvedValue(undefined);
+      mockRepository.findOne.mockResolvedValue(mockAdminInfo);
+      mockRepository.remove.mockResolvedValue(undefined);
 
       await service.remove('admin@example.com');
 
-      expect(mockAdminRepository.remove).toHaveBeenCalledWith(mockAdmin);
+      expect(mockRepository.remove).toHaveBeenCalledWith(mockAdminInfo);
     });
 
     it('should throw NotFoundException when admin not found for removal', async () => {
-      mockAdminRepository.findOne.mockResolvedValue(null);
+      mockRepository.findOne.mockResolvedValue(null);
 
       await expect(service.remove('missing@example.com')).rejects.toThrow(
         new NotFoundException(
@@ -382,8 +382,8 @@ describe('AdminInfoService', () => {
     });
 
     it('should pass along any repo errors without information loss during removal', async () => {
-      mockAdminRepository.findOne.mockResolvedValue(mockAdmin);
-      mockAdminRepository.remove.mockRejectedValueOnce(
+      mockRepository.findOne.mockResolvedValue(mockAdminInfo);
+      mockRepository.remove.mockRejectedValueOnce(
         new Error('There was a problem saving the entry'),
       );
 
