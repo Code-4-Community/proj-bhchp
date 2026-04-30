@@ -27,6 +27,11 @@ export class AdminInfoService {
     private readonly disciplinesService: DisciplinesService,
   ) {}
 
+  /**
+   * Returns a map of discipline key to the oldest admin assigned to that discipline.
+   * @returns discipline -> admin name map for landing-page display.
+   * @throws {Error} anything that the repository or user service throws.
+   */
   async getOldestDisciplineAdminMap(): Promise<DisciplineAdminMap> {
     const admins = await this.adminRepository.find({
       order: { createdAt: 'ASC', email: 'ASC' },
@@ -153,6 +158,15 @@ export class AdminInfoService {
     return this.findOne(newEmail);
   }
 
+  /**
+   * Replaces an admin's discipline assignments.
+   * @param email the admin email to update.
+   * @param disciplines the full list of disciplines that should be assigned.
+   * @returns the updated admin object.
+   * @throws {NotFoundException} if an admin with the desired email does not exist.
+   * @throws {BadRequestException} if any provided discipline is invalid or inactive.
+   * @throws {Error} anything that the repository throws.
+   */
   async updateDisciplines(
     email: string,
     disciplines: string[],

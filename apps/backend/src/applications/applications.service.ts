@@ -71,6 +71,11 @@ export class ApplicationsService {
     private disciplinesService: DisciplinesService,
   ) {}
 
+  /**
+   * Ensures the application is in a status allowed to upload a confidentiality form.
+   * @param application the application being checked.
+   * @throws {ForbiddenException} if the current status is not upload-eligible.
+   */
   private ensureCanUploadConfidentialityForm(application: Application): void {
     const allowedStatuses = [AppStatus.ACCEPTED, AppStatus.FORMS_SIGNED];
 
@@ -81,6 +86,11 @@ export class ApplicationsService {
     }
   }
 
+  /**
+   * Ensures the application is in a status allowed to download a confidentiality form.
+   * @param application the application being checked.
+   * @throws {ForbiddenException} if the current status is not download-eligible.
+   */
   private ensureCanDownloadConfidentialityForm(application: Application): void {
     const allowedStatuses = [AppStatus.ACTIVE, AppStatus.INACTIVE];
 
@@ -91,6 +101,12 @@ export class ApplicationsService {
     }
   }
 
+  /**
+   * Resolves the current user's application through candidate_info.
+   * @param email the user's email.
+   * @returns the corresponding application record.
+   * @throws {NotFoundException} if candidate info or application cannot be found.
+   */
   private async findCurrentUserApplication(
     email: string,
   ): Promise<Application> {
@@ -98,6 +114,10 @@ export class ApplicationsService {
     return this.findById(candidateInfo.appId);
   }
 
+  /**
+   * Returns a signed URL for the confidentiality-form template.
+   * @returns object containing the template URL.
+   */
   async getConfidentialityTemplateUrl(): Promise<{ templateUrl: string }> {
     return {
       templateUrl: this.awsS3Service.createObjectLink(
@@ -106,6 +126,13 @@ export class ApplicationsService {
     };
   }
 
+  /**
+   * Returns the current user's uploaded confidentiality form metadata.
+   * @param email the current user's email.
+   * @returns form metadata if present, otherwise null.
+   * @throws {ForbiddenException} if the user's application status cannot download forms.
+   * @throws {NotFoundException} if the user has no application.
+   */
   async getConfidentialityForm(email: string): Promise<{
     fileName: string;
     fileUrl: string;
@@ -125,6 +152,15 @@ export class ApplicationsService {
     };
   }
 
+  /**
+   * Uploads and persists a confidentiality form for the current user.
+   * @param email the current user's email.
+   * @param file uploaded file payload.
+   * @returns uploaded form metadata and the updated application status.
+   * @throws {ForbiddenException} if the user's application status cannot upload forms.
+   * @throws {NotFoundException} if the user has no application.
+   * @throws {Error} anything thrown by S3 upload or repository save.
+   */
   async uploadConfidentialityForm(
     email: string,
     file: { buffer: Buffer; mimetype: string },
@@ -239,6 +275,11 @@ export class ApplicationsService {
     return application;
   }
 
+  /**
+   * Validates an application discipline key against the active discipline catalog.
+   * @param discipline the discipline key to validate.
+   * @throws {BadRequestException} if the discipline is invalid or inactive.
+   */
   private async validateDiscipline(discipline: string): Promise<void> {
     return await this.disciplinesService.ensureActiveDisciplineKey(discipline);
   }
@@ -258,6 +299,13 @@ export class ApplicationsService {
     });
   }
 
+  /**
+   * Returns applications that belong to any of the provided disciplines.
+   * @param disciplines discipline keys to filter by.
+   * @returns matching applications across all provided disciplines.
+   * @throws {BadRequestException} if no disciplines are provided or keys are invalid/inactive.
+   * @throws {Error} anything that the repository throws.
+   */
   async findByDisciplines(disciplines: string[]): Promise<Application[]> {
     const uniqueDisciplines = [...new Set(disciplines.map((d) => d.trim()))];
 
@@ -479,6 +527,12 @@ export class ApplicationsService {
     return await this.applicationRepository.save(application);
   }
 
+  /**
+   * Deletes an application from the repository by id.
+   * @param appId the id of the application to delete.
+   * @throws {NotFoundException} if the application does not exist.
+   * @throws {Error} anything that the repository throws.
+   */
   async delete(appId: number): Promise<void> {
     const application = await this.findById(appId);
     if (!application) {

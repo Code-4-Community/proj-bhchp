@@ -31,6 +31,11 @@ import { DisciplinesService } from '../disciplines/disciplines.service';
 export class AdminProvisioningService {
   private readonly logger = new Logger(AdminProvisioningService.name);
 
+  /**
+   * Reads and validates the configured Cognito user pool id.
+   * @returns the Cognito user pool id.
+   * @throws {Error} if the user pool id is not configured.
+   */
   private getCognitoUserPoolId(): string {
     const userPoolId = envConfig.CognitoAuthConfig.userPoolId;
 

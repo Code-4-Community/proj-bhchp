@@ -77,6 +77,15 @@ export class AdminInfoController {
     return await this.adminsService.findByEmail(email);
   }
 
+  /**
+   * Exposes an endpoint to replace an admin's discipline assignments.
+   * @param email the email of the admin to update.
+   * @param updateDisciplinesDto object containing the desired discipline keys.
+   * @returns the updated admin object.
+   * @throws {NotFoundException} if an admin with the desired email does not exist.
+   * @throws {BadRequestException} if one or more disciplines are invalid or inactive.
+   * @throws {Error} anything that the repository throws.
+   */
   @Patch('email/:email/disciplines')
   async updateDisciplines(
     @Param('email') email: string,
