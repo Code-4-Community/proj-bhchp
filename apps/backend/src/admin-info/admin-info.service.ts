@@ -177,7 +177,10 @@ export class AdminInfoService {
     email: string,
     disciplines: string[],
   ): Promise<AdminInfo> {
-    const uniqueDisciplines = [...new Set(disciplines)];
+    const normalizedDisciplines = disciplines.map((discipline) =>
+      discipline.trim().toLowerCase(),
+    );
+    const uniqueDisciplines = [...new Set(normalizedDisciplines)];
     await this.disciplinesService.ensureActiveDisciplineKeys(uniqueDisciplines);
 
     await this.adminRepository.manager.transaction(
