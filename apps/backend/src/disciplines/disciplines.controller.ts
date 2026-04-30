@@ -52,7 +52,7 @@ export class DisciplinesController {
    */
   @Get(':id')
   @Roles(UserType.ADMIN)
-  async getOne(@Param('id') id: number): Promise<Discipline> {
+  async getOne(@Param('id', ParseIntPipe) id: number): Promise<Discipline> {
     return this.disciplinesService.findOne(id);
   }
 
