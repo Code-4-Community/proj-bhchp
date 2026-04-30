@@ -35,6 +35,7 @@ describe('AdminProvisioningService', () => {
 
   const mockUserRepository = {
     findOneBy: jest.fn(),
+    findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
@@ -86,95 +87,432 @@ describe('AdminProvisioningService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    mockUserRepository.manager = undefined;
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  it('createAdminUserInCognito sends expected command', async () => {
-    mockCognitoIdentityProvider.send.mockResolvedValue({
-      User: {
+  describe('assertAdminDoesNotAlreadyExist', () => {
+    it('checks normalized email and resolves when no duplicates exist', async () => {
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.assertAdminDoesNotAlreadyExist(' Ada@Example.com '),
+      ).resolves.toBeUndefined();
+
+      expect(mockUserRepository.findOneBy).toHaveBeenCalledWith({
+        email: 'ada@example.com',
+      });
+      expect(mockAdminInfoRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'ada@example.com' },
+      });
+    });
+
+    it('throws conflict when user already exists', async () => {
+      mockUserRepository.findOneBy.mockResolvedValue({
+        email: 'ada@example.com',
+      });
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.assertAdminDoesNotAlreadyExist('ada@example.com'),
+      ).rejects.toThrow(
+        new ConflictException(
+          'User with email ada@example.com already exists.',
+        ),
+      );
+    });
+
+    it('throws conflict when admin info already exists', async () => {
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue({
+        email: 'ada@example.com',
+      });
+
+      await expect(
+        service.assertAdminDoesNotAlreadyExist('ada@example.com'),
+      ).rejects.toThrow(
+        new ConflictException(
+          'AdminInfo with email ada@example.com already exists.',
+        ),
+      );
+    });
+  });
+
+  describe('createAdminUserInCognito', () => {
+    it('sends expected create command and returns Cognito data', async () => {
+      mockCognitoIdentityProvider.send.mockResolvedValue({
+        User: {
+          Username: 'ada@example.com',
+          UserStatus: 'FORCE_CHANGE_PASSWORD',
+        },
+      });
+
+      const result = await service.createAdminUserInCognito(
+        'ada@example.com',
+        'TempPass123!',
+      );
+
+      expect(mockCognitoIdentityProvider.send).toHaveBeenCalledTimes(1);
+      const command = mockCognitoIdentityProvider.send.mock.calls[0][0];
+      expect(command).toBeInstanceOf(AdminCreateUserCommand);
+      expect(command.input).toEqual({
+        UserPoolId: 'test-user-pool-id',
         Username: 'ada@example.com',
-        UserStatus: 'FORCE_CHANGE_PASSWORD',
-      },
+        TemporaryPassword: 'TempPass123!',
+        DesiredDeliveryMediums: ['EMAIL'],
+        UserAttributes: [
+          { Name: 'email', Value: 'ada@example.com' },
+          { Name: 'email_verified', Value: 'true' },
+        ],
+      });
+      expect(result).toEqual({
+        cognitoUsername: 'ada@example.com',
+        userStatus: 'FORCE_CHANGE_PASSWORD',
+      });
     });
 
-    const result = await service.createAdminUserInCognito(
-      'ada@example.com',
-      'TempPass123!',
-    );
+    it('propagates Cognito create errors', async () => {
+      mockCognitoIdentityProvider.send.mockRejectedValue(
+        new Error('UsernameExistsException'),
+      );
 
-    const command = mockCognitoIdentityProvider.send.mock.calls[0][0];
-    expect(command).toBeInstanceOf(AdminCreateUserCommand);
-    expect(result.cognitoUsername).toBe('ada@example.com');
+      await expect(
+        service.createAdminUserInCognito('ada@example.com', 'TempPass123!'),
+      ).rejects.toThrow('UsernameExistsException');
+    });
   });
 
-  it('createAdminDatabaseRecords writes user and admin_info records', async () => {
-    const createdUser = {
-      email: 'ada@example.com',
-      firstName: 'Ada',
-      lastName: 'Lovelace',
-      userType: UserType.ADMIN,
-    };
-    const createdAdminInfo = {
-      email: 'ada@example.com',
-      disciplines: ['rn', 'social-work'],
-      createdAt: new Date('2026-04-14T00:00:00.000Z'),
-      updatedAt: new Date('2026-04-14T00:00:00.000Z'),
-    };
+  describe('createAdminDatabaseRecords', () => {
+    it('writes records in transaction mode when manager.transaction exists', async () => {
+      const createdUser = {
+        email: 'ada@example.com',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        userType: UserType.ADMIN,
+      };
+      const createdAdminInfo = {
+        email: 'ada@example.com',
+        disciplines: ['rn', 'social-work'],
+        createdAt: new Date('2026-04-14T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-14T00:00:00.000Z'),
+      };
 
-    mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
-      undefined,
-    );
-    mockUserRepository.findOneBy.mockResolvedValue(null);
-    mockAdminInfoRepository.findOne.mockResolvedValue(null);
-    mockUserRepository.create.mockReturnValue(createdUser);
-    mockUserRepository.save.mockResolvedValue(createdUser);
-    mockAdminInfoRepository.create.mockReturnValue(createdAdminInfo);
-    mockAdminInfoRepository.save.mockResolvedValue(createdAdminInfo);
+      const transactionalUserRepository = {
+        findOneBy: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockReturnValue(createdUser),
+        save: jest.fn().mockResolvedValue(createdUser),
+      };
+      const transactionalAdminInfoRepository = {
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockReturnValue(createdAdminInfo),
+        save: jest.fn().mockResolvedValue(createdAdminInfo),
+      };
 
-    const result = await service.createAdminDatabaseRecords(baseDto);
+      mockUserRepository.manager = {
+        transaction: jest.fn().mockImplementation(async (cb) =>
+          cb({
+            getRepository: (entity: unknown) => {
+              if (entity === User) return transactionalUserRepository;
+              if (entity === AdminInfo) return transactionalAdminInfoRepository;
+              return null;
+            },
+          }),
+        ),
+      };
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
 
-    expect(
-      mockDisciplinesService.ensureActiveDisciplineKeys,
-    ).toHaveBeenCalledWith(['rn', 'social-work']);
-    expect(result.adminInfo.disciplines).toEqual(['rn', 'social-work']);
-  });
+      const result = await service.createAdminDatabaseRecords({
+        ...baseDto,
+        email: ' Ada@Example.com ',
+        disciplines: ['rn', 'social-work', 'rn'],
+      });
 
-  it('createAdminDatabaseRecords throws conflict when user exists', async () => {
-    mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
-      undefined,
-    );
-    mockUserRepository.findOneBy.mockResolvedValue({
-      email: 'ada@example.com',
+      expect(
+        mockDisciplinesService.ensureActiveDisciplineKeys,
+      ).toHaveBeenCalledWith(['rn', 'social-work']);
+      expect(transactionalUserRepository.create).toHaveBeenCalledWith({
+        email: 'ada@example.com',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        userType: UserType.ADMIN,
+      });
+      expect(transactionalAdminInfoRepository.create).toHaveBeenCalledWith({
+        email: 'ada@example.com',
+        disciplines: ['rn', 'social-work'],
+      });
+      expect(result).toEqual({
+        user: createdUser,
+        adminInfo: {
+          email: 'ada@example.com',
+          disciplines: ['rn', 'social-work'],
+          createdAt: '2026-04-14T00:00:00.000Z',
+          updatedAt: '2026-04-14T00:00:00.000Z',
+        },
+      });
     });
 
-    await expect(service.createAdminDatabaseRecords(baseDto)).rejects.toThrow(
-      new ConflictException('User with email ada@example.com already exists.'),
-    );
-  });
+    it('throws conflict when user exists in fallback mode', async () => {
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+      mockUserRepository.findOneBy.mockResolvedValue({
+        email: 'ada@example.com',
+      });
 
-  it('deleteAdminUserInCognito sends delete command', async () => {
-    mockCognitoIdentityProvider.send.mockResolvedValue({});
-
-    await service.deleteAdminUserInCognito('ada@example.com');
-
-    expect(mockCognitoIdentityProvider.send).toHaveBeenCalledTimes(1);
-    expect(mockCognitoIdentityProvider.send.mock.calls[0][0]).toBeInstanceOf(
-      AdminDeleteUserCommand,
-    );
-  });
-
-  it('provisionAdmin returns duplicate status before cognito call', async () => {
-    mockUserRepository.findOneBy.mockResolvedValue({
-      email: 'ada@example.com',
+      await expect(service.createAdminDatabaseRecords(baseDto)).rejects.toThrow(
+        new ConflictException(
+          'User with email ada@example.com already exists.',
+        ),
+      );
+      expect(mockAdminInfoRepository.findOne).not.toHaveBeenCalled();
     });
-    mockAdminInfoRepository.findOne.mockResolvedValue(null);
 
-    const result = await service.provisionAdmin(baseDto);
+    it('throws conflict when admin info exists in fallback mode', async () => {
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue({
+        email: 'ada@example.com',
+      });
 
-    expect(mockCognitoIdentityProvider.send).not.toHaveBeenCalled();
-    expect(result.status).toBe('DUPLICATE_RECORD');
+      await expect(service.createAdminDatabaseRecords(baseDto)).rejects.toThrow(
+        new ConflictException(
+          'AdminInfo with email ada@example.com already exists.',
+        ),
+      );
+    });
+
+    it('cleans up saved user if admin info save fails in fallback mode', async () => {
+      const createdUser = {
+        email: 'ada@example.com',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        userType: UserType.ADMIN,
+      };
+
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+      mockUserRepository.create.mockReturnValue(createdUser);
+      mockUserRepository.save.mockResolvedValue(createdUser);
+      mockAdminInfoRepository.create.mockReturnValue({
+        email: 'ada@example.com',
+        disciplines: ['rn', 'social-work'],
+      });
+      mockAdminInfoRepository.save.mockRejectedValue(
+        new Error('Admin info save failed'),
+      );
+      mockUserRepository.remove.mockResolvedValue(undefined);
+
+      await expect(service.createAdminDatabaseRecords(baseDto)).rejects.toThrow(
+        'Admin info save failed',
+      );
+      expect(mockUserRepository.remove).toHaveBeenCalledWith(createdUser);
+    });
+  });
+
+  describe('deleteAdminUserInCognito', () => {
+    it('sends expected delete command', async () => {
+      mockCognitoIdentityProvider.send.mockResolvedValue({});
+
+      await service.deleteAdminUserInCognito('ada@example.com');
+
+      expect(mockCognitoIdentityProvider.send).toHaveBeenCalledTimes(1);
+      const command = mockCognitoIdentityProvider.send.mock.calls[0][0];
+      expect(command).toBeInstanceOf(AdminDeleteUserCommand);
+      expect(command.input).toEqual({
+        UserPoolId: 'test-user-pool-id',
+        Username: 'ada@example.com',
+      });
+    });
+
+    it('propagates Cognito delete errors', async () => {
+      mockCognitoIdentityProvider.send.mockRejectedValue(
+        new Error('DeleteFailed'),
+      );
+
+      await expect(
+        service.deleteAdminUserInCognito('ada@example.com'),
+      ).rejects.toThrow('DeleteFailed');
+    });
+  });
+
+  describe('provisionAdmin', () => {
+    it('returns duplicate status before Cognito call', async () => {
+      mockUserRepository.findOneBy.mockResolvedValue({
+        email: 'ada@example.com',
+      });
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.provisionAdmin(baseDto);
+
+      expect(mockCognitoIdentityProvider.send).not.toHaveBeenCalled();
+      expect(result.status).toBe('DUPLICATE_RECORD');
+      expect(result.notes?.[1]).toBe(
+        'User with email ada@example.com already exists.',
+      );
+    });
+
+    it('returns Cognito failure status and does not start DB transaction', async () => {
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+      mockCognitoIdentityProvider.send.mockRejectedValue(
+        new Error('UsernameExistsException'),
+      );
+
+      const result = await service.provisionAdmin(baseDto);
+
+      expect(result.status).toBe('COGNITO_CREATE_FAILED');
+      expect(result.database).toEqual({
+        attemptedTransaction: false,
+        committed: false,
+      });
+      expect(result.notes).toEqual([
+        'Cognito user creation failed before any database write was attempted.',
+        'UsernameExistsException',
+      ]);
+    });
+
+    it('returns success when Cognito and DB writes succeed', async () => {
+      const createdUser = {
+        email: 'ada@example.com',
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        userType: UserType.ADMIN,
+      };
+      const createdAdminInfo = {
+        email: 'ada@example.com',
+        disciplines: ['rn', 'social-work'],
+        createdAt: new Date('2026-04-14T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-14T00:00:00.000Z'),
+      };
+
+      const transactionalUserRepository = {
+        findOneBy: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockReturnValue(createdUser),
+        save: jest.fn().mockResolvedValue(createdUser),
+      };
+      const transactionalAdminInfoRepository = {
+        findOne: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockReturnValue(createdAdminInfo),
+        save: jest.fn().mockResolvedValue(createdAdminInfo),
+      };
+
+      mockUserRepository.manager = {
+        transaction: jest.fn().mockImplementation(async (cb) =>
+          cb({
+            getRepository: (entity: unknown) => {
+              if (entity === User) return transactionalUserRepository;
+              if (entity === AdminInfo) return transactionalAdminInfoRepository;
+              return null;
+            },
+          }),
+        ),
+      };
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+      mockCognitoIdentityProvider.send.mockResolvedValue({
+        User: {
+          Username: 'ada@example.com',
+          UserStatus: 'FORCE_CHANGE_PASSWORD',
+        },
+      });
+
+      const result = await service.provisionAdmin(baseDto);
+
+      expect(result.status).toBe('SUCCESS');
+      expect(result.cognito).toEqual({
+        attemptedCreate: true,
+        attemptedRollback: false,
+        cognitoUsername: 'ada@example.com',
+        userStatus: 'FORCE_CHANGE_PASSWORD',
+      });
+      expect(result.database).toEqual({
+        attemptedTransaction: true,
+        committed: true,
+      });
+      expect(result.records?.adminInfo.disciplines).toEqual([
+        'rn',
+        'social-work',
+      ]);
+    });
+
+    it('attempts Cognito rollback when DB write fails', async () => {
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+      mockCognitoIdentityProvider.send
+        .mockResolvedValueOnce({
+          User: {
+            Username: 'ada@example.com',
+            UserStatus: 'FORCE_CHANGE_PASSWORD',
+          },
+        })
+        .mockResolvedValueOnce({});
+      mockUserRepository.create.mockImplementation((value) => value);
+      mockUserRepository.save.mockRejectedValue(
+        new Error('Database transaction failed'),
+      );
+
+      const result = await service.provisionAdmin(baseDto);
+
+      expect(mockCognitoIdentityProvider.send).toHaveBeenCalledTimes(2);
+      expect(mockCognitoIdentityProvider.send.mock.calls[1][0]).toBeInstanceOf(
+        AdminDeleteUserCommand,
+      );
+      expect(result.status).toBe('DATABASE_WRITE_FAILED_ROLLED_BACK');
+      expect(result.cognito.rollbackSucceeded).toBe(true);
+      expect(result.notes).toEqual([
+        'Database write failed after Cognito creation.',
+        'Cognito rollback succeeded.',
+        'Database transaction failed',
+      ]);
+    });
+
+    it('returns rollback-failed status when Cognito delete fails too', async () => {
+      mockUserRepository.findOneBy.mockResolvedValue(null);
+      mockAdminInfoRepository.findOne.mockResolvedValue(null);
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+      mockCognitoIdentityProvider.send
+        .mockResolvedValueOnce({
+          User: {
+            Username: 'ada@example.com',
+            UserStatus: 'FORCE_CHANGE_PASSWORD',
+          },
+        })
+        .mockRejectedValueOnce(new Error('DeleteFailed'));
+      mockUserRepository.create.mockImplementation((value) => value);
+      mockUserRepository.save.mockRejectedValue(
+        new Error('Database transaction failed'),
+      );
+
+      const result = await service.provisionAdmin(baseDto);
+
+      expect(mockCognitoIdentityProvider.send).toHaveBeenCalledTimes(2);
+      expect(result.status).toBe('DATABASE_WRITE_FAILED_ROLLBACK_FAILED');
+      expect(result.cognito.rollbackSucceeded).toBe(false);
+      expect(result.notes).toEqual([
+        'Database write failed after Cognito creation.',
+        'Cognito rollback failed; manual cleanup would be required.',
+        'Database transaction failed',
+        'DeleteFailed',
+      ]);
+    });
   });
 });
