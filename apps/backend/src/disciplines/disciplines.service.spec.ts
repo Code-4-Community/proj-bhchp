@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DisciplinesService } from './disciplines.service';
 import { Discipline } from './disciplines.entity';
 import { CreateDisciplineRequestDto } from './dto/create-discipline.request.dto';
@@ -65,6 +65,20 @@ describe('DisciplinesService', () => {
       });
       expect(result).toEqual([mockDiscipline]);
     });
+
+    it('returns empty array when no disciplines exist', async () => {
+      mockRepository.find.mockResolvedValue([]);
+      await expect(service.findAll()).resolves.toEqual([]);
+    });
+
+    it('passes through repository errors', async () => {
+      mockRepository.find.mockRejectedValue(
+        new Error('There was a problem retrieving the info'),
+      );
+      await expect(service.findAll()).rejects.toThrow(
+        'There was a problem retrieving the info',
+      );
+    });
   });
 
   describe('findAllIncludingInactive', () => {
@@ -90,11 +104,21 @@ describe('DisciplinesService', () => {
       expect(repository.findOneBy).toHaveBeenCalledWith({ id: 1 });
     });
 
-    it('throws when missing', async () => {
+    it('throws not found when missing', async () => {
       mockRepository.findOneBy.mockResolvedValue(null);
 
       await expect(service.findOne(999)).rejects.toThrow(
-        'Discipline with id 999 not found',
+        new NotFoundException('Discipline with id 999 not found'),
+      );
+    });
+
+    it('passes through repository errors', async () => {
+      mockRepository.findOneBy.mockRejectedValue(
+        new Error('There was a problem retrieving the info'),
+      );
+
+      await expect(service.findOne(1)).rejects.toThrow(
+        'There was a problem retrieving the info',
       );
     });
   });
@@ -123,16 +147,59 @@ describe('DisciplinesService', () => {
       });
       expect(result).toEqual(created);
     });
+
+    it('respects explicit isActive false', async () => {
+      const dto: CreateDisciplineRequestDto = {
+        key: 'social-work',
+        label: 'Social Work',
+        isActive: false,
+      };
+
+      const created: Discipline = {
+        ...mockDiscipline,
+        key: 'social-work',
+        label: 'Social Work',
+        isActive: false,
+      };
+
+      mockRepository.create.mockReturnValue(created);
+      mockRepository.save.mockResolvedValue(created);
+
+      await service.create(dto);
+
+      expect(repository.create).toHaveBeenCalledWith({
+        key: 'social-work',
+        label: 'Social Work',
+        isActive: false,
+      });
+    });
+
+    it('passes through repository save errors', async () => {
+      const dto: CreateDisciplineRequestDto = {
+        key: 'rn',
+        label: 'RN',
+      };
+      mockRepository.create.mockReturnValue(mockDiscipline);
+      mockRepository.save.mockRejectedValue(new Error('Save failed'));
+
+      await expect(service.create(dto)).rejects.toThrow('Save failed');
+    });
   });
 
   describe('getActiveDisciplineKeys', () => {
-    it('returns active keys', async () => {
+    it('returns active keys sorted by key', async () => {
       mockRepository.find.mockResolvedValue([
         { key: 'rn' },
         { key: 'social-work' },
       ]);
 
       const result = await service.getActiveDisciplineKeys();
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { isActive: true },
+        select: { key: true },
+        order: { key: 'ASC' },
+      });
       expect(result).toEqual(['rn', 'social-work']);
     });
   });
@@ -143,20 +210,23 @@ describe('DisciplinesService', () => {
       await expect(
         service.ensureActiveDisciplineKey('rn'),
       ).resolves.toBeUndefined();
+      expect(repository.exists).toHaveBeenCalledWith({
+        where: { key: 'rn', isActive: true },
+      });
     });
 
-    it('throws bad request for invalid key', async () => {
+    it('throws bad request with valid key list for invalid key', async () => {
       mockRepository.exists.mockResolvedValue(false);
       mockRepository.find.mockResolvedValue([
-        { key: 'rn' },
         { key: 'public-health' },
+        { key: 'rn' },
       ]);
 
       await expect(
         service.ensureActiveDisciplineKey('invalid'),
       ).rejects.toThrow(
         new BadRequestException(
-          'Invalid discipline: invalid. Valid disciplines are: rn, public-health',
+          'Invalid discipline: invalid. Valid disciplines are: public-health, rn',
         ),
       );
     });
@@ -165,8 +235,22 @@ describe('DisciplinesService', () => {
   describe('ensureActiveDisciplineKeys', () => {
     it('throws for empty list', async () => {
       await expect(service.ensureActiveDisciplineKeys([])).rejects.toThrow(
-        'At least one discipline is required',
+        new BadRequestException('At least one discipline is required'),
       );
+    });
+
+    it('checks unique keys only once each', async () => {
+      mockRepository.exists.mockResolvedValue(true);
+
+      await service.ensureActiveDisciplineKeys(['rn', 'social-work', 'rn']);
+
+      expect(repository.exists).toHaveBeenCalledTimes(2);
+      expect(repository.exists).toHaveBeenNthCalledWith(1, {
+        where: { key: 'rn', isActive: true },
+      });
+      expect(repository.exists).toHaveBeenNthCalledWith(2, {
+        where: { key: 'social-work', isActive: true },
+      });
     });
   });
 
@@ -176,7 +260,30 @@ describe('DisciplinesService', () => {
       mockRepository.remove.mockResolvedValue(mockDiscipline);
 
       const result = await service.remove(1);
+
+      expect(repository.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(repository.remove).toHaveBeenCalledWith(mockDiscipline);
       expect(result).toEqual(mockDiscipline);
+    });
+
+    it('throws not found when discipline does not exist', async () => {
+      mockRepository.findOneBy.mockResolvedValue(null);
+
+      await expect(service.remove(999)).rejects.toThrow(
+        new NotFoundException('Discipline with id 999 not found'),
+      );
+      expect(repository.remove).not.toHaveBeenCalled();
+    });
+
+    it('passes through repository remove errors', async () => {
+      mockRepository.findOneBy.mockResolvedValue(mockDiscipline);
+      mockRepository.remove.mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(service.remove(1)).rejects.toThrow(
+        'Database connection failed',
+      );
     });
   });
 });
