@@ -120,10 +120,10 @@ export class DisciplinesService {
   }
 
   /**
-   * Deletes a discipline by email
-   * @param email the email of the discipline to delete
+   * Deletes a discipline by id
+   * @param email the id of the discipline to delete
    * @returns the deleted discipline
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
+   * @throws {NotFoundException} if a discipline of the specified id doesn't exist in the repository.
    * @throws {Error} if the repository throws an error.
    */
   async remove(id: number): Promise<Discipline> {

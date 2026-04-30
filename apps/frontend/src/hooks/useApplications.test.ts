@@ -10,7 +10,10 @@ import {
   type Application,
   type User,
 } from '@api/types';
-import { getDisciplineAdminMapCached } from '@utils/disciplineAdminCache';
+import {
+  getDisciplineAdminMapCached,
+  prefetchDisciplineAdminMap,
+} from '@utils/disciplineAdminCache';
 
 const disciplineKeys = {
   rn: 'rn',
@@ -116,6 +119,7 @@ vi.mock('@utils/disciplineAdminCache', () => ({
 describe('useApplications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prefetchDisciplineAdminMap).mockResolvedValue(undefined);
     vi.mocked(getDisciplineAdminMapCached).mockResolvedValue({
       [disciplineKeys.rn]: { firstName: 'Alex', lastName: 'Kim' },
       [disciplineKeys.socialWork]: { firstName: 'Jo', lastName: 'Rivera' },

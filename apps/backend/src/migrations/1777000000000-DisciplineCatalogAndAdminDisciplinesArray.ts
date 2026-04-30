@@ -136,6 +136,13 @@ export class DisciplineCatalogAndAdminDisciplinesArray1777000000000
     );
 
     await queryRunner.query(`
+      UPDATE "application" a
+      SET "discipline" = d."label"
+      FROM "discipline" d
+      WHERE a."discipline" = d."key"
+    `);
+
+    await queryRunner.query(`
       ALTER TABLE "application"
       ALTER COLUMN "discipline" TYPE "public"."application_discipline_enum"
       USING "discipline"::"public"."application_discipline_enum"
@@ -146,14 +153,13 @@ export class DisciplineCatalogAndAdminDisciplinesArray1777000000000
     );
 
     await queryRunner.query(`
-      UPDATE "admin_info"
+      UPDATE "admin_info" ai
       SET "discipline" = (
-        CASE
-          WHEN COALESCE(array_length("disciplines", 1), 0) > 0
-          THEN "disciplines"[1]::"public"."admin_info_discipline_enum"
-          ELSE NULL
-        END
+        SELECT d."label"::"public"."admin_info_discipline_enum"
+        FROM "discipline" d
+        WHERE d."key" = ai."disciplines"[1]
       )
+      WHERE COALESCE(array_length(ai."disciplines", 1), 0) > 0
     `);
 
     await queryRunner.query(

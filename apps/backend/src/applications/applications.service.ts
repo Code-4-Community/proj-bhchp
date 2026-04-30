@@ -280,8 +280,10 @@ export class ApplicationsService {
    * @param discipline the discipline key to validate.
    * @throws {BadRequestException} if the discipline is invalid or inactive.
    */
-  private async validateDiscipline(discipline: string): Promise<void> {
-    return await this.disciplinesService.ensureActiveDisciplineKey(discipline);
+  private async validateDiscipline(discipline: string): Promise<string> {
+    const normalized = discipline.trim().toLowerCase();
+    await this.disciplinesService.ensureActiveDisciplineKey(normalized);
+    return normalized;
   }
 
   /**
@@ -293,9 +295,9 @@ export class ApplicationsService {
    * @throws {Error} which is unchanged from what repository throws.
    */
   async findByDiscipline(discipline: string): Promise<Application[]> {
-    await this.validateDiscipline(discipline);
+    const normalizedDiscipline = await this.validateDiscipline(discipline);
     return await this.applicationRepository.find({
-      where: { discipline },
+      where: { discipline: normalizedDiscipline },
     });
   }
 
@@ -331,8 +333,13 @@ export class ApplicationsService {
     createApplicationDto: CreateApplicationDto,
   ): Promise<Application> {
     this.validateApplicationDto(createApplicationDto);
-    await this.validateDiscipline(createApplicationDto.discipline);
-    const application = this.applicationRepository.create(createApplicationDto);
+    const normalizedDiscipline = await this.validateDiscipline(
+      createApplicationDto.discipline,
+    );
+    const application = this.applicationRepository.create({
+      ...createApplicationDto,
+      discipline: normalizedDiscipline,
+    });
     const saved = await this.applicationRepository.save(application);
 
     const name = String(saved.email).split('@')[0];
@@ -374,7 +381,9 @@ export class ApplicationsService {
       throw new NotFoundException(`Application with ID ${appId} not found`);
     }
     if (updateData.discipline) {
-      await this.validateDiscipline(updateData.discipline);
+      updateData.discipline = await this.validateDiscipline(
+        updateData.discipline,
+      );
     }
     Object.assign(application, updateData);
     return await this.applicationRepository.save(application);

@@ -40,7 +40,7 @@ export class CreateAdminInfoDto {
   /**
    * The disciplines of the admin to create.
    *
-   * Example: DISCIPLINE_VALUES.Nursing.
+   * ["Nursing"].
    */
   @IsArray()
   @ArrayMinSize(1)

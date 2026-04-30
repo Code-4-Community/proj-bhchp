@@ -46,14 +46,14 @@ export class DisciplinesController {
   }
 
   /**
-   * Exposes an endpoint to return a discipline by email
-   * @param email the email of the discipline to return
-   * @returns the discipline with the corresponding email
+   * Exposes an endpoint to return a discipline by id
+   * @param id the id of the discipline to return
+   * @returns the discipline with the corresponding id
    */
-  @Get(':email')
+  @Get(':id')
   @Roles(UserType.ADMIN)
-  async getOne(@Param('email') email: string): Promise<Discipline> {
-    return this.disciplinesService.findOne(Number(email));
+  async getOne(@Param('id') id: number): Promise<Discipline> {
+    return this.disciplinesService.findOne(id);
   }
 
   /**
@@ -70,17 +70,15 @@ export class DisciplinesController {
   }
 
   /**
-   * Deletes a discipline by email
-   * @param email the email of the discipline to delete
+   * Deletes a discipline by id
+   * @param id the id of the discipline to delete
    * @returns the deleted discipline
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
+   * @throws {NotFoundException} if a discipline of the specified id doesn't exist in the repository.
    * @throws {Error} if the repository throws an error.
    */
-  @Delete(':email')
+  @Delete(':id')
   @Roles(UserType.ADMIN)
-  async remove(
-    @Param('email', ParseIntPipe) email: number,
-  ): Promise<Discipline> {
-    return this.disciplinesService.remove(email);
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<Discipline> {
+    return this.disciplinesService.remove(id);
   }
 }

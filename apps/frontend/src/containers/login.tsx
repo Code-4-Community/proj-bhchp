@@ -57,7 +57,9 @@ const Login: React.FC = () => {
     }
 
     if (userType === UserType.ADMIN) {
-      void prefetchDisciplineAdminMap();
+      void prefetchDisciplineAdminMap().catch((error) => {
+        console.warn('[ui] Login: discipline admin map prefetch failed', error);
+      });
     }
 
     navigate('/', { replace: true });

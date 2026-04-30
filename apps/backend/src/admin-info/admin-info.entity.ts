@@ -23,7 +23,7 @@ export class AdminInfo {
   /**
    * The disciplines of the admin.
    *
-   * Example: DISCIPLINE_VALUES.Nursing.
+   * Example: ["Nursing"]
    */
   @Column({ type: 'text', array: true, default: [] })
   disciplines?: string[];

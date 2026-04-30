@@ -83,11 +83,14 @@ export function useApplications(): UseApplicationsResult {
           throw new Error('Failed to determine admin disciplines');
         }
 
-        await prefetchDisciplineAdminMap(undefined, adminInfo.disciplines);
+        await prefetchDisciplineAdminMap(
+          undefined,
+          adminInfo.disciplines,
+        ).catch(() => undefined);
 
         const [apps, disciplineAdminMap, disciplines] = await Promise.all([
           apiClient.getApplicationsByDisciplines(adminInfo.disciplines),
-          getDisciplineAdminMapCached(),
+          getDisciplineAdminMapCached().catch(() => ({})),
           apiClient.getDisciplines().catch(() => [] as DisciplineCatalogItem[]),
         ]);
 

@@ -142,7 +142,13 @@ export class AdminProvisioningService {
     provisionAdminDto: ProvisionAdminDto,
   ): Promise<DatabaseCreateResult> {
     const normalizedEmail = provisionAdminDto.email.trim().toLowerCase();
-    const disciplines = [...new Set(provisionAdminDto.disciplines)];
+    const disciplines = [
+      ...new Set(
+        provisionAdminDto.disciplines
+          .map((discipline) => discipline.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ];
     this.logger.debug(`Creating database admin records for ${normalizedEmail}`);
 
     await this.disciplinesService.ensureActiveDisciplineKeys(disciplines);

@@ -27,7 +27,7 @@ const { prefetchDisciplineAdminMapMock } = vi.hoisted(() => ({
 vi.mock('../auth/cognito', () => ({
   signInWithEmailPassword: signInWithEmailPasswordMock,
   confirmSignInWithNewPassword: confirmSignInWithNewPasswordMock,
-  signOutUser: vi.fn(),
+  signOutUser: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../auth/current-session-user-type', () => ({
