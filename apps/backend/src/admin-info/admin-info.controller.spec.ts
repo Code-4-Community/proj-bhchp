@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AdminInfoController } from './admin-info.controller';
 import { AdminInfoService } from './admin-info.service';
+import { AdminInfo } from './admin-info.entity';
 import { UsersService } from '../users/users.service';
 import { RolesGuard } from '../auth/roles.guard';
 
@@ -30,15 +31,15 @@ const mockAdminInfoService = {
   remove: jest.fn(),
 };
 
+const mockAdminInfo: AdminInfo = {
+  email: 'admin@example.com',
+  disciplines: ['rn'],
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+};
+
 describe('AdminInfoController', () => {
   let controller: AdminInfoController;
-
-  const mockAdmin = {
-    email: 'admin@example.com',
-    disciplines: ['rn'],
-    createdAt: new Date('2026-01-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-  };
 
   const mockRolesGuard = {
     canActivate: jest.fn(() => true),
@@ -86,9 +87,9 @@ describe('AdminInfoController', () => {
       disciplines: ['rn'],
     };
 
-    mockAdminInfoService.create.mockResolvedValue(mockAdmin);
+    mockAdminInfoService.create.mockResolvedValue(mockAdminInfo);
 
-    await expect(controller.create(dto)).resolves.toEqual(mockAdmin);
+    await expect(controller.create(dto)).resolves.toEqual(mockAdminInfo);
     expect(mockAdminInfoService.create).toHaveBeenCalledWith(dto);
   });
 
@@ -103,17 +104,17 @@ describe('AdminInfoController', () => {
   });
 
   it('should find an admin by email', async () => {
-    mockAdminInfoService.findOne.mockResolvedValue(mockAdmin);
+    mockAdminInfoService.findOne.mockResolvedValue(mockAdminInfo);
 
     await expect(controller.findOne('admin@example.com')).resolves.toEqual(
-      mockAdmin,
+      mockAdminInfo,
     );
   });
 
   it('should find an admin by email or return null', async () => {
-    mockAdminInfoService.findByEmail.mockResolvedValue(mockAdmin);
+    mockAdminInfoService.findByEmail.mockResolvedValue(mockAdminInfo);
     await expect(controller.findByEmail('admin@example.com')).resolves.toEqual(
-      mockAdmin,
+      mockAdminInfo,
     );
 
     mockAdminInfoService.findByEmail.mockResolvedValue(null);
@@ -123,7 +124,7 @@ describe('AdminInfoController', () => {
   });
 
   it('updates admin disciplines', async () => {
-    const updated = { ...mockAdmin, disciplines: ['rn', 'social-work'] };
+    const updated = { ...mockAdminInfo, disciplines: ['rn', 'social-work'] };
     mockAdminInfoService.updateDisciplines.mockResolvedValue(updated);
 
     await expect(
