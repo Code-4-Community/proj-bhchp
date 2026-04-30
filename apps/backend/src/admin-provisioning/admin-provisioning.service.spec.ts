@@ -143,7 +143,7 @@ describe('AdminProvisioningService', () => {
   });
 
   describe('createAdminUserInCognito', () => {
-    it('sends expected create command and returns Cognito data', async () => {
+    it('should send an AdminCreateUser command with Cognito-managed invite email', async () => {
       mockCognitoIdentityProvider.send.mockResolvedValue({
         User: {
           Username: 'ada@example.com',
@@ -175,7 +175,7 @@ describe('AdminProvisioningService', () => {
       });
     });
 
-    it('propagates Cognito create errors', async () => {
+    it('should propagate Cognito errors', async () => {
       mockCognitoIdentityProvider.send.mockRejectedValue(
         new Error('UsernameExistsException'),
       );
@@ -187,7 +187,7 @@ describe('AdminProvisioningService', () => {
   });
 
   describe('createAdminDatabaseRecords', () => {
-    it('writes records in transaction mode when manager.transaction exists', async () => {
+    it('should create and save the user and admin info records', async () => {
       const createdUser = {
         email: 'ada@example.com',
         firstName: 'Ada',
@@ -257,7 +257,7 @@ describe('AdminProvisioningService', () => {
       });
     });
 
-    it('throws conflict when user exists in fallback mode', async () => {
+    it('should throw a conflict when the user already exists', async () => {
       mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
         undefined,
       );
@@ -273,7 +273,7 @@ describe('AdminProvisioningService', () => {
       expect(mockAdminInfoRepository.findOne).not.toHaveBeenCalled();
     });
 
-    it('throws conflict when admin info exists in fallback mode', async () => {
+    it('should throw a conflict when admin info already exists', async () => {
       mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
         undefined,
       );
@@ -289,7 +289,7 @@ describe('AdminProvisioningService', () => {
       );
     });
 
-    it('cleans up saved user if admin info save fails in fallback mode', async () => {
+    it('should clean up the saved user if admin info save fails in fallback mode', async () => {
       const createdUser = {
         email: 'ada@example.com',
         firstName: 'Ada',
@@ -321,7 +321,7 @@ describe('AdminProvisioningService', () => {
   });
 
   describe('deleteAdminUserInCognito', () => {
-    it('sends expected delete command', async () => {
+    it('should send an AdminDeleteUser command', async () => {
       mockCognitoIdentityProvider.send.mockResolvedValue({});
 
       await service.deleteAdminUserInCognito('ada@example.com');
@@ -335,7 +335,7 @@ describe('AdminProvisioningService', () => {
       });
     });
 
-    it('propagates Cognito delete errors', async () => {
+    it('should propagate Cognito delete errors', async () => {
       mockCognitoIdentityProvider.send.mockRejectedValue(
         new Error('DeleteFailed'),
       );
@@ -347,7 +347,7 @@ describe('AdminProvisioningService', () => {
   });
 
   describe('provisionAdmin', () => {
-    it('returns duplicate status before Cognito call', async () => {
+    it('should reject duplicate records before calling Cognito', async () => {
       mockUserRepository.findOneBy.mockResolvedValue({
         email: 'ada@example.com',
       });
@@ -362,7 +362,7 @@ describe('AdminProvisioningService', () => {
       );
     });
 
-    it('returns Cognito failure status and does not start DB transaction', async () => {
+    it('should return Cognito create failure without touching repositories', async () => {
       mockUserRepository.findOneBy.mockResolvedValue(null);
       mockAdminInfoRepository.findOne.mockResolvedValue(null);
       mockCognitoIdentityProvider.send.mockRejectedValue(
@@ -382,7 +382,7 @@ describe('AdminProvisioningService', () => {
       ]);
     });
 
-    it('returns success when Cognito and DB writes succeed', async () => {
+    it('should orchestrate Cognito create and repository writes on success', async () => {
       const createdUser = {
         email: 'ada@example.com',
         firstName: 'Ada',
@@ -449,7 +449,7 @@ describe('AdminProvisioningService', () => {
       ]);
     });
 
-    it('attempts Cognito rollback when DB write fails', async () => {
+    it('should attempt Cognito rollback when the database write fails', async () => {
       mockUserRepository.findOneBy.mockResolvedValue(null);
       mockAdminInfoRepository.findOne.mockResolvedValue(null);
       mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
@@ -483,7 +483,7 @@ describe('AdminProvisioningService', () => {
       ]);
     });
 
-    it('returns rollback-failed status when Cognito delete fails too', async () => {
+    it('should return rollback failed when Cognito delete also fails', async () => {
       mockUserRepository.findOneBy.mockResolvedValue(null);
       mockAdminInfoRepository.findOne.mockResolvedValue(null);
       mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(

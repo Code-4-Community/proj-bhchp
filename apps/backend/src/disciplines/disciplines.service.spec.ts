@@ -54,7 +54,7 @@ describe('DisciplinesService', () => {
   });
 
   describe('findAll', () => {
-    it('returns active disciplines sorted by label', async () => {
+    it('should return an array of disciplines', async () => {
       mockRepository.find.mockResolvedValue([mockDiscipline]);
 
       const result = await service.findAll();
@@ -66,12 +66,12 @@ describe('DisciplinesService', () => {
       expect(result).toEqual([mockDiscipline]);
     });
 
-    it('returns empty array when no disciplines exist', async () => {
+    it('should return empty array when no disciplines exist', async () => {
       mockRepository.find.mockResolvedValue([]);
       await expect(service.findAll()).resolves.toEqual([]);
     });
 
-    it('passes through repository errors', async () => {
+    it('should pass along any repo errors without information loss', async () => {
       mockRepository.find.mockRejectedValue(
         new Error('There was a problem retrieving the info'),
       );
@@ -95,7 +95,7 @@ describe('DisciplinesService', () => {
   });
 
   describe('findOne', () => {
-    it('returns discipline by id', async () => {
+    it('should return a single discipline', async () => {
       mockRepository.findOneBy.mockResolvedValue(mockDiscipline);
 
       const result = await service.findOne(1);
@@ -112,7 +112,7 @@ describe('DisciplinesService', () => {
       );
     });
 
-    it('passes through repository errors', async () => {
+    it('should pass along any repo errors without information loss', async () => {
       mockRepository.findOneBy.mockRejectedValue(
         new Error('There was a problem retrieving the info'),
       );
@@ -124,7 +124,7 @@ describe('DisciplinesService', () => {
   });
 
   describe('create', () => {
-    it('normalizes key and label and defaults isActive', async () => {
+    it('should create and save a new discipline', async () => {
       const dto: CreateDisciplineRequestDto = {
         key: ' RN ',
         label: ' RN Label ',
@@ -174,7 +174,7 @@ describe('DisciplinesService', () => {
       });
     });
 
-    it('passes through repository save errors', async () => {
+    it('should pass along repository errors during create', async () => {
       const dto: CreateDisciplineRequestDto = {
         key: 'rn',
         label: 'RN',
@@ -255,7 +255,7 @@ describe('DisciplinesService', () => {
   });
 
   describe('remove', () => {
-    it('removes discipline', async () => {
+    it('should remove and return the discipline', async () => {
       mockRepository.findOneBy.mockResolvedValue(mockDiscipline);
       mockRepository.remove.mockResolvedValue(mockDiscipline);
 
@@ -266,7 +266,7 @@ describe('DisciplinesService', () => {
       expect(result).toEqual(mockDiscipline);
     });
 
-    it('throws not found when discipline does not exist', async () => {
+    it('should throw NotFoundException when discipline does not exist', async () => {
       mockRepository.findOneBy.mockResolvedValue(null);
 
       await expect(service.remove(999)).rejects.toThrow(
@@ -275,7 +275,7 @@ describe('DisciplinesService', () => {
       expect(repository.remove).not.toHaveBeenCalled();
     });
 
-    it('passes through repository remove errors', async () => {
+    it('should pass along any repo errors without information loss', async () => {
       mockRepository.findOneBy.mockResolvedValue(mockDiscipline);
       mockRepository.remove.mockRejectedValue(
         new Error('Database connection failed'),

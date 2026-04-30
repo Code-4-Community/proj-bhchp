@@ -68,7 +68,7 @@ describe('AdminProvisioningController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('delegates to provisioning service', async () => {
+  it('should delegate provisioning to the service', async () => {
     const dto = {
       firstName: 'Ada',
       lastName: 'Lovelace',

@@ -78,7 +78,7 @@ describe('AdminInfoController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('creates admin with disciplines', async () => {
+  it('should create an admin', async () => {
     const dto = {
       firstName: 'Ada',
       lastName: 'Lovelace',
@@ -92,7 +92,7 @@ describe('AdminInfoController', () => {
     expect(mockAdminInfoService.create).toHaveBeenCalledWith(dto);
   });
 
-  it('returns discipline-admin map', async () => {
+  it('should return the discipline-admin map', async () => {
     const map = {
       rn: { firstName: 'Ada', lastName: 'Lovelace' },
       'social-work': { firstName: 'Jo', lastName: 'Rivera' },
@@ -102,7 +102,7 @@ describe('AdminInfoController', () => {
     await expect(controller.getDisciplineAdminMap()).resolves.toEqual(map);
   });
 
-  it('findOne returns admin with disciplines', async () => {
+  it('should find an admin by email', async () => {
     mockAdminInfoService.findOne.mockResolvedValue(mockAdmin);
 
     await expect(controller.findOne('admin@example.com')).resolves.toEqual(
@@ -110,7 +110,7 @@ describe('AdminInfoController', () => {
     );
   });
 
-  it('findByEmail returns admin or null', async () => {
+  it('should find an admin by email or return null', async () => {
     mockAdminInfoService.findByEmail.mockResolvedValue(mockAdmin);
     await expect(controller.findByEmail('admin@example.com')).resolves.toEqual(
       mockAdmin,
@@ -133,7 +133,7 @@ describe('AdminInfoController', () => {
     ).resolves.toEqual(updated);
   });
 
-  it('removes admin', async () => {
+  it('should remove an admin and return a confirmation message', async () => {
     mockAdminInfoService.remove.mockResolvedValue(undefined);
 
     await expect(controller.remove('admin@example.com')).resolves.toEqual({

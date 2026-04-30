@@ -80,7 +80,7 @@ describe('DisciplinesController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('getAll should return active list by default', async () => {
+  it('should return all disciplines', async () => {
     mockDisciplinesService.findAll.mockResolvedValue([discipline]);
 
     const result = await controller.getAll(undefined);
@@ -104,7 +104,7 @@ describe('DisciplinesController', () => {
     expect(mockDisciplinesService.findAllIncludingInactive).toHaveBeenCalled();
   });
 
-  it('getOne should map param to number id', async () => {
+  it('should convert string id to number correctly', async () => {
     mockDisciplinesService.findOne.mockResolvedValue(discipline);
 
     const result = await controller.getOne('1');
@@ -113,7 +113,7 @@ describe('DisciplinesController', () => {
     expect(mockDisciplinesService.findOne).toHaveBeenCalledWith(1);
   });
 
-  it('create should pass dto through', async () => {
+  it('should create a new discipline', async () => {
     const dto = { key: 'rn', label: 'RN' };
     mockDisciplinesService.create.mockResolvedValue(discipline);
 
@@ -123,7 +123,7 @@ describe('DisciplinesController', () => {
     expect(mockDisciplinesService.create).toHaveBeenCalledWith(dto);
   });
 
-  it('remove should call service with id', async () => {
+  it('should delete and return a discipline', async () => {
     mockDisciplinesService.remove.mockResolvedValue(discipline);
 
     const result = await controller.remove(1);
