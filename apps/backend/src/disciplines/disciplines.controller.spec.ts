@@ -107,7 +107,7 @@ describe('DisciplinesController', () => {
   it('should convert string id to number correctly', async () => {
     mockDisciplinesService.findOne.mockResolvedValue(discipline);
 
-    const result = await controller.getOne('1');
+    const result = await controller.getOne(1);
 
     expect(result).toEqual(discipline);
     expect(mockDisciplinesService.findOne).toHaveBeenCalledWith(1);
