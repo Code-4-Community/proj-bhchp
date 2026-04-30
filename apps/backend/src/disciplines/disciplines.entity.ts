@@ -26,7 +26,7 @@ export class Discipline {
   label!: string;
 
   @Column({ type: 'boolean', default: true })
-  isActive?: boolean;
+  isActive!: boolean;
 
   @CreateDateColumn({ type: 'timestamp' })
   createdAt?: Date;

@@ -309,7 +309,13 @@ export class ApplicationsService {
    * @throws {Error} anything that the repository throws.
    */
   async findByDisciplines(disciplines: string[]): Promise<Application[]> {
-    const uniqueDisciplines = [...new Set(disciplines.map((d) => d.trim()))];
+    const uniqueDisciplines = [
+      ...new Set(
+        disciplines
+          .map((discipline) => discipline.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ];
 
     if (!uniqueDisciplines.length) {
       throw new BadRequestException('At least one discipline must be provided');
