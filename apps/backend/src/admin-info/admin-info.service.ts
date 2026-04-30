@@ -68,9 +68,9 @@ export class AdminInfoService {
     const email = createAdminInfoDto.email.trim().toLowerCase();
     const disciplines = [
       ...new Set(
-        createAdminInfoDto.disciplines.map((discipline) =>
-          discipline.trim().toLowerCase(),
-        ),
+        createAdminInfoDto.disciplines
+          .map((discipline) => discipline.trim().toLowerCase())
+          .filter((discipline) => discipline.length > 0),
       ),
     ];
 
