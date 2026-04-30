@@ -66,7 +66,13 @@ export class AdminInfoService {
    */
   async create(createAdminInfoDto: CreateAdminInfoDto): Promise<AdminInfo> {
     const email = createAdminInfoDto.email.trim().toLowerCase();
-    const disciplines = [...new Set(createAdminInfoDto.disciplines)];
+    const disciplines = [
+      ...new Set(
+        createAdminInfoDto.disciplines.map((discipline) =>
+          discipline.trim().toLowerCase(),
+        ),
+      ),
+    ];
 
     await this.disciplinesService.ensureActiveDisciplineKeys(disciplines);
 
