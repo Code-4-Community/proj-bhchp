@@ -1,5 +1,9 @@
 import { pandadocMapper } from './pandadoc-mapper';
-import { HeardAboutFrom, InterestArea } from '../applications/types';
+import {
+  DesiredExperience,
+  HeardAboutFrom,
+  InterestArea,
+} from '../applications/types';
 import { School } from '../learner-info/types';
 import { PANDADOC_FIELD_MAP } from './pandadoc-field-map';
 
@@ -102,7 +106,9 @@ describe('pandadocMapper', () => {
 
   it('maps experience_type to desiredExperience on application', () => {
     const result = pandadocMapper(buildFullPayload());
-    expect(result.application['desiredExperience']).toBe('Volunteer/Intern');
+    expect(result.application['desiredExperience']).toBe(
+      DesiredExperience.VOLUNTEER_INTERN,
+    );
   });
 
   it('parses total_hours as a number', () => {

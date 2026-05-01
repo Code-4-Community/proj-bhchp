@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -12,6 +13,8 @@ import { CandidateInfo } from './candidate-info.entity';
  */
 @Injectable()
 export class CandidateInfoService {
+  private readonly logger = new Logger(CandidateInfoService.name);
+
   constructor(
     @InjectRepository(CandidateInfo)
     private readonly repo: Repository<CandidateInfo>,
@@ -55,10 +58,20 @@ export class CandidateInfoService {
       throw new BadRequestException('candidate email is required');
     }
 
-    const candidate = await this.repo.findOneBy({ email: email.trim() });
+    const normalizedEmail = email.trim();
+    this.logger.log(`Looking up candidate_info by email=${normalizedEmail}`);
+
+    const candidate = await this.repo.findOneBy({ email: normalizedEmail });
     if (!candidate) {
+      this.logger.warn(
+        `No candidate_info found for email=${normalizedEmail}. Returning 404.`,
+      );
       throw new NotFoundException(`candidate with email ${email} not found`);
     }
+
+    this.logger.log(
+      `Found candidate_info for email=${normalizedEmail} appId=${candidate.appId}`,
+    );
 
     return candidate;
   }

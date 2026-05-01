@@ -26,6 +26,7 @@ export function createMockApiClientModule(
       approved: number;
     };
     getHelloValue: string;
+    provisionAdmin: ReturnType<typeof vi.fn>;
   }>,
 ) {
   const counts = overrides?.dashboardCounts ?? {
@@ -38,10 +39,25 @@ export function createMockApiClientModule(
   return {
     default: {
       getHello: vi.fn().mockResolvedValue(overrides?.getHelloValue ?? 'Hello'),
+      getApplications: vi.fn().mockResolvedValue([]),
       getApplication: vi.fn(),
-      getVolunteerInfo: vi.fn(),
+      getApplicants: vi.fn().mockResolvedValue([]),
       getLearnerInfo: vi.fn(),
       getCurrentUser: vi.fn().mockResolvedValue(null),
+      getCurrentApplication: vi.fn().mockResolvedValue(null),
+      getConfidentialityTemplateUrl: vi.fn().mockResolvedValue({
+        templateUrl: 'https://example.com/Confidentiality_Form.pdf',
+      }),
+      getMyConfidentialityForm: vi.fn().mockResolvedValue({
+        fileName: null,
+        fileUrl: null,
+      }),
+      // New API methods used by `useApplications` and admin views
+      getAdminInfoByEmail: vi.fn().mockResolvedValue(null),
+      getApplicationsByDiscipline: vi.fn().mockResolvedValue([]),
+      uploadMyConfidentialityForm: vi.fn(),
+      provisionAdmin:
+        overrides?.provisionAdmin ?? vi.fn().mockResolvedValue(undefined),
       updateAvailability: vi.fn(),
       getTotalApplicationsCount: vi.fn().mockResolvedValue(counts.total),
       getInReviewApplicationsCount: vi.fn().mockResolvedValue(counts.inReview),

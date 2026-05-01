@@ -6,7 +6,7 @@ import usersIcon from '../assets/icons/users.svg';
 import clockIcon from '../assets/icons/clock.svg';
 import crossIcon from '../assets/icons/cross.svg';
 import checkmarkIcon from '../assets/icons/checkmark.svg';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, Spinner, Text } from '@chakra-ui/react';
 import { useState } from 'react';
 import PageTransitionButton from '@components/PageTransitionButton';
 import Searchbar from '@components/TableSearchBar';
@@ -19,19 +19,40 @@ import {
   useRejectedApplicationsCount,
   useTotalApplicationsCount,
 } from '@api/apiClient';
+import { useApplications } from '@hooks/useApplications';
+import {
+  EMPTY_APPLICATION_FILTERS,
+  type ApplicationFilters,
+} from '@utils/applicationFilters';
 
 const AdminLanding: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [applicationFilters, setApplicationFilters] =
+    useState<ApplicationFilters>(EMPTY_APPLICATION_FILTERS);
   const { count: totalCount } = useTotalApplicationsCount();
   const { count: inReviewCount } = useInReviewApplicationsCount();
   const { count: rejectedCount } = useRejectedApplicationsCount();
   const { count: approvedCount } = useApprovedApplicationsCount();
+  const { applications, loading, error } = useApplications();
+
+  const disciplineAdminOptions = Array.from(
+    new Set(
+      applications
+        .map((application) => application.disciplineAdminName)
+        .filter((name) => Boolean(name?.trim())),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  function onResetFilters() {
+    setApplicationFilters(EMPTY_APPLICATION_FILTERS);
+  }
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     setSearchQuery(e.target.value);
   }
+
   return (
     <div className="flex flex-row h-screen overflow-hidden">
       <NavBar logo={'BHCHP'} userType={UserType.ADMIN} />
@@ -50,6 +71,7 @@ const AdminLanding: React.FC = () => {
             value={totalCount}
             description="All time submissions"
             icon={usersIcon}
+            color="#FFF9E6"
           />
 
           <DashboardCard
@@ -58,6 +80,7 @@ const AdminLanding: React.FC = () => {
             value={inReviewCount}
             description="Awaiting decision"
             icon={clockIcon}
+            color="#DBEAFE"
           />
 
           <DashboardCard
@@ -66,6 +89,7 @@ const AdminLanding: React.FC = () => {
             value={rejectedCount}
             description="Not matched"
             icon={crossIcon}
+            color="#FFD1D2"
           />
 
           <DashboardCard
@@ -74,6 +98,7 @@ const AdminLanding: React.FC = () => {
             value={approvedCount}
             description="Active volunteers"
             icon={checkmarkIcon}
+            color="#d4f7e7ff"
           />
         </Box>
         <div
@@ -94,7 +119,14 @@ const AdminLanding: React.FC = () => {
           <Box flex="1">
             <Searchbar value={searchQuery} onChange={onChange}></Searchbar>
           </Box>
-          <FilterPopUp open={isFilterOpen} onOpenChange={setIsFilterOpen} />
+          <FilterPopUp
+            open={isFilterOpen}
+            onOpenChange={setIsFilterOpen}
+            filters={applicationFilters}
+            onFiltersChange={setApplicationFilters}
+            onResetFilters={onResetFilters}
+            disciplineAdminOptions={disciplineAdminOptions}
+          />
         </Flex>
 
         <Box
@@ -108,7 +140,15 @@ const AdminLanding: React.FC = () => {
             transition: 'padding-right 0.2s ease',
           }}
         >
-          <ApplicationTable searchQuery={searchQuery} />
+          {loading && <Spinner size="xl" alignSelf="center" mt="10" />}
+          {error && <Text color="red.500">{error}</Text>}
+          {!loading && !error && (
+            <ApplicationTable
+              applications={applications}
+              searchQuery={searchQuery}
+              filters={applicationFilters}
+            />
+          )}
         </Box>
 
         <Flex justify="space-between" align="center" mt="4" mb="4">

@@ -1,7 +1,7 @@
 import NavBar from '@components/NavBar/NavBar';
 import { useParams } from 'react-router-dom';
 import apiClient from '@api/apiClient';
-import { Box, Spinner, Text } from '@chakra-ui/react';
+import { Box, Heading, Spinner, Text } from '@chakra-ui/react';
 import AvailabilityTable from '@components/AvailabilityTable';
 import { useEffect, useState } from 'react';
 import {
@@ -12,33 +12,50 @@ import {
   LearnerInfo,
   User,
   UserType,
-  VolunteerInfo,
 } from '@api/types';
 import QuestionFrame from '@components/QuestionFrame';
 import RequirementsFrame from '@components/RequirementsFrame';
-import UploadedMaterial from '@components/UploadedMaterial';
+import SignedFormMaterial from '@components/SignedFormMaterial';
 import SchoolAffiliationFrame from '@components/SchoolAffiliationFrame';
 
 import EmergencyContactFrame from '@components/EmergencyContactFrame';
 import ApplicationProfileHeader from '@components/ApplicationProfileHeader';
 import ApplicantStageControl from '@components/ApplicantStageControl';
+import DocumentDownloadCard, {
+  type DocumentDownloadItem,
+} from '@components/DocumentDownloadCard';
+import { toS3FolderUrl } from '@utils/s3';
 
 const AdminViewApplication: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
   const [application, setApplication] = useState<Application | null>(null);
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
-  const [volunteerInfo, setVolunteerInfo] = useState<VolunteerInfo | null>(
-    null,
-  );
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const pronouns = application?.pronouns;
   const discipline = application?.discipline;
+  const uploadedDocuments: DocumentDownloadItem[] = [
+    {
+      variant: 'resume',
+      downloadUrl: toS3FolderUrl(application?.resume, 'resumes'),
+    },
+    {
+      variant: 'coverLetter',
+      downloadUrl: toS3FolderUrl(application?.coverLetter, 'cover-letters'),
+    },
+  ];
 
-  // TODO: derive from actual auth state once auth is wired up
-  const isAdmin = true;
+  if (
+    application?.applicantType === ApplicantType.LEARNER &&
+    learnerInfo?.syllabus !== undefined
+  ) {
+    uploadedDocuments.push({
+      variant: 'syllabus',
+      downloadUrl: toS3FolderUrl(learnerInfo.syllabus, 'syllabus'),
+    });
+  }
 
   useEffect(() => {
     if (!appId) return;
@@ -125,22 +142,6 @@ const AdminViewApplication: React.FC = () => {
           email={application.email || 'N/A'}
           phone={application.phone || 'N/A'}
           over18={learnerInfo?.isLegalAdult}
-        />
-        <SchoolAffiliationFrame
-          schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
-          schoolDepartment={
-            (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'
-          }
-          license={application.license || 'N/A'}
-          areaOfInterest={
-            Array.isArray(application.interest)
-              ? application.interest.join(', ')
-              : application.interest ?? ''
-          }
-          proposedStartDate={''}
-          actualStartDate={''}
-          endDate={''}
-          totalTimeRequested={application.weeklyHours + ' hours per week'}
           statusControl={
             <ApplicantStageControl
               value={application.appStatus}
@@ -149,50 +150,16 @@ const AdminViewApplication: React.FC = () => {
           }
         />
 
-        <Box>
-          <AvailabilityTable
-            appId={application.appId}
-            availability={{
-              mondayAvailability: application.mondayAvailability,
-              tuesdayAvailability: application.tuesdayAvailability,
-              wednesdayAvailability: application.wednesdayAvailability,
-              thursdayAvailability: application.thursdayAvailability,
-              fridayAvailability: application.fridayAvailability,
-              saturdayAvailability: application.saturdayAvailability,
+        {(application.appStatus === AppStatus.FORMS_SIGNED ||
+          application.appStatus === AppStatus.ACTIVE ||
+          application.appStatus === AppStatus.INACTIVE) && (
+          <SignedFormMaterial
+            frameProps={{
+              signedForm: application.confidentialityForm,
             }}
-            isAdmin={isAdmin}
-            onUpdate={handleAvailabilityUpdate}
           />
-        </Box>
+        )}
 
-        <UploadedMaterial
-          frameProps={{
-            resume: application.resume,
-            coverLetter: application.coverLetter,
-            syllabus:
-              application.applicantType === ApplicantType.LEARNER &&
-              learnerInfo !== null
-                ? learnerInfo.syllabus
-                : undefined,
-          }}
-        />
-
-        {application.applicantType === ApplicantType.LEARNER &&
-          learnerInfo !== null && (
-            <RequirementsFrame
-              frameProps={{
-                course_requirements: learnerInfo.courseRequirements || '',
-                instructor_contact_info: learnerInfo.instructorInfo || '',
-              }}
-            />
-          )}
-
-        <QuestionFrame
-          frameProps={{
-            question: 'How did you hear about us?',
-            answers: application.heardAboutFrom,
-          }}
-        />
         <QuestionFrame
           frameProps={{
             question: 'Other than English, what languages do you speak?',
@@ -221,6 +188,64 @@ const AdminViewApplication: React.FC = () => {
             }}
           />
         )}
+        <SchoolAffiliationFrame
+          isLearner={application.applicantType === ApplicantType.LEARNER}
+          schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
+          schoolDepartment={
+            (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'
+          }
+          license={application.license || 'N/A'}
+          desiredExperience={application.desiredExperience || 'N/A'}
+          areaOfInterest={
+            Array.isArray(application.interest)
+              ? application.interest.join(', ')
+              : application.interest ?? ''
+          }
+          proposedStartDate={''}
+          actualStartDate={''}
+          endDate={''}
+          totalTimeRequested={application.weeklyHours + ' hours per week'}
+        />
+
+        <Box>
+          <AvailabilityTable
+            appId={application.appId}
+            availability={{
+              mondayAvailability: application.mondayAvailability,
+              tuesdayAvailability: application.tuesdayAvailability,
+              wednesdayAvailability: application.wednesdayAvailability,
+              thursdayAvailability: application.thursdayAvailability,
+              fridayAvailability: application.fridayAvailability,
+              saturdayAvailability: application.saturdayAvailability,
+            }}
+            isAdmin={true}
+            onUpdate={handleAvailabilityUpdate}
+          />
+        </Box>
+
+        <Box borderWidth="1px" borderRadius="lg" p={6} bg="white">
+          <Heading as="h2" size="md" mb={4}>
+            Uploaded Material
+          </Heading>
+          <DocumentDownloadCard documents={uploadedDocuments} />
+        </Box>
+
+        {application.applicantType === ApplicantType.LEARNER &&
+          learnerInfo !== null && (
+            <RequirementsFrame
+              frameProps={{
+                course_requirements: learnerInfo.courseRequirements || '',
+                instructor_contact_info: learnerInfo.instructorInfo || '',
+              }}
+            />
+          )}
+
+        <QuestionFrame
+          frameProps={{
+            question: 'How did you hear about us?',
+            answers: application.heardAboutFrom,
+          }}
+        />
         <EmergencyContactFrame
           name={application.emergencyContactName}
           phone={application.emergencyContactPhone}

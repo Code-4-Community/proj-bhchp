@@ -13,8 +13,9 @@ import { UsersModule } from './users/users.module';
 import { ConfigModule } from '@nestjs/config';
 import { DisciplinesModule } from './disciplines/disciplines.module';
 import { AdminInfoModule } from './admin-info/admin-info.module';
-import { PandadocWebhookModule } from './pandadoc-webhook/pandadoc-webhook.module';
 import { CandidateInfoModule } from './candidate-info/candidate-info.module';
+import { AdminProvisioningModule } from './admin-provisioning/admin-provisioning.module';
+import { PandadocWebhookModule } from './pandadoc-webhook/pandadoc-webhook.module';
 
 @Module({
   imports: [
@@ -32,6 +33,8 @@ import { CandidateInfoModule } from './candidate-info/candidate-info.module';
     AWSS3Module,
     TypeOrmModule.forFeature([Application]),
     DisciplinesModule,
+    CandidateInfoModule,
+    AdminProvisioningModule,
     LearnerInfoModule,
     ApplicationsModule,
     CandidateInfoModule,

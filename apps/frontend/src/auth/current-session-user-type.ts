@@ -61,6 +61,11 @@ export const fetchAndStoreCurrentSessionUserType =
  * @returns The current app role or `null` when unauthenticated/unresolved.
  */
 export const getCurrentSessionUserType = async (): Promise<UserType | null> => {
+  const devUserType = import.meta.env.VITE_DEV_AUTH_USER_TYPE as string;
+  if (devUserType === UserType.ADMIN || devUserType === UserType.STANDARD) {
+    return devUserType;
+  }
+
   // Prefer the cached role first so route guards do not call the backend on
   // every render, but only if Cognito still considers the session valid.
   const storedUserType = getCurrentSessionUserTypeFromStorage();

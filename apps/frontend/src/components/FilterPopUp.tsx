@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Popover,
   Button,
   Portal,
   Stack,
   Input,
+  Switch,
   Box,
   Text,
   Flex,
@@ -15,6 +16,13 @@ import {
   For,
 } from '@chakra-ui/react';
 import StatusPill, { StatusPillConfig, StatusVariant } from './StatusPill';
+import {
+  countActiveFilters,
+  type DateFilterDirection,
+  normalizeDateToDay,
+  EMPTY_APPLICATION_FILTERS,
+  type ApplicationFilters,
+} from '@utils/applicationFilters';
 
 export const DISCIPLINE_VALUES = [
   'MD/Medical Student/Pre-Med',
@@ -36,15 +44,27 @@ export const STATUS_OPTIONS = Object.entries(StatusPillConfig).map(
 interface FilterPopUpProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  filters: ApplicationFilters;
+  onFiltersChange: (next: ApplicationFilters) => void;
+  onResetFilters: () => void;
+  disciplineAdminOptions: string[];
 }
 
-const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
-  const [selectedDISCIPLINE_VALUES, setSelectedDISCIPLINE_VALUES] = useState<
-    string[]
-  >([]);
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
-  const [proposedStartDate, setProposedStartDate] = useState('');
-  const [actualStartDate, setActualStartDate] = useState('');
+const FilterPopUp = ({
+  open,
+  onOpenChange,
+  filters,
+  onFiltersChange,
+  onResetFilters,
+  disciplineAdminOptions,
+}: FilterPopUpProps) => {
+  const capitalize = (s: string): string => {
+    return s
+      .split(' ')
+      .map((s) => s.charAt(0).toUpperCase() + s.substring(1))
+      .join(' ');
+  };
+  const [optionSearchQuery, setOptionSearchQuery] = useState('');
   const [openSections, setOpenSections] = useState<string[]>([
     'Proposed Start Date',
     'Actual Start Date',
@@ -53,11 +73,7 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
     'Status',
   ]);
 
-  const totalFilters =
-    selectedDISCIPLINE_VALUES.length +
-    selectedStatuses.length +
-    (proposedStartDate ? 1 : 0) +
-    (actualStartDate ? 1 : 0);
+  const totalFilters = countActiveFilters(filters);
 
   const toggleSection = (category: string) => {
     setOpenSections((prev) =>
@@ -74,6 +90,89 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
     'Discipline Admin Name',
     'Status',
   ];
+
+  const getSectionFilterCount = (category: string) => {
+    if (category === 'Proposed Start Date') {
+      return normalizeDateToDay(filters.proposedStartDate) ? 1 : 0;
+    }
+
+    if (category === 'Actual Start Date') {
+      return normalizeDateToDay(filters.actualStartDate) ? 1 : 0;
+    }
+
+    if (category === 'Discipline') {
+      return filters.disciplines.length;
+    }
+
+    if (category === 'Status') {
+      return filters.statuses.length;
+    }
+
+    if (category === 'Discipline Admin Name') {
+      return filters.disciplineAdminNames.length;
+    }
+
+    return 0;
+  };
+
+  const normalizedSearch = optionSearchQuery.trim().toLowerCase();
+
+  const visibleDisciplines = useMemo(() => {
+    if (!normalizedSearch) {
+      return [...DISCIPLINE_VALUES];
+    }
+
+    return DISCIPLINE_VALUES.filter((discipline) =>
+      discipline.toLowerCase().includes(normalizedSearch),
+    );
+  }, [normalizedSearch]);
+
+  const visibleStatuses = useMemo(() => {
+    if (!normalizedSearch) {
+      return STATUS_OPTIONS;
+    }
+
+    return STATUS_OPTIONS.filter(
+      (status) =>
+        status.value.toLowerCase().includes(normalizedSearch) ||
+        status.label.toLowerCase().includes(normalizedSearch),
+    );
+  }, [normalizedSearch]);
+
+  const visibleDisciplineAdmins = useMemo(() => {
+    if (!normalizedSearch) {
+      return disciplineAdminOptions;
+    }
+
+    return disciplineAdminOptions.filter((name) =>
+      name.toLowerCase().includes(normalizedSearch),
+    );
+  }, [disciplineAdminOptions, normalizedSearch]);
+
+  function getDateDirection(category: string): DateFilterDirection {
+    if (category === 'Proposed Start Date') {
+      return filters.proposedStartDateDirection ?? 'after';
+    }
+
+    return filters.actualStartDateDirection ?? 'after';
+  }
+
+  function onDateDirectionChange(category: string, checked: boolean) {
+    const direction: DateFilterDirection = checked ? 'after' : 'before';
+
+    if (category === 'Proposed Start Date') {
+      onFiltersChange({
+        ...filters,
+        proposedStartDateDirection: direction,
+      });
+      return;
+    }
+
+    onFiltersChange({
+      ...filters,
+      actualStartDateDirection: direction,
+    });
+  }
 
   return (
     <Popover.Root
@@ -145,6 +244,10 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                 <Box position="relative">
                   <Input
                     placeholder="Search"
+                    value={optionSearchQuery}
+                    onChange={(event) =>
+                      setOptionSearchQuery(event.target.value)
+                    }
                     bg="white"
                     borderRadius="md"
                     pr="10"
@@ -161,6 +264,7 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
               <Box overflowY="auto" flexGrow="1" minH="0">
                 {filterCategories.map((category) => {
                   const isOpen = openSections.includes(category);
+                  const sectionFilterCount = getSectionFilterCount(category);
 
                   return (
                     <Collapsible.Root
@@ -178,9 +282,8 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                           cursor="pointer"
                           borderBottom="1px solid"
                           borderColor="gray.100"
-                          bg={isOpen ? '#173685' : 'transparent'}
-                          color={isOpen ? 'white' : 'gray.800'}
-                          _hover={{ bg: isOpen ? '#173685' : 'gray.50' }}
+                          bg="#173685"
+                          color="white"
                         >
                           {/* Caret dropdown */}
                           <Box
@@ -195,9 +298,26 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                           <Text
                             fontSize="sm"
                             fontWeight={isOpen ? 'medium' : 'normal'}
+                            flex="1"
                           >
                             {category}
                           </Text>
+                          {sectionFilterCount > 0 && (
+                            <Flex
+                              align="center"
+                              justify="center"
+                              bg="white"
+                              color="#173685"
+                              borderRadius="full"
+                              minW="24px"
+                              h="24px"
+                              px="2"
+                              fontSize="sm"
+                              fontWeight="bold"
+                            >
+                              {sectionFilterCount}
+                            </Flex>
+                          )}
                         </Flex>
                       </Collapsible.Trigger>
 
@@ -211,6 +331,40 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                           {category === 'Proposed Start Date' ||
                           category === 'Actual Start Date' ? (
                             <Stack gap="3">
+                              <Box>
+                                <Flex align="center" gap="2">
+                                  <Text
+                                    fontSize="xs"
+                                    color="gray.700"
+                                    minW="42px"
+                                  >
+                                    Before
+                                  </Text>
+                                  <Switch.Root
+                                    checked={
+                                      getDateDirection(category) === 'after'
+                                    }
+                                    onCheckedChange={(details) =>
+                                      onDateDirectionChange(
+                                        category,
+                                        details.checked,
+                                      )
+                                    }
+                                  >
+                                    <Switch.HiddenInput
+                                      aria-label={`${category} direction`}
+                                    />
+                                    <Switch.Control />
+                                  </Switch.Root>
+                                  <Text
+                                    fontSize="xs"
+                                    color="gray.700"
+                                    minW="32px"
+                                  >
+                                    After
+                                  </Text>
+                                </Flex>
+                              </Box>
                               <Input
                                 placeholder="MM-DD-YYYY"
                                 type="text"
@@ -219,13 +373,19 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                                 borderColor="gray.300"
                                 value={
                                   category === 'Proposed Start Date'
-                                    ? proposedStartDate
-                                    : actualStartDate
+                                    ? filters.proposedStartDate ?? ''
+                                    : filters.actualStartDate ?? ''
                                 }
                                 onChange={(e) =>
                                   category === 'Proposed Start Date'
-                                    ? setProposedStartDate(e.target.value)
-                                    : setActualStartDate(e.target.value)
+                                    ? onFiltersChange({
+                                        ...filters,
+                                        proposedStartDate: e.target.value,
+                                      })
+                                    : onFiltersChange({
+                                        ...filters,
+                                        actualStartDate: e.target.value,
+                                      })
                                 }
                                 _focus={{
                                   borderColor: '#173685',
@@ -238,11 +398,16 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                               <Fieldset.Root>
                                 <CheckboxGroup
                                   name="DISCIPLINE_VALUES"
-                                  value={selectedDISCIPLINE_VALUES}
-                                  onValueChange={setSelectedDISCIPLINE_VALUES}
+                                  value={filters.disciplines}
+                                  onValueChange={(value) =>
+                                    onFiltersChange({
+                                      ...filters,
+                                      disciplines: value,
+                                    })
+                                  }
                                 >
                                   <Fieldset.Content>
-                                    <For each={DISCIPLINE_VALUES}>
+                                    <For each={visibleDisciplines}>
                                       {(value) => (
                                         <Checkbox.Root
                                           key={value}
@@ -265,11 +430,16 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                               <Fieldset.Root>
                                 <CheckboxGroup
                                   name="statuses"
-                                  value={selectedStatuses}
-                                  onValueChange={setSelectedStatuses}
+                                  value={filters.statuses}
+                                  onValueChange={(value) =>
+                                    onFiltersChange({
+                                      ...filters,
+                                      statuses: value,
+                                    })
+                                  }
                                 >
                                   <Fieldset.Content>
-                                    <For each={STATUS_OPTIONS}>
+                                    <For each={visibleStatuses}>
                                       {(status) => (
                                         <Checkbox.Root
                                           key={status.value}
@@ -289,6 +459,44 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                                 </CheckboxGroup>
                               </Fieldset.Root>
                             </Stack>
+                          ) : category === 'Discipline Admin Name' ? (
+                            <Stack gap="3">
+                              <Fieldset.Root>
+                                <CheckboxGroup
+                                  name="discipline_admins"
+                                  value={filters.disciplineAdminNames}
+                                  onValueChange={(value) =>
+                                    onFiltersChange({
+                                      ...filters,
+                                      disciplineAdminNames: value,
+                                    })
+                                  }
+                                >
+                                  <Fieldset.Content>
+                                    {visibleDisciplineAdmins.length === 0 ? (
+                                      <Text color="gray.600">
+                                        No admins available
+                                      </Text>
+                                    ) : (
+                                      <For each={visibleDisciplineAdmins}>
+                                        {(name) => (
+                                          <Checkbox.Root
+                                            key={name}
+                                            value={name}
+                                          >
+                                            <Checkbox.HiddenInput />
+                                            <Checkbox.Control />
+                                            <Checkbox.Label>
+                                              {capitalize(name)}
+                                            </Checkbox.Label>
+                                          </Checkbox.Root>
+                                        )}
+                                      </For>
+                                    )}
+                                  </Fieldset.Content>
+                                </CheckboxGroup>
+                              </Fieldset.Root>
+                            </Stack>
                           ) : null}
                         </Box>
                       </Collapsible.Content>
@@ -296,12 +504,48 @@ const FilterPopUp = ({ open, onOpenChange }: FilterPopUpProps) => {
                   );
                 })}
               </Box>
+
+              <Flex
+                justify="space-between"
+                gap="3"
+                p="4"
+                borderTop="1px solid"
+                borderColor="gray.200"
+                flexShrink="0"
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setOptionSearchQuery('');
+                    onResetFilters();
+                  }}
+                >
+                  Reset
+                </Button>
+                <Button
+                  size="sm"
+                  bg="#173685"
+                  color="white"
+                  _hover={{ bg: '#102660' }}
+                  onClick={() => onOpenChange?.(false)}
+                >
+                  Apply
+                </Button>
+              </Flex>
             </Popover.Body>
           </Popover.Content>
         </Popover.Positioner>
       </Portal>
     </Popover.Root>
   );
+};
+
+FilterPopUp.defaultProps = {
+  filters: EMPTY_APPLICATION_FILTERS,
+  disciplineAdminOptions: [],
+  onFiltersChange: () => undefined,
+  onResetFilters: () => undefined,
 };
 
 export default FilterPopUp;

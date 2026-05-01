@@ -2,16 +2,23 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
   UseInterceptors,
   UseFilters,
+  NotFoundException,
+  Logger,
+  ParseFilePipeBuilder,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
@@ -26,6 +33,9 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { ApplicationValidationEmailFilter } from './filters/application-validation-email.filter';
 import { ApplicationCreationErrorFilter } from './filters/application-creation-validation.filter';
+import { User } from '../users/user.entity';
+import { CandidateInfoService } from '../candidate-info/candidate-info.service';
+import { AppStatus } from './types';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about the app's applications.
@@ -35,7 +45,12 @@ import { ApplicationCreationErrorFilter } from './filters/application-creation-v
 @UseInterceptors(CurrentUserInterceptor)
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class ApplicationsController {
-  constructor(private applicationsService: ApplicationsService) {}
+  private readonly logger = new Logger(ApplicationsController.name);
+
+  constructor(
+    private applicationsService: ApplicationsService,
+    private candidateInfoService: CandidateInfoService,
+  ) {}
 
   /**
    * Exposes an endpoint to return the total number of applications.
@@ -118,12 +133,25 @@ export class ApplicationsController {
    *         if an application with that id does not exist.
    * @throws {Error} which is unchanged from what repository throws.
    */
-  @Get('/:appId')
-  @Roles(UserType.ADMIN)
+  @Get(':appId(\\d+)')
+  @Roles(UserType.ADMIN, UserType.STANDARD)
   async getApplicationById(
     @Param('appId', ParseIntPipe) appId: number,
+    @Req() req: { user?: { email?: string; userType?: UserType } },
   ): Promise<Application> {
-    return await this.applicationsService.findById(appId);
+    const application = await this.applicationsService.findById(appId);
+
+    // Standard users may only access their own application.
+    if (
+      req.user?.userType === UserType.STANDARD &&
+      req.user.email !== application.email
+    ) {
+      throw new ForbiddenException(
+        'Standard users can only access their own application.',
+      );
+    }
+
+    return application;
   }
 
   /**
@@ -139,7 +167,11 @@ export class ApplicationsController {
   async createApplication(
     @Body() createApplicationDto: CreateApplicationDto,
   ): Promise<Application> {
-    return await this.applicationsService.create(createApplicationDto);
+    const application = await this.applicationsService.create(
+      createApplicationDto,
+    );
+
+    return application;
   }
 
   /**
@@ -232,7 +264,7 @@ export class ApplicationsController {
    * @throws {NotFoundException} with message 'Application with ID <appId> not found'
    *         if the application does not exist.
    */
-  @Patch('/:appId/start-date')
+  @Patch('/:appId/actual-start-date')
   @Roles(UserType.ADMIN)
   async updateApplicationActualStartDate(
     @Param('appId', ParseIntPipe) appId: number,
@@ -265,6 +297,60 @@ export class ApplicationsController {
     );
   }
 
+  @Get('/forms/confidentiality/template')
+  @Roles(UserType.STANDARD, UserType.ADMIN)
+  async getConfidentialityTemplateUrl(): Promise<{ templateUrl: string }> {
+    return this.applicationsService.getConfidentialityTemplateUrl();
+  }
+
+  @Get('/me/forms/confidentiality')
+  @Roles(UserType.STANDARD)
+  async getCurrentUserConfidentialityForm(
+    @Req() req: { user?: User },
+  ): Promise<{ fileName: string | null; fileUrl: string | null }> {
+    if (!req.user?.email) {
+      throw new NotFoundException('No user matching the JWT was found.');
+    }
+
+    const form = await this.applicationsService.getConfidentialityForm(
+      req.user.email,
+    );
+
+    if (!form) {
+      return { fileName: null, fileUrl: null };
+    }
+
+    return form;
+  }
+
+  @Post('/me/forms/confidentiality')
+  @Roles(UserType.STANDARD)
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }),
+  )
+  async uploadCurrentUserConfidentialityForm(
+    @Req() req: { user?: User },
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: 'pdf' })
+        .addMaxSizeValidator({ maxSize: 10 * 1024 * 1024 })
+        .build({
+          fileIsRequired: true,
+          errorHttpStatusCode: 400,
+        }),
+    )
+    file: { buffer: Buffer; mimetype: string },
+  ): Promise<{ fileName: string; fileUrl: string; appStatus: AppStatus }> {
+    if (!req.user?.email) {
+      throw new NotFoundException('No user matching the JWT was found.');
+    }
+
+    return this.applicationsService.uploadConfidentialityForm(req.user.email, {
+      buffer: file.buffer,
+      mimetype: file.mimetype,
+    });
+  }
+
   /**
    * Exposes an endpoint to delete an application from the system.
    * @param appId The id of the application to delete.
@@ -280,5 +366,45 @@ export class ApplicationsController {
     @Param('appId', ParseIntPipe) appId: number,
   ): Promise<void> {
     await this.applicationsService.delete(appId);
+  }
+
+  /**
+   * Returns the current database-backend application resolved from the same email of the User Interceptor/ JWT/ Cognito.
+   * @param req: payload with user injected from the Interceptor/ JWT/ Cognito
+   * @returns {Application | null} Returns the Application object or nothing.
+   */
+  @Get('/me')
+  @Roles(UserType.STANDARD)
+  async getCurrentApplication(
+    @Req() req: { user?: User },
+  ): Promise<Application | NotFoundException> {
+    this.logger.log(
+      `GET /applications/me called userType=${
+        req.user?.userType ?? 'missing'
+      } email=${req.user?.email ?? 'missing'}`,
+    );
+
+    if (!req.user || !req.user.userType || !req.user.email) {
+      this.logger.warn(
+        'GET /applications/me missing user context (user, userType, or email).',
+      );
+      return new NotFoundException('No user matching the JWT was found.');
+    }
+
+    try {
+      const candidateInfo = await this.candidateInfoService.findOne(
+        req.user.email,
+      );
+      this.logger.log(
+        `GET /applications/me candidate_info found email=${req.user.email} appId=${candidateInfo.appId}`,
+      );
+      return this.applicationsService.findById(candidateInfo.appId);
+    } catch (error) {
+      this.logger.error(
+        `GET /applications/me failed for email=${req.user.email}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw error;
+    }
   }
 }

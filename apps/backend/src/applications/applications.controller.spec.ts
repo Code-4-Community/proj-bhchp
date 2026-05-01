@@ -3,7 +3,12 @@ import { ArgumentsHost, BadRequestException } from '@nestjs/common';
 import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
-import { AppStatus, InterestArea, ApplicantType } from './types';
+import {
+  AppStatus,
+  InterestArea,
+  ApplicantType,
+  DesiredExperience,
+} from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from '../users/users.service';
@@ -11,6 +16,8 @@ import { EmailService } from '../util/email/email.service';
 import { ApplicationValidationEmailFilter } from './filters/application-validation-email.filter';
 import { ApplicationCreationErrorFilter } from './filters/application-creation-validation.filter';
 import { NotFoundException } from '@nestjs/common';
+import { CandidateInfoService } from '../candidate-info/candidate-info.service';
+import { UserType } from '../users/types';
 
 jest.mock('../util/aws-exports', () => ({
   __esModule: true,
@@ -48,6 +55,9 @@ const mockApplicationsService: Partial<ApplicationsService> = {
   updateProposedStartDate: jest.fn(),
   updateActualStartDate: jest.fn(),
   updateEndDate: jest.fn(),
+  getConfidentialityTemplateUrl: jest.fn(),
+  getConfidentialityForm: jest.fn(),
+  uploadConfidentialityForm: jest.fn(),
 };
 
 const mockRolesGuard = {
@@ -56,6 +66,13 @@ const mockRolesGuard = {
 
 const mockUsersService = {
   findOne: jest.fn(),
+};
+
+const mockCandidateInfoService = {
+  findOne: jest.fn(),
+  findByApplicationId: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
 };
 
 const mockApplication: Application = {
@@ -77,10 +94,10 @@ const mockApplication: Application = {
   weeklyHours: 20,
   pronouns: 'they/them',
   nonEnglishLangs: 'some french, native spanish speaker',
-  desiredExperience:
-    'I want to give back to the boston community and learn to talk better with patients',
+  desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
   resume: 'janedoe_resume_2_6_2026.pdf',
   coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+  confidentialityForm: undefined,
   emergencyContactName: 'Jane Doe',
   emergencyContactPhone: '111-111-1111',
   emergencyContactRelationship: 'Mother',
@@ -126,6 +143,10 @@ describe('ApplicationsController', () => {
         {
           provide: EmailService,
           useValue: mockEmailService,
+        },
+        {
+          provide: CandidateInfoService,
+          useValue: mockCandidateInfoService,
         },
         ApplicationValidationEmailFilter,
         ApplicationCreationErrorFilter,
@@ -281,6 +302,31 @@ describe('ApplicationsController', () => {
     });
   });
 
+  describe('getAllApplications', () => {
+    it('should return all applications', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findAll')
+        .mockResolvedValue([mockApplication]);
+
+      await expect(controller.getAllApplications()).resolves.toEqual([
+        mockApplication,
+      ]);
+      expect(mockApplicationsService.findAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass along service errors without information loss', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findAll')
+        .mockRejectedValue(
+          new Error('There was a problem retrieving the info'),
+        );
+
+      await expect(controller.getAllApplications()).rejects.toThrow(
+        'There was a problem retrieving the info',
+      );
+    });
+  });
+
   describe('getApplicationsByDiscipline', () => {
     it('should return applications with the specified discipline', async () => {
       const mockApplications: Application[] = [
@@ -370,6 +416,114 @@ describe('ApplicationsController', () => {
           discipline,
         );
       }
+    });
+  });
+
+  describe('getApplicationById', () => {
+    it('should return an application for an admin user', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.getApplicationById(1, {
+          user: { email: 'admin@example.com', userType: UserType.ADMIN },
+        }),
+      ).resolves.toEqual(mockApplication);
+      expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
+    });
+
+    it('should return an application for the matching standard user', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.getApplicationById(1, {
+          user: { email: 'test@example.com', userType: UserType.STANDARD },
+        }),
+      ).resolves.toEqual(mockApplication);
+      expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw ForbiddenException when a standard user requests another user application', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.getApplicationById(1, {
+          user: { email: 'other@example.com', userType: UserType.STANDARD },
+        }),
+      ).rejects.toThrow(
+        'Standard users can only access their own application.',
+      );
+    });
+
+    it('should pass through service errors from findById', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockRejectedValue(
+          new NotFoundException('Application with ID 99 not found'),
+        );
+
+      await expect(
+        controller.getApplicationById(99, {
+          user: { email: 'admin@example.com', userType: UserType.ADMIN },
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createApplication', () => {
+    it('should create an application', async () => {
+      const createApplicationDto = {
+        appStatus: AppStatus.APP_SUBMITTED,
+        mondayAvailability: 'monday',
+        tuesdayAvailability: 'tuesday',
+        wednesdayAvailability: 'wednesday',
+        thursdayAvailability: 'thursday',
+        fridayAvailability: 'friday',
+        saturdayAvailability: 'saturday',
+        interest: [InterestArea.WOMENS_HEALTH],
+        license: 'n/a',
+        applicantType: ApplicantType.LEARNER,
+        phone: '123-456-7890',
+        email: 'test@example.com',
+        discipline: DISCIPLINE_VALUES.RN,
+        proposedStartDate: '2024-01-01',
+        referred: false,
+        weeklyHours: 20,
+        pronouns: 'they/them',
+        desiredExperience: DesiredExperience.VOLUNTEER_INTERN,
+        resume: 'resume.pdf',
+        coverLetter: 'cover.pdf',
+        emergencyContactName: 'Jane Doe',
+        emergencyContactPhone: '111-111-1111',
+        emergencyContactRelationship: 'Mother',
+        heardAboutFrom: [],
+      };
+
+      jest
+        .spyOn(mockApplicationsService, 'create')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.createApplication(createApplicationDto as never),
+      ).resolves.toEqual(mockApplication);
+      expect(mockApplicationsService.create).toHaveBeenCalledWith(
+        createApplicationDto,
+      );
+    });
+
+    it('should pass along service errors while creating an application', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'create')
+        .mockRejectedValue(new Error('Failed to create application'));
+
+      await expect(controller.createApplication({} as never)).rejects.toThrow(
+        'Failed to create application',
+      );
     });
   });
 
@@ -583,6 +737,101 @@ describe('ApplicationsController', () => {
     });
   });
 
+  describe('confidentiality forms endpoints', () => {
+    it('should return confidentiality template URL', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'getConfidentialityTemplateUrl')
+        .mockResolvedValue({
+          templateUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/Confidentiality_Form.pdf',
+        });
+
+      await expect(controller.getConfidentialityTemplateUrl()).resolves.toEqual(
+        {
+          templateUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/Confidentiality_Form.pdf',
+        },
+      );
+    });
+
+    it('should return uploaded confidentiality form when present', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'getConfidentialityForm')
+        .mockResolvedValue({
+          fileName: '1_confidentiality-123-abc123.pdf',
+          fileUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/1_confidentiality-123-abc123.pdf',
+        });
+
+      await expect(
+        controller.getCurrentUserConfidentialityForm({
+          user: {
+            email: 'test@example.com',
+            userType: UserType.STANDARD,
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      ).resolves.toEqual({
+        fileName: '1_confidentiality-123-abc123.pdf',
+        fileUrl:
+          'https://bucket.s3.us-east-2.amazonaws.com/1_confidentiality-123-abc123.pdf',
+      });
+    });
+
+    it('should return an empty payload when no uploaded confidentiality form exists', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'getConfidentialityForm')
+        .mockResolvedValue(null);
+
+      await expect(
+        controller.getCurrentUserConfidentialityForm({
+          user: {
+            email: 'test@example.com',
+            userType: UserType.STANDARD,
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      ).resolves.toEqual({ fileName: null, fileUrl: null });
+    });
+
+    it('should upload confidentiality form for the current user', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'uploadConfidentialityForm')
+        .mockResolvedValue({
+          fileName: '1_confidentiality-123-abc123.pdf',
+          fileUrl:
+            'https://bucket.s3.us-east-2.amazonaws.com/1_confidentiality-123-abc123.pdf',
+          appStatus: AppStatus.FORMS_SIGNED,
+        });
+
+      const mockFile = {
+        buffer: Buffer.from('pdf'),
+        mimetype: 'application/pdf',
+      };
+
+      await expect(
+        controller.uploadCurrentUserConfidentialityForm(
+          {
+            user: {
+              email: 'test@example.com',
+              userType: UserType.STANDARD,
+              firstName: 'Test',
+              lastName: 'User',
+            },
+          },
+          mockFile,
+        ),
+      ).resolves.toEqual({
+        fileName: '1_confidentiality-123-abc123.pdf',
+        fileUrl:
+          'https://bucket.s3.us-east-2.amazonaws.com/1_confidentiality-123-abc123.pdf',
+        appStatus: AppStatus.FORMS_SIGNED,
+      });
+    });
+  });
+
   describe('updateApplicationStatus', () => {
     it('should call updateStatus with the correct appId and status', async () => {
       const updatedApplication: Application = {
@@ -673,6 +922,84 @@ describe('ApplicationsController', () => {
           appStatus: AppStatus.ACCEPTED,
         }),
       ).rejects.toThrow('There was a problem updating the status');
+    });
+  });
+
+  describe('deleteApplication', () => {
+    it('should delete an application', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'delete')
+        .mockResolvedValue(undefined);
+
+      await expect(controller.deleteApplication(1)).resolves.toBeUndefined();
+      expect(mockApplicationsService.delete).toHaveBeenCalledWith(1);
+    });
+
+    it('should pass along service errors while deleting', async () => {
+      jest
+        .spyOn(mockApplicationsService, 'delete')
+        .mockRejectedValue(
+          new NotFoundException('Application with ID 999 not found'),
+        );
+
+      await expect(controller.deleteApplication(999)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('getCurrentApplication', () => {
+    it('should return NotFoundException when request user context is missing', async () => {
+      const result = await controller.getCurrentApplication({});
+
+      expect(result).toBeInstanceOf(NotFoundException);
+      expect((result as NotFoundException).message).toBe(
+        'No user matching the JWT was found.',
+      );
+    });
+
+    it('should return the current user application when candidate info exists', async () => {
+      mockCandidateInfoService.findOne.mockResolvedValue({
+        email: 'test@example.com',
+        appId: 1,
+      });
+      jest
+        .spyOn(mockApplicationsService, 'findById')
+        .mockResolvedValue(mockApplication);
+
+      await expect(
+        controller.getCurrentApplication({
+          user: {
+            email: 'test@example.com',
+            userType: UserType.STANDARD,
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      ).resolves.toEqual(mockApplication);
+      expect(mockCandidateInfoService.findOne).toHaveBeenCalledWith(
+        'test@example.com',
+      );
+      expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
+    });
+
+    it('should pass through candidate lookup errors', async () => {
+      mockCandidateInfoService.findOne.mockRejectedValue(
+        new NotFoundException(
+          'candidate with email test@example.com not found',
+        ),
+      );
+
+      await expect(
+        controller.getCurrentApplication({
+          user: {
+            email: 'test@example.com',
+            userType: UserType.STANDARD,
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

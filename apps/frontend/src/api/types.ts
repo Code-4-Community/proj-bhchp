@@ -40,6 +40,17 @@ export enum ApplicantType {
 }
 
 /**
+ * Type of experience the applicant is seeking.
+ */
+export enum DesiredExperience {
+  PRE_LICENSURE_PLACEMENT = 'Pre-Licensure Placement (NP/PA, Nursing, Behavioral Health, Psychiatry)',
+  PRACTICUM = 'Practicum',
+  PUBLIC_HEALTH_PROJECT = 'Public Health Project',
+  SHADOWING = 'Shadowing',
+  VOLUNTEER_INTERN = 'Volunteer/Intern',
+}
+
+/**
  * Phone number regex pattern for ###-###-#### format validation
  * @see https://stackoverflow.com/questions/16699007/regular-expression-to-match-standard-10-digit-phone-number
  */
@@ -83,6 +94,8 @@ export interface AvailabilityFields {
 export interface Application extends AvailabilityFields {
   appId: number;
   email: string;
+  proposedStartDate: string;
+  actualStartDate?: string;
   discipline: DISCIPLINE_VALUES;
   otherDisciplineDescription?: string;
   appStatus: AppStatus;
@@ -101,14 +114,16 @@ export interface Application extends AvailabilityFields {
   weeklyHours: number;
   pronouns: string;
   nonEnglishLangs?: string;
-  desiredExperience: string;
+  desiredExperience: DesiredExperience;
   elaborateOtherDiscipline?: string;
   resume: string;
   coverLetter: string;
+  confidentialityForm?: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
   emergencyContactRelationship: string;
   heardAboutFrom: HeardAboutFrom[];
+  endDate?: Date;
 }
 
 /**
@@ -135,10 +150,6 @@ export interface LearnerInfo {
   syllabus?: string;
 }
 
-export interface VolunteerInfo {
-  appId: number;
-}
-
 export enum UserType {
   ADMIN = 'ADMIN',
   STANDARD = 'STANDARD',
@@ -149,4 +160,75 @@ export interface User {
   firstName: string;
   lastName: string;
   userType: UserType;
+}
+
+export interface CandidateInfo {
+  email: string;
+  appId: number;
+}
+
+export interface AdminInfo {
+  email: string;
+  discipline: DISCIPLINE_VALUES;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DisciplineAdmin {
+  firstName: string;
+  lastName: string;
+}
+
+export type DisciplineAdminMap = Record<string, DisciplineAdmin>;
+
+export interface ProvisionAdminRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  discipline: DISCIPLINE_VALUES;
+}
+
+export interface ProvisionAdminResponse {
+  mode: 'live';
+  status:
+    | 'SUCCESS'
+    | 'COGNITO_CREATE_FAILED'
+    | 'DATABASE_WRITE_FAILED_ROLLED_BACK'
+    | 'DATABASE_WRITE_FAILED_ROLLBACK_FAILED';
+  cognito: {
+    attemptedCreate: boolean;
+    attemptedRollback: boolean;
+    cognitoUsername?: string;
+    userStatus?: string;
+    rollbackSucceeded?: boolean;
+  };
+  database: {
+    attemptedTransaction: boolean;
+    committed: boolean;
+  };
+  records: {
+    user: User;
+    adminInfo: {
+      email: string;
+      discipline: DISCIPLINE_VALUES;
+      createdAt: string;
+      updatedAt: string;
+    };
+  } | null;
+  notes: string[];
+}
+
+export interface ConfidentialityTemplateResponse {
+  templateUrl: string;
+}
+
+export interface ConfidentialityFormResponse {
+  fileName: string | null;
+  fileUrl: string | null;
+}
+
+export interface UploadConfidentialityFormResponse {
+  fileName: string;
+  fileUrl: string;
+  appStatus: AppStatus;
 }

@@ -9,10 +9,14 @@ import { UsersModule } from '../users/users.module';
 import { ApplicationValidationEmailFilter } from './filters/application-validation-email.filter';
 import { ApplicationCreationErrorFilter } from './filters/application-creation-validation.filter';
 import { UtilModule } from '../util/util.module';
+import { CandidateInfoService } from '../candidate-info/candidate-info.service';
+import { CandidateInfo } from '../candidate-info/candidate-info.entity';
+import { EmailService } from '../util/email/email.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Application]),
+    TypeOrmModule.forFeature([CandidateInfo]),
     AuthModule,
     UsersModule,
     UtilModule,
@@ -20,6 +24,8 @@ import { UtilModule } from '../util/util.module';
   controllers: [ApplicationsController],
   providers: [
     ApplicationsService,
+    CandidateInfoService,
+    EmailService,
     CurrentUserInterceptor,
     ApplicationValidationEmailFilter,
     ApplicationCreationErrorFilter,

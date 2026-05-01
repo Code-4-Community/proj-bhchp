@@ -8,6 +8,7 @@ import {
   InterestArea,
   ApplicantType,
   HeardAboutFrom,
+  DesiredExperience,
 } from '../applications/types';
 import { LearnerInfo } from '../learner-info/learner-info.entity';
 import { School } from '../learner-info/types';
@@ -22,14 +23,86 @@ const ADMIN_INFO_SEED = [
     discipline: DISCIPLINE_VALUES.RN,
   },
   {
-    email: 'linda.johnson@northeastern.edu',
+    email: 'publichealthadmin@c4cneu.com',
     discipline: DISCIPLINE_VALUES.PublicHealth,
   },
   {
-    email: 'lucine.armen@northeastern.edu',
+    email: 'socialworkadmin@c4cneu.com',
     discipline: DISCIPLINE_VALUES.SocialWork,
   },
 ];
+
+const EXTRA_DISCIPLINES = [
+  DISCIPLINE_VALUES.RN,
+  DISCIPLINE_VALUES.SocialWork,
+  DISCIPLINE_VALUES.PublicHealth,
+  DISCIPLINE_VALUES.Medical_NP_PA,
+  DISCIPLINE_VALUES.Psychiatry_or_Psychiatric_NP_PA,
+  DISCIPLINE_VALUES.MD_MedicalStudent_PreMed,
+  DISCIPLINE_VALUES.Other,
+];
+
+const EXTRA_STATUSES = [
+  AppStatus.APP_SUBMITTED,
+  AppStatus.IN_REVIEW,
+  AppStatus.ACCEPTED,
+  AppStatus.DECLINED,
+  AppStatus.INACTIVE,
+  AppStatus.ACTIVE,
+  AppStatus.NO_AVAILABILITY,
+  AppStatus.FORMS_SIGNED,
+];
+
+const EXTRA_INTERESTS = [
+  InterestArea.PRIMARY_CARE,
+  InterestArea.BEHAVIORAL_HEALTH,
+  InterestArea.HEP_C_CARE,
+  InterestArea.WOMENS_HEALTH,
+  InterestArea.MEDICAL_RESPITE_INPATIENT,
+  InterestArea.STREET_MEDICINE,
+  InterestArea.HIV_SERVICES,
+  InterestArea.CASE_MANAGEMENT,
+  InterestArea.DENTAL,
+];
+
+const EXTRA_DESIRED_EXPERIENCES = [
+  DesiredExperience.PRACTICUM,
+  DesiredExperience.SHADOWING,
+  DesiredExperience.PUBLIC_HEALTH_PROJECT,
+  DesiredExperience.PRE_LICENSURE_PLACEMENT,
+  DesiredExperience.VOLUNTEER_INTERN,
+];
+
+const EXTRA_HEARD_ABOUT = [
+  HeardAboutFrom.ONLINE_SEARCH,
+  HeardAboutFrom.SCHOOL,
+  HeardAboutFrom.BHCHP_WEBSITE,
+  HeardAboutFrom.FRIEND_FAMILY,
+  HeardAboutFrom.OTHER,
+];
+
+const EXTRA_CANDIDATE_PROFILES = Array.from({ length: 20 }, (_, index) => {
+  const appId = index + 6;
+  const candidateNumber = String(index + 1).padStart(2, '0');
+  const isLearner = index % 2 === 0;
+  const month = String((index % 12) + 1).padStart(2, '0');
+
+  return {
+    appId,
+    email: `candidate${candidateNumber}@c4cneu.com`,
+    firstName: `candidate${candidateNumber}`,
+    lastName: 'seed',
+    applicantType: isLearner ? ApplicantType.LEARNER : ApplicantType.VOLUNTEER,
+    discipline: EXTRA_DISCIPLINES[index % EXTRA_DISCIPLINES.length],
+    appStatus: EXTRA_STATUSES[index % EXTRA_STATUSES.length],
+    interest: EXTRA_INTERESTS[index % EXTRA_INTERESTS.length],
+    desiredExperience:
+      EXTRA_DESIRED_EXPERIENCES[index % EXTRA_DESIRED_EXPERIENCES.length],
+    heardAboutFrom: EXTRA_HEARD_ABOUT[index % EXTRA_HEARD_ABOUT.length],
+    proposedStartDate: new Date(`2026-${month}-01`),
+    endDate: new Date(`2026-${month}-28`),
+  };
+});
 
 const CANDIDATE_INFO_SEED: CandidateInfo[] = [
   {
@@ -52,6 +125,10 @@ const CANDIDATE_INFO_SEED: CandidateInfo[] = [
     appId: 5,
     email: 'approved.learner@example.com',
   },
+  ...EXTRA_CANDIDATE_PROFILES.map(({ appId, email }) => ({
+    appId,
+    email,
+  })),
 ];
 
 const USER_SEED: User[] = [
@@ -62,13 +139,13 @@ const USER_SEED: User[] = [
     userType: UserType.ADMIN,
   },
   {
-    email: 'linda.johnson@northeastern.edu',
+    email: 'publichealthadmin@c4cneu.com',
     firstName: 'linda',
     lastName: 'johnson',
     userType: UserType.ADMIN,
   },
   {
-    email: 'lucine.armen@northeastern.edu',
+    email: 'socialworkadmin@c4cneu.com',
     firstName: 'lucine',
     lastName: 'armen',
     userType: UserType.ADMIN,
@@ -103,6 +180,12 @@ const USER_SEED: User[] = [
     lastName: 'learner',
     userType: UserType.STANDARD,
   },
+  ...EXTRA_CANDIDATE_PROFILES.map(({ email, firstName, lastName }) => ({
+    email,
+    firstName,
+    lastName,
+    userType: UserType.STANDARD,
+  })),
 ];
 
 const APPLICATION_SEED: Application[] = [
@@ -128,8 +211,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 20,
     pronouns: 'she/her',
     nonEnglishLangs: 'spoken chinese only',
-    desiredExperience:
-      'I want to give back to the boston community and learn to talk better with patients',
+    desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
     resume: 'janedoe_resume_2_6_2026.pdf',
     coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
     emergencyContactName: 'Bob Doe',
@@ -158,8 +240,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 20,
     pronouns: 'he/him',
     nonEnglishLangs: 'spoken chinese only',
-    desiredExperience:
-      'I want to give back to the boston community and learn to talk better with patients',
+    desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
     resume: 'johndoe_resume_2_6_2026.pdf',
     coverLetter: 'johndoe_coverLetter_2_6_2026.pdf',
     emergencyContactName: 'Bob Doe',
@@ -188,8 +269,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 20,
     pronouns: 'they/them',
     nonEnglishLangs: 'spoken chinese only',
-    desiredExperience:
-      'I want to give back to the boston community and learn to talk better with patients',
+    desiredExperience: DesiredExperience.PRE_LICENSURE_PLACEMENT,
     resume: 'sam_resume_2_6_2026.pdf',
     coverLetter: 'sam_coverLetter_2_6_2026.pdf',
     emergencyContactName: 'sam senior',
@@ -218,7 +298,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 10,
     pronouns: 'they/them',
     nonEnglishLangs: 'French',
-    desiredExperience: 'Interested in service learning and community health',
+    desiredExperience: DesiredExperience.PRACTICUM,
     resume: 'rejected_learner_resume.pdf',
     coverLetter: 'rejected_learner_cover_letter.pdf',
     emergencyContactName: 'Pat Learner',
@@ -247,7 +327,7 @@ const APPLICATION_SEED: Application[] = [
     weeklyHours: 15,
     pronouns: 'she/her',
     nonEnglishLangs: 'Spanish',
-    desiredExperience: 'Looking to support behavioral health outreach',
+    desiredExperience: DesiredExperience.VOLUNTEER_INTERN,
     resume: 'approved_learner_resume.pdf',
     coverLetter: 'approved_learner_cover_letter.pdf',
     emergencyContactName: 'Morgan Learner',
@@ -257,6 +337,35 @@ const APPLICATION_SEED: Application[] = [
     endDate: new Date('2024-12-15'),
     heardAboutFrom: [HeardAboutFrom.FRIEND_FAMILY],
   },
+  ...EXTRA_CANDIDATE_PROFILES.map((profile) => ({
+    appId: profile.appId,
+    appStatus: profile.appStatus,
+    mondayAvailability: 'weekday mornings',
+    tuesdayAvailability: 'weekday afternoons',
+    wednesdayAvailability: 'weekdays flexible',
+    thursdayAvailability: 'after 3pm',
+    fridayAvailability: 'weekend prep only',
+    saturdayAvailability: 'weekend mornings',
+    interest: [profile.interest],
+    license: profile.applicantType === ApplicantType.LEARNER ? 'n/a' : 'active',
+    applicantType: profile.applicantType,
+    phone: '617-555-0100',
+    email: profile.email,
+    discipline: profile.discipline,
+    referred: profile.appId % 4 === 0,
+    weeklyHours: 10 + ((profile.appId % 3) + 1) * 5,
+    pronouns: profile.appId % 3 === 0 ? 'they/them' : 'she/her',
+    nonEnglishLangs: profile.appId % 2 === 0 ? 'Spanish' : 'None',
+    desiredExperience: profile.desiredExperience,
+    resume: `candidate_${profile.appId}_resume.pdf`,
+    coverLetter: `candidate_${profile.appId}_cover_letter.pdf`,
+    emergencyContactName: `Emergency Contact ${profile.appId}`,
+    emergencyContactPhone: '617-555-9999',
+    emergencyContactRelationship: 'Family',
+    proposedStartDate: profile.proposedStartDate,
+    endDate: profile.endDate,
+    heardAboutFrom: [profile.heardAboutFrom],
+  })),
 ];
 
 const LEARNER_INFO_SEED: LearnerInfo[] = [
@@ -287,6 +396,25 @@ const LEARNER_INFO_SEED: LearnerInfo[] = [
     instructorInfo: 'Dr. Taylor Reed, taylor.reed@example.com',
     syllabus: 'approved_learner_syllabus.pdf',
   },
+  ...EXTRA_CANDIDATE_PROFILES.filter(
+    (profile) => profile.applicantType === ApplicantType.LEARNER,
+  ).map((profile) => ({
+    appId: profile.appId,
+    school:
+      profile.appId % 3 === 0
+        ? School.BOSTON_UNIVERSITY
+        : profile.appId % 3 === 1
+        ? School.NORTHEASTERN
+        : School.OTHER,
+    otherSchool:
+      profile.appId % 3 === 2 ? `Partner School ${profile.appId}` : undefined,
+    schoolDepartment: 'Health Sciences',
+    isSupervisorApplying: false,
+    isLegalAdult: true,
+    courseRequirements: 'Clinical or practicum placement',
+    instructorInfo: `Instructor ${profile.appId}, instructor${profile.appId}@c4cneu.com`,
+    syllabus: `candidate_${profile.appId}_syllabus.pdf`,
+  })),
 ];
 
 async function seed() {

@@ -9,6 +9,7 @@ import {
   S3ServiceException,
   waitUntilObjectNotExists,
   PutObjectCommand,
+  PutObjectCommandInput,
   GetObjectCommand,
   NoSuchKey,
 } from '@aws-sdk/client-s3';
@@ -59,10 +60,14 @@ describe('AWSS3Service', () => {
     const mimeType = 'application/pdf';
 
     const url = await service.upload(buffer, fileName, mimeType);
+    const commandCall = s3Mock.call(0);
+    const putObjectCommand = commandCall.args[0] as PutObjectCommand;
+    const uploadedKey = putObjectCommand.input.Key;
 
     expect(s3Mock.calls()).toHaveLength(1);
+    expect(uploadedKey).toMatch(/^file-\d{13}-[a-z0-9]{6}\.pdf$/);
     expect(url).toBe(
-      `https://${bucketName}.s3.${bucketRegion}.amazonaws.com/${fileName}`,
+      `https://${bucketName}.s3.${bucketRegion}.amazonaws.com/${uploadedKey}`,
     );
   });
 
@@ -85,8 +90,11 @@ describe('AWSS3Service', () => {
     const integrationService = new AWSS3Service();
 
     const url = await integrationService.upload(buffer, fileName, mimeType);
+    const uploadedFileName = new URL(url).pathname.replace(/^\//, '');
     console.log('Uploaded file URL:', url);
-    expect(url).toContain(fileName);
+    expect(uploadedFileName).toMatch(
+      /^integration-test-\d+-\d{13}-[a-z0-9]{6}\.txt$/,
+    );
 
     try {
       const response = await axios.get(url);
@@ -101,7 +109,7 @@ describe('AWSS3Service', () => {
       try {
         await deleteObjects({
           bucketName: process.env.AWS_BUCKET_NAME,
-          keys: [fileName],
+          keys: [uploadedFileName],
         });
       } catch (cleanupErr) {
         // don't mask test failure — log cleanup issues
@@ -114,13 +122,13 @@ describe('AWSS3Service', () => {
       try {
         await getObjectFromS3({
           bucketName: process.env.AWS_BUCKET_NAME,
-          key: fileName,
+          key: uploadedFileName,
         });
       } catch (err) {
         if (err instanceof NoSuchKey) {
           console.log(
             'object with filename ' +
-              fileName +
+              uploadedFileName +
               ' is successfully no longer in the bucket. No manual steps required',
           );
         } else {

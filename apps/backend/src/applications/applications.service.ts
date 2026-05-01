@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -11,6 +12,8 @@ import { AppStatus, PHONE_REGEX } from './types';
 import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
+import { CandidateInfoService } from '../candidate-info/candidate-info.service';
+import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 
 const STATUS_EMAIL_SUBJECTS: Partial<Record<AppStatus, string>> = {
   [AppStatus.ACCEPTED]: 'Your Application Has Been Updated',
@@ -53,12 +56,99 @@ function escapeHtml(text: string): string {
  */
 @Injectable()
 export class ApplicationsService {
+  private static readonly CONFIDENTIALITY_TEMPLATE_FILE =
+    'Confidentiality_Form.pdf';
+  private static readonly CONFIDENTIALITY_UPLOAD_FOLDER =
+    'confidentiality-forms';
+
   constructor(
     @InjectRepository(Application)
     private applicationRepository: Repository<Application>,
     private emailService: EmailService,
     private usersService: UsersService,
+    private candidateInfoService: CandidateInfoService,
+    private awsS3Service: AWSS3Service,
   ) {}
+
+  private ensureCanUploadConfidentialityForm(application: Application): void {
+    const allowedStatuses = [AppStatus.ACCEPTED, AppStatus.FORMS_SIGNED];
+
+    if (!allowedStatuses.includes(application.appStatus)) {
+      throw new ForbiddenException(
+        'Only accepted or forms-signed applicants can upload confidentiality forms.',
+      );
+    }
+  }
+
+  private ensureCanDownloadConfidentialityForm(application: Application): void {
+    const allowedStatuses = [AppStatus.ACTIVE, AppStatus.INACTIVE];
+
+    if (!allowedStatuses.includes(application.appStatus)) {
+      throw new ForbiddenException(
+        'Only active or inactive applicants can download confidentiality forms.',
+      );
+    }
+  }
+
+  private async findCurrentUserApplication(
+    email: string,
+  ): Promise<Application> {
+    const candidateInfo = await this.candidateInfoService.findOne(email);
+    return this.findById(candidateInfo.appId);
+  }
+
+  async getConfidentialityTemplateUrl(): Promise<{ templateUrl: string }> {
+    return {
+      templateUrl: this.awsS3Service.createObjectLink(
+        ApplicationsService.CONFIDENTIALITY_TEMPLATE_FILE,
+      ),
+    };
+  }
+
+  async getConfidentialityForm(email: string): Promise<{
+    fileName: string;
+    fileUrl: string;
+  } | null> {
+    const application = await this.findCurrentUserApplication(email);
+    this.ensureCanDownloadConfidentialityForm(application);
+
+    if (!application.confidentialityForm) {
+      return null;
+    }
+
+    return {
+      fileName: application.confidentialityForm,
+      fileUrl: this.awsS3Service.createObjectLink(
+        application.confidentialityForm,
+      ),
+    };
+  }
+
+  async uploadConfidentialityForm(
+    email: string,
+    file: { buffer: Buffer; mimetype: string },
+  ): Promise<{ fileName: string; fileUrl: string; appStatus: AppStatus }> {
+    const application = await this.findCurrentUserApplication(email);
+    this.ensureCanUploadConfidentialityForm(application);
+
+    const uploadBaseName = `${ApplicationsService.CONFIDENTIALITY_UPLOAD_FOLDER}/${application.appId}_confidentiality.pdf`;
+    const uploadResult = await this.awsS3Service.uploadWithKey(
+      file.buffer,
+      uploadBaseName,
+      file.mimetype,
+    );
+
+    application.confidentialityForm = uploadResult.key;
+    application.appStatus = AppStatus.FORMS_SIGNED;
+
+    await this.applicationRepository.save(application);
+
+    return {
+      fileName: uploadResult.key,
+      fileUrl: uploadResult.url,
+      appStatus: application.appStatus,
+    };
+  }
 
   /**
    * Validates the fields of a CreateApplicationDto.
@@ -137,7 +227,7 @@ export class ApplicationsService {
    * @throws {Error} which is unchanged from what repository throws.
    */
   async findById(appId: number): Promise<Application> {
-    const application: Application = await this.applicationRepository.findOne({
+    const application = await this.applicationRepository.findOne({
       where: { appId },
     });
 
@@ -194,7 +284,27 @@ export class ApplicationsService {
   ): Promise<Application> {
     this.validateApplicationDto(createApplicationDto);
     const application = this.applicationRepository.create(createApplicationDto);
-    return await this.applicationRepository.save(application);
+    const saved = await this.applicationRepository.save(application);
+
+    const name = String(saved.email).split('@')[0];
+    const applicantName = name
+      .split('.')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+
+    const emailBody = `<p>Hello ${applicantName},</p>
+
+      <p>Thank you for submitting your application! You can now create an account here on the portal to track your status. Please use the same name and email as your application.</p>
+
+      <p>Thank you,<br/>BHCHP</p>`;
+
+    await this.emailService.queueEmail(
+      saved.email,
+      'Your Application Has Been Received',
+      emailBody,
+    );
+
+    return saved;
   }
 
   /**
@@ -208,7 +318,7 @@ export class ApplicationsService {
    */
   async update(
     appId: number,
-    updateData: Partial<CreateApplicationDto>,
+    updateData: Partial<Application>,
   ): Promise<Application> {
     const application = await this.findById(appId);
     if (!application) {

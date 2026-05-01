@@ -155,6 +155,7 @@ describe('CandidateInfoController', () => {
 
       const result = await controller.getCandidateInfoByEmail(
         'john@example.com',
+        { user: { email: 'john@example.com', userType: 'STANDARD' } },
       );
 
       expect(result).toEqual(defaultCandidateInfo);
@@ -171,7 +172,9 @@ describe('CandidateInfoController', () => {
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.getCandidateInfoByEmail('notfound@example.com'),
+        controller.getCandidateInfoByEmail('notfound@example.com', {
+          user: { email: 'john@example.com', userType: 'STANDARD' },
+        }),
       ).rejects.toThrow(errorMessage);
     });
   });

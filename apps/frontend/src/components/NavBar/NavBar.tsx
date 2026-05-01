@@ -1,10 +1,15 @@
 import React from 'react';
-import { Box, Heading, Flex, Link, Text } from '@chakra-ui/react';
+import { Box, Heading, Flex } from '@chakra-ui/react';
 import NavbarItem from './NavBarItem';
-import { FaHouse, FaPerson, FaRegFile } from 'react-icons/fa6';
-import { IoIosSettings } from 'react-icons/io';
-import { CgProfile } from 'react-icons/cg';
+import {
+  FaHouse,
+  FaPerson,
+  FaRegFile,
+  FaRightFromBracket,
+  FaUserPlus,
+} from 'react-icons/fa6';
 import { UserType } from '@api/types';
+import { signOutUser } from '../../auth/cognito';
 
 export type NavBarProps = {
   logo: React.ReactNode;
@@ -12,6 +17,17 @@ export type NavBarProps = {
 };
 
 export default function NavBar({ logo, userType }: NavBarProps) {
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Sign out failed', err);
+    } finally {
+      window.location.replace('/login');
+    }
+  };
+
   return (
     <Box
       display="flex"
@@ -33,64 +49,40 @@ export default function NavBar({ logo, userType }: NavBarProps) {
         <Flex direction="column" width="100%" paddingTop="16px">
           {userType === UserType.ADMIN && (
             <NavbarItem
-              href="#dashboard"
+              href="/admin/landing"
               label="Dashboard"
               icon={<FaHouse />}
             />
           )}
+          {userType === UserType.ADMIN && (
+            <NavbarItem
+              href="/admin/create"
+              label="Create New Admin"
+              icon={<FaUserPlus />}
+            />
+          )}
           {userType === UserType.STANDARD && (
             <NavbarItem
-              href="#myapplication"
+              href="/candidate/view-application"
               label="My Application"
               icon={<FaPerson />}
             />
           )}
           {userType === UserType.STANDARD && (
-            <NavbarItem href="#myforms" label="My Forms" icon={<FaRegFile />} />
+            <NavbarItem
+              href="/candidate/upload-forms"
+              label="My Forms"
+              icon={<FaRegFile />}
+            />
           )}
-          <NavbarItem
-            href="#settings"
-            label="Settings"
-            icon={<IoIosSettings />}
-          />
         </Flex>
       </Box>
 
-      <Link
-        href="#profile"
-        width="100%"
-        _hover={{ textDecoration: 'none' }}
-        _focus={{ outline: 'none', boxShadow: 'none' }}
-        _focusVisible={{ outline: 'none', boxShadow: 'none' }}
-      >
-        <Flex
-          align="center"
-          gap="12px"
-          padding="12px 16px"
-          borderRadius="md"
-          bg="#204AA0"
-          cursor="pointer"
-          width="100%"
-        >
-          <Flex
-            width="32px"
-            height="32px"
-            borderRadius="full"
-            bg="white"
-            align="center"
-            justify="center"
-            fontSize="14px"
-            color="#204AA0"
-            fontWeight="bold"
-          >
-            <CgProfile size="20px" />
-          </Flex>
-
-          <Text fontSize="16px" fontWeight="500" color="white">
-            Profile
-          </Text>
-        </Flex>
-      </Link>
+      <NavbarItem
+        onClick={handleLogout}
+        label="Log Out"
+        icon={<FaRightFromBracket />}
+      />
     </Box>
   );
 }
