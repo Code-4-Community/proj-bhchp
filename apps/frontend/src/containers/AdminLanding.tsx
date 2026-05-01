@@ -62,7 +62,7 @@ const AdminLanding: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-row h-screen overflow-hidden">
+    <Flex direction="row" h="100vh" overflow="hidden">
       <NavBar logo={'BHCHP'} userType={UserType.ADMIN} />
       <Box
         id="main-content"
@@ -72,43 +72,47 @@ const AdminLanding: React.FC = () => {
         flexDirection="column"
         overflow="auto"
       >
-        <Box className="flex flex-row gap-6 pl-4 pt-4">
-          <DashboardCard
-            className="basis-1/4"
-            title="Total Applications"
-            value={totalCount}
-            description="All time submissions"
-            icon={usersIcon}
-            color="#FFF9E6"
-          />
+        <Flex direction="row" gap="6" pl="4" pt="4">
+          <Box flex="1">
+            <DashboardCard
+              title="Total Applications"
+              value={totalCount}
+              description="All time submissions"
+              icon={usersIcon}
+              color="#FFF9E6"
+            />
+          </Box>
 
-          <DashboardCard
-            className="basis-1/4"
-            title="Pending Review"
-            value={inReviewCount}
-            description="Awaiting decision"
-            icon={clockIcon}
-            color="#DBEAFE"
-          />
+          <Box flex="1">
+            <DashboardCard
+              title="Pending Review"
+              value={inReviewCount}
+              description="Awaiting decision"
+              icon={clockIcon}
+              color="#DBEAFE"
+            />
+          </Box>
 
-          <DashboardCard
-            className="basis-1/4"
-            title="Rejected"
-            value={rejectedCount}
-            description="Not matched"
-            icon={crossIcon}
-            color="#FFD1D2"
-          />
+          <Box flex="1">
+            <DashboardCard
+              title="Rejected"
+              value={rejectedCount}
+              description="Not matched"
+              icon={crossIcon}
+              color="#FFD1D2"
+            />
+          </Box>
 
-          <DashboardCard
-            className="basis-1/4"
-            title="Approved"
-            value={approvedCount}
-            description="Active volunteers"
-            icon={checkmarkIcon}
-            color="#d4f7e7ff"
-          />
-        </Box>
+          <Box flex="1">
+            <DashboardCard
+              title="Approved"
+              value={approvedCount}
+              description="Active volunteers"
+              icon={checkmarkIcon}
+              color="#d4f7e7ff"
+            />
+          </Box>
+        </Flex>
         <div
           style={{
             marginTop: '20px',
@@ -172,7 +176,7 @@ const AdminLanding: React.FC = () => {
           />
         </Flex>
       </Box>
-    </div>
+    </Flex>
   );
 };
 

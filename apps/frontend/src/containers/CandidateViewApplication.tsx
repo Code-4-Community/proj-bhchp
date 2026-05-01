@@ -1,6 +1,6 @@
 import NavBar from '../components/NavBar/NavBar';
 import apiClient from '../api/apiClient';
-import { Box, Heading, Spinner, Text } from '@chakra-ui/react';
+import { Box, Flex, Heading, Spinner, Text } from '@chakra-ui/react';
 import AvailabilityTable from '../components/AvailabilityTable';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
@@ -163,28 +163,28 @@ const CandidateViewApplication: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-row">
+      <Flex direction="row">
         <NavBar logo="BHCHP" userType={UserType.STANDARD} />
         <Box p="10" flex="1" display="flex" justifyContent="center" mt="20">
           <Spinner size="xl" />
         </Box>
-      </div>
+      </Flex>
     );
   }
 
   if (error || application === null) {
     return (
-      <div className="flex flex-row">
+      <Flex direction="row">
         <NavBar logo="BHCHP" userType={UserType.STANDARD} />
         <Box p="10" flex="1">
           <Text color="red.500">{error ?? 'Application data not found'}</Text>
         </Box>
-      </div>
+      </Flex>
     );
   }
 
   return (
-    <div className="flex flex-row">
+    <Flex direction="row">
       <NavBar logo="BHCHP" userType={UserType.STANDARD} />
       <Box
         id="main-content"
@@ -299,7 +299,7 @@ const CandidateViewApplication: React.FC = () => {
           relationship={application.emergencyContactRelationship}
         />
       </Box>
-    </div>
+    </Flex>
   );
 };
 

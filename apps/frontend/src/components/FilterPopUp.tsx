@@ -34,20 +34,20 @@ export const STATUS_OPTIONS = Object.entries(StatusPillConfig).map(
 interface FilterPopUpProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  filters: ApplicationFilters;
-  onFiltersChange: (next: ApplicationFilters) => void;
-  onResetFilters: () => void;
-  disciplineAdminOptions: string[];
+  filters?: ApplicationFilters;
+  onFiltersChange?: (next: ApplicationFilters) => void;
+  onResetFilters?: () => void;
+  disciplineAdminOptions?: string[];
   disciplineOptions?: string[];
 }
 
 const FilterPopUp = ({
   open,
   onOpenChange,
-  filters,
-  onFiltersChange,
-  onResetFilters,
-  disciplineAdminOptions,
+  filters = EMPTY_APPLICATION_FILTERS,
+  onFiltersChange = () => undefined,
+  onResetFilters = () => undefined,
+  disciplineAdminOptions = [],
   disciplineOptions = [],
 }: FilterPopUpProps) => {
   const capitalize = (s: string): string => {
@@ -531,14 +531,6 @@ const FilterPopUp = ({
       </Portal>
     </Popover.Root>
   );
-};
-
-FilterPopUp.defaultProps = {
-  filters: EMPTY_APPLICATION_FILTERS,
-  disciplineAdminOptions: [],
-  disciplineOptions: [],
-  onFiltersChange: () => undefined,
-  onResetFilters: () => undefined,
 };
 
 export default FilterPopUp;

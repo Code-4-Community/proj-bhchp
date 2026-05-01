@@ -162,7 +162,7 @@ const FormsPage: React.FC = () => {
   const fileInputId = 'confidentiality-form-upload';
 
   return (
-    <div className="flex flex-row h-screen">
+    <Flex direction="row" h="100vh">
       <NavBar logo="BHCHP" userType={UserType.STANDARD} />
       <Box
         id="main-content"
@@ -411,11 +411,11 @@ const FormsPage: React.FC = () => {
                 disabled={isUploading}
               />
             </Flex>
-            <div className="bg-[#d9d9d9] w-full h-[1px]" />
+            <Box bg="#d9d9d9" w="full" h="1px" />
           </>
         )}
       </Box>
-    </div>
+    </Flex>
   );
 };
 

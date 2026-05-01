@@ -136,7 +136,7 @@ const CreateNewAdmin: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-row h-screen overflow-hidden">
+    <Flex direction="row" h="100vh" overflow="hidden">
       <NavBar logo="BHCHP" userType={UserType.ADMIN} />
 
       <Box id="main-content" p="20" flex="1" overflowY="auto" bg="#F3F3F3">
@@ -377,7 +377,7 @@ const CreateNewAdmin: React.FC = () => {
           </Flex>
         </Box>
       </Box>
-    </div>
+    </Flex>
   );
 };
 
