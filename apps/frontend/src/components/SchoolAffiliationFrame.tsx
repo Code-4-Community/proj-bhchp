@@ -8,7 +8,7 @@ export interface SchoolAffiliationProps {
   license: string;
   desiredExperience: string;
   areaOfInterest: string;
-  proposedStartDate?: string;
+  proposedStartDate: string;
   actualStartDate?: string;
   endDate?: string;
   totalTimeRequested: string;
