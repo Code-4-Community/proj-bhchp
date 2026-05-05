@@ -110,7 +110,7 @@ export interface Application extends AvailabilityFields {
   emergencyContactPhone: string;
   emergencyContactRelationship: string;
   heardAboutFrom: HeardAboutFrom[];
-  endDate?: Date;
+  endDate?: string;
 }
 
 /**

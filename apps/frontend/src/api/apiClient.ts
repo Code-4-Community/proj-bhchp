@@ -147,6 +147,33 @@ export class ApiClient {
     }) as Promise<Application>;
   }
 
+  public async updateApplicationProposedStartDate(
+    appId: number,
+    proposedStartDate: string,
+  ): Promise<Application> {
+    return this.patch(`/api/applications/${appId}/start-date`, {
+      proposedStartDate,
+    }) as Promise<Application>;
+  }
+
+  public async updateApplicationActualStartDate(
+    appId: number,
+    actualStartDate: string,
+  ): Promise<Application> {
+    return this.patch(`/api/applications/${appId}/actual-start-date`, {
+      actualStartDate,
+    }) as Promise<Application>;
+  }
+
+  public async updateApplicationEndDate(
+    appId: number,
+    endDate: string,
+  ): Promise<Application> {
+    return this.patch(`/api/applications/${appId}/end-date`, {
+      endDate,
+    }) as Promise<Application>;
+  }
+
   public async getConfidentialityTemplateUrl(): Promise<ConfidentialityTemplateResponse> {
     return this.get(
       '/api/applications/forms/confidentiality/template',

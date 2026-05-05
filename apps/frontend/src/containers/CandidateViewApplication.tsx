@@ -249,13 +249,9 @@ const CandidateViewApplication: React.FC = () => {
               ? application.interest.join(', ')
               : application.interest ?? ''
           }
-          proposedStartDate={application.proposedStartDate.toString()}
-          actualStartDate={
-            application.actualStartDate
-              ? application.actualStartDate.toString()
-              : '-'
-          }
-          endDate={application.endDate ? application.endDate.toString() : '-'}
+          proposedStartDate={application.proposedStartDate}
+          actualStartDate={application.actualStartDate ?? ''}
+          endDate={application.endDate ?? ''}
           totalTimeRequested={application.weeklyHours + ' hours per week'}
         />
 

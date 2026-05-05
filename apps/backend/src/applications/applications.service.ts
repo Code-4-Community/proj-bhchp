@@ -504,7 +504,7 @@ export class ApplicationsService {
       throw new BadRequestException('Start date must be before end date');
     }
 
-    application.proposedStartDate = actualStartDate;
+    application.actualStartDate = actualStartDate;
     return await this.applicationRepository.save(application);
   }
 

@@ -94,6 +94,34 @@ const AdminViewApplication: React.FC = () => {
     setApplication(updatedApplication);
   };
 
+  const handleProposedStartDateUpdate = async (nextDate: string) => {
+    if (!application) return;
+    const updatedApplication =
+      await apiClient.updateApplicationProposedStartDate(
+        application.appId,
+        nextDate,
+      );
+    setApplication(updatedApplication);
+  };
+
+  const handleActualStartDateUpdate = async (nextDate: string) => {
+    if (!application) return;
+    const updatedApplication = await apiClient.updateApplicationActualStartDate(
+      application.appId,
+      nextDate,
+    );
+    setApplication(updatedApplication);
+  };
+
+  const handleEndDateUpdate = async (nextDate: string) => {
+    if (!application) return;
+    const updatedApplication = await apiClient.updateApplicationEndDate(
+      application.appId,
+      nextDate,
+    );
+    setApplication(updatedApplication);
+  };
+
   if (loading) {
     return (
       <Flex direction="row">
@@ -204,10 +232,19 @@ const AdminViewApplication: React.FC = () => {
               ? application.interest.join(', ')
               : application.interest ?? ''
           }
-          proposedStartDate={''}
-          actualStartDate={''}
-          endDate={''}
+          proposedStartDate={application.proposedStartDate}
+          actualStartDate={application.actualStartDate ?? ''}
+          endDate={application.endDate ?? ''}
           totalTimeRequested={application.weeklyHours + ' hours per week'}
+          canEditDates={true}
+          canEditActualStartDate={[
+            AppStatus.ACCEPTED,
+            AppStatus.ACTIVE,
+            AppStatus.INACTIVE,
+          ].includes(application.appStatus)}
+          onUpdateProposedStartDate={handleProposedStartDateUpdate}
+          onUpdateActualStartDate={handleActualStartDateUpdate}
+          onUpdateEndDate={handleEndDateUpdate}
         />
 
         <Box>
