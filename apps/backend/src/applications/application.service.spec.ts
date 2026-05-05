@@ -738,12 +738,12 @@ describe('ApplicationsService', () => {
   });
 
   describe('updateActualStartDate', () => {
-    const updatedproposedStartDate = new Date('2024-02-01');
+    const updatedActualStartDate = new Date('2024-02-01');
 
     it('should update application start date', async () => {
       const updatedApplication: Application = {
         ...dummyApplication,
-        proposedStartDate: updatedproposedStartDate,
+        actualStartDate: updatedActualStartDate,
       };
 
       mockRepository.findOne.mockResolvedValue(dummyApplication);
@@ -751,14 +751,14 @@ describe('ApplicationsService', () => {
 
       const result = await service.updateActualStartDate(
         1,
-        updatedproposedStartDate,
+        updatedActualStartDate,
       );
 
       expect(result).toEqual(updatedApplication);
       expect(repository.findOne).toHaveBeenCalledWith({ where: { appId: 1 } });
       expect(repository.save).toHaveBeenCalledWith({
         ...dummyApplication,
-        proposedStartDate: updatedproposedStartDate,
+        actualStartDate: updatedActualStartDate,
       });
     });
 
@@ -766,7 +766,7 @@ describe('ApplicationsService', () => {
       mockRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.updateActualStartDate(999, updatedproposedStartDate),
+        service.updateActualStartDate(999, updatedActualStartDate),
       ).rejects.toThrow('Application with ID 999 not found');
     });
 
@@ -778,7 +778,7 @@ describe('ApplicationsService', () => {
       mockRepository.findOne.mockResolvedValue(existingWithEarlierEndDate);
 
       await expect(
-        service.updateActualStartDate(1, updatedproposedStartDate),
+        service.updateActualStartDate(1, updatedActualStartDate),
       ).rejects.toThrow('Start date must be before end date');
     });
 
@@ -790,7 +790,7 @@ describe('ApplicationsService', () => {
 
     it('should throw error if application id is missing', async () => {
       await expect(
-        service.updateActualStartDate(0, updatedproposedStartDate),
+        service.updateActualStartDate(0, updatedActualStartDate),
       ).rejects.toThrow('Application ID is required');
     });
 
@@ -806,7 +806,7 @@ describe('ApplicationsService', () => {
       );
 
       await expect(
-        service.updateActualStartDate(999, updatedproposedStartDate),
+        service.updateActualStartDate(999, updatedActualStartDate),
       ).rejects.toThrow('There was a problem retrieving the info');
     });
 
@@ -817,7 +817,7 @@ describe('ApplicationsService', () => {
       );
 
       await expect(
-        service.updateActualStartDate(1, updatedproposedStartDate),
+        service.updateActualStartDate(1, updatedActualStartDate),
       ).rejects.toThrow('There was a problem saving the info');
     });
   });
