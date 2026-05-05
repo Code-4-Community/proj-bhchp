@@ -49,10 +49,12 @@ const SchoolAffiliationFrame = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isEditing) return;
+
     setProposedValue(normalizedProposed);
     setActualValue(normalizedActual);
     setEndValue(normalizedEnd);
-  }, [normalizedProposed, normalizedActual, normalizedEnd]);
+  }, [isEditing, normalizedProposed, normalizedActual, normalizedEnd]);
 
   const proposedChanged = proposedValue !== normalizedProposed;
   const actualChanged = actualValue !== normalizedActual;
