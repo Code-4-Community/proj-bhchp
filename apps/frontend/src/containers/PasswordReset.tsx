@@ -225,6 +225,10 @@ const PasswordReset: React.FC = () => {
                   variant="outline"
                   onClick={() => {
                     setIsCodeSent(false);
+                    setConfirmationCode('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                    setDeliveryDetails(null);
                     setSuccessMessage(null);
                     setError(null);
                   }}
