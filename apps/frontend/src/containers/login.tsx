@@ -273,14 +273,20 @@ const Login: React.FC = () => {
                   Sign In
                 </Button>
 
-                <Link asChild alignSelf="flex-start" color="blue.600">
-                  <RouterLink
-                    to="/password-reset"
-                    state={{ email: email.trim() || undefined }}
-                  >
+                {loading ? (
+                  <Text alignSelf="flex-start" color="gray.400">
                     Forgot password?
-                  </RouterLink>
-                </Link>
+                  </Text>
+                ) : (
+                  <Link asChild alignSelf="flex-start" color="blue.600">
+                    <RouterLink
+                      to="/password-reset"
+                      state={{ email: email.trim() || undefined }}
+                    >
+                      Forgot password?
+                    </RouterLink>
+                  </Link>
+                )}
               </>
             ) : (
               <>
