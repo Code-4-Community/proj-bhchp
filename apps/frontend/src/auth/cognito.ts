@@ -1,7 +1,9 @@
 import {
+  confirmResetPassword,
   confirmSignIn,
   fetchAuthSession,
   getCurrentUser,
+  resetPassword,
   signIn,
   signOut,
   signUp,
@@ -17,8 +19,25 @@ export type SignInWithPasswordResult =
       kind: 'NEW_PASSWORD_REQUIRED';
     }
   | {
+      kind: 'RESET_PASSWORD_REQUIRED';
+    }
+  | {
       kind: 'UNSUPPORTED_CHALLENGE';
       signInStep?: string;
+    };
+
+export type PasswordResetDeliveryDetails = {
+  destination?: string;
+  deliveryMedium?: string;
+};
+
+export type StartPasswordResetResult =
+  | {
+      kind: 'CONFIRM_RESET_WITH_CODE';
+      delivery?: PasswordResetDeliveryDetails;
+    }
+  | {
+      kind: 'DONE';
     };
 
 // These helpers wrap Amplify's lower-level auth methods so the rest of the app
@@ -58,6 +77,12 @@ export const signInWithEmailPassword = async (
     };
   }
 
+  if (result.nextStep?.signInStep === 'RESET_PASSWORD') {
+    return {
+      kind: 'RESET_PASSWORD_REQUIRED',
+    };
+  }
+
   console.warn(
     '[auth] signInWithEmailPassword: unsupported sign-in challenge',
     {
@@ -82,6 +107,62 @@ export const confirmSignInWithNewPassword = async (
   console.debug('[auth] confirmSignInWithNewPassword: confirming challenge');
   await confirmSignIn({
     challengeResponse: newPassword,
+  });
+};
+
+/**
+ * Starts Cognito's forgot-password flow by sending a confirmation code to the
+ * user's configured delivery destination.
+ *
+ * @param username Cognito username (email in this app).
+ */
+export const startPasswordReset = async (
+  username: string,
+): Promise<StartPasswordResetResult> => {
+  console.debug('[auth] startPasswordReset: requesting code from Cognito', {
+    username,
+  });
+
+  const result = await resetPassword({
+    username,
+  });
+
+  if (result.nextStep.resetPasswordStep === 'DONE') {
+    return {
+      kind: 'DONE',
+    };
+  }
+
+  return {
+    kind: 'CONFIRM_RESET_WITH_CODE',
+    delivery: {
+      destination: result.nextStep.codeDeliveryDetails.destination,
+      deliveryMedium: result.nextStep.codeDeliveryDetails.deliveryMedium,
+    },
+  };
+};
+
+/**
+ * Completes Cognito's forgot-password flow using the code delivered to the
+ * user and the new password they chose.
+ *
+ * @param username Cognito username (email in this app).
+ * @param confirmationCode Verification code sent by Cognito.
+ * @param newPassword New password selected by the user.
+ */
+export const completePasswordReset = async (
+  username: string,
+  confirmationCode: string,
+  newPassword: string,
+): Promise<void> => {
+  console.debug('[auth] completePasswordReset: confirming reset with Cognito', {
+    username,
+  });
+
+  await confirmResetPassword({
+    username,
+    confirmationCode,
+    newPassword,
   });
 };
 

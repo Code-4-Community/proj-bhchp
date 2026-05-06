@@ -21,10 +21,12 @@ vi.mock('aws-amplify/auth', () => ({
   signUp: vi.fn(),
 }));
 vi.mock('./auth/cognito', () => ({
+  completePasswordReset: vi.fn(),
   getIdToken: vi.fn().mockResolvedValue('test-token'),
   isAuthenticated: vi.fn().mockResolvedValue(true),
   signInWithEmailPassword: vi.fn(),
   signOutUser: vi.fn(),
+  startPasswordReset: vi.fn(),
   signUpWithEmailPassword: vi.fn(),
 }));
 vi.mock('./auth/current-session-user-type', () => ({
