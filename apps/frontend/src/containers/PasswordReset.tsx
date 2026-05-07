@@ -222,6 +222,7 @@ const PasswordReset: React.FC = () => {
                 </Button>
 
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => {
                     setIsCodeSent(false);
