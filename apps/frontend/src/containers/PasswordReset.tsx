@@ -23,7 +23,7 @@ type PasswordResetLocationState = {
 
 const getDeliveryMessage = (
   delivery: PasswordResetDeliveryDetails | null,
-): string | null => {
+): string => {
   if (!delivery) {
     return 'Check your email for the confirmation code, then enter it below.';
   }
