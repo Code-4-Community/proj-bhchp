@@ -1,8 +1,10 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   NotFoundException,
+  Patch,
   Param,
   Req,
   UseGuards,
@@ -88,5 +90,38 @@ export class UsersController {
       return new NotFoundException('No user matching the JWT was found.');
     }
     return req.user;
+  }
+
+  /**
+   * Updates a user's name by email.
+   * @param email The email of the user to update (URL-encoded).
+   * @param body fields to update on the user profile
+   * @returns {User} Updated user profile
+   */
+  @Patch('email/:email')
+  @UseGuards(RolesGuard)
+  @Roles(UserType.ADMIN)
+  async updateUserByEmail(
+    @Param('email') email: string,
+    @Body() body: { firstName?: string; lastName?: string },
+  ): Promise<User | NotFoundException> {
+    const decoded = decodeURIComponent(email);
+    const updates: { firstName?: string; lastName?: string } = {};
+    if (typeof body.firstName === 'string') {
+      updates.firstName = body.firstName.trim();
+    }
+    if (typeof body.lastName === 'string') {
+      updates.lastName = body.lastName.trim();
+    }
+
+    if (!updates.firstName && !updates.lastName) {
+      const existing = await this.usersService.findOne(decoded);
+      if (!existing) {
+        return new NotFoundException('User not found');
+      }
+      return existing;
+    }
+
+    return this.usersService.update(decoded, updates);
   }
 }

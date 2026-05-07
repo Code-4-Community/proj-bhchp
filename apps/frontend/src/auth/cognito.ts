@@ -1,6 +1,7 @@
 import {
   confirmResetPassword,
   confirmSignIn,
+  fetchUserAttributes,
   fetchAuthSession,
   getCurrentUser,
   resetPassword,
@@ -232,12 +233,34 @@ export const getIdToken = async (): Promise<string | undefined> => {
  * @returns `true` when a user is authenticated; otherwise `false`.
  */
 export const isAuthenticated = async (): Promise<boolean> => {
-  if (import.meta.env.VITE_DEV_AUTH_EMAIL) return true;
-
   try {
     await getCurrentUser();
     return true;
   } catch {
     return false;
+  }
+};
+
+/**
+ * Retrieves the signed-in Cognito username (email).
+ *
+ * @returns email string when available; otherwise `null`.
+ */
+export const getSignedInEmail = async (): Promise<string | null> => {
+  if (import.meta.env.VITE_DEV_AUTH_EMAIL) {
+    return String(import.meta.env.VITE_DEV_AUTH_EMAIL);
+  }
+
+  try {
+    const attributes = await fetchUserAttributes();
+    if (attributes.email) {
+      return attributes.email;
+    }
+
+    const user = await getCurrentUser();
+    const username = user?.username ?? null;
+    return username && username.includes('@') ? username : null;
+  } catch {
+    return null;
   }
 };
