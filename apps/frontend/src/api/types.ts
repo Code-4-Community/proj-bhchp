@@ -115,6 +115,7 @@ export interface Application extends AvailabilityFields {
 
 /**
  * School of the applicant — kept in sync with apps/backend/src/learner-info/types.ts
+ * TODO: add this to a shared package
  */
 export enum School {
   BIDMC_RESIDENTS = 'BIDMC - Residents',

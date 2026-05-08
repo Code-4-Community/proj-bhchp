@@ -8,7 +8,7 @@ export enum InterestArea {
 }
 
 /**
- * School of the applicant, includes well-known medical schools, or an other option
+ * School of the applicant — duplicate enum lives in apps/frontend/src/api/types.ts (keep in sync).
  */
 export enum School {
   BIDMC_RESIDENTS = 'BIDMC - Residents',
