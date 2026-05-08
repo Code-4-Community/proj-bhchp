@@ -266,10 +266,9 @@ const AdminSettings: React.FC = () => {
   };
 
   const canSave =
-    activeSelectedDisciplines.length > 0 &&
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
-    (hasChanges || hasNameChanges) &&
+    ((hasChanges && activeSelectedDisciplines.length > 0) || hasNameChanges) &&
     !isSaving &&
     !isLoading;
 
