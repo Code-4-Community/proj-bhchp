@@ -107,10 +107,16 @@ export class UsersController {
     const decoded = decodeURIComponent(email);
     const updates: { firstName?: string; lastName?: string } = {};
     if (typeof body.firstName === 'string') {
-      updates.firstName = body.firstName.trim();
+      const firstName = body.firstName.trim();
+      if (firstName) {
+        updates.firstName = firstName;
+      }
     }
     if (typeof body.lastName === 'string') {
-      updates.lastName = body.lastName.trim();
+      const lastName = body.lastName.trim();
+      if (lastName) {
+        updates.lastName = lastName;
+      }
     }
 
     if (!updates.firstName && !updates.lastName) {
