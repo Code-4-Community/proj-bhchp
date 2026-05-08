@@ -82,7 +82,7 @@ const AdminSettings: React.FC = () => {
         );
         const [signedInEmail, disciplines] = await Promise.all([
           getSignedInEmail(),
-          apiClient.getDisciplines().catch(() => [] as DisciplineCatalogItem[]),
+          apiClient.getDisciplines(),
         ]);
 
         console.debug('[AdminSettings] loadSettings: signedInEmail', {
