@@ -18,6 +18,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserType } from './types';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { UpdateUserNameDto } from './dto/update-user-name.dto';
 
 /**
  * Controller to expose callable HTTP endpoints to
@@ -103,8 +104,8 @@ export class UsersController {
   @Roles(UserType.ADMIN)
   async updateUserByEmail(
     @Param('email') email: string,
-    @Body() body: { firstName?: string; lastName?: string },
-  ): Promise<User | NotFoundException> {
+    @Body() body: UpdateUserNameDto,
+  ): Promise<User> {
     const decoded = decodeURIComponent(email);
     const updates: { firstName?: string; lastName?: string } = {};
     if (typeof body.firstName === 'string') {
@@ -117,7 +118,7 @@ export class UsersController {
     if (!updates.firstName && !updates.lastName) {
       const existing = await this.usersService.findOne(decoded);
       if (!existing) {
-        return new NotFoundException('User not found');
+        throw new NotFoundException('User not found');
       }
       return existing;
     }

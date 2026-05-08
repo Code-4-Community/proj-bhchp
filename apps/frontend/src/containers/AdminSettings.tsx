@@ -57,6 +57,39 @@ const AdminSettings: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isConfirmPopoverOpen, setIsConfirmPopoverOpen] = useState(false);
 
+  const activeDisciplineKeys = useMemo(() => {
+    return new Set(
+      disciplineCatalog.filter((item) => item.isActive).map((item) => item.key),
+    );
+  }, [disciplineCatalog]);
+
+  const activeSelectedDisciplines = useMemo(() => {
+    return selectedDisciplines.filter((key) => activeDisciplineKeys.has(key));
+  }, [selectedDisciplines, activeDisciplineKeys]);
+
+  const disciplineOptions = useMemo(() => {
+    const activeOptions = disciplineCatalog
+      .filter((item) => item.isActive)
+      .map((item) => ({
+        ...item,
+        label: item.label,
+      }));
+
+    const inactiveSelectedOptions = selectedDisciplines
+      .filter((key) => !activeDisciplineKeys.has(key))
+      .map((key) => {
+        const matching = disciplineCatalog.find((item) => item.key === key);
+        const label = matching?.label ?? key;
+        return {
+          key,
+          label: `${label} (inactive)`,
+          isActive: false,
+        } as DisciplineCatalogItem;
+      });
+
+    return [...activeOptions, ...inactiveSelectedOptions];
+  }, [disciplineCatalog, selectedDisciplines, activeDisciplineKeys]);
+
   const hasChanges = useMemo(() => {
     return !areDisciplinesEqual(selectedDisciplines, savedDisciplines);
   }, [selectedDisciplines, savedDisciplines]);
@@ -97,10 +130,11 @@ const AdminSettings: React.FC = () => {
         console.debug(
           '[AdminSettings] loadSettings: fetching user + admin info',
         );
-        const [userInfo, adminInfo] = await Promise.all([
-          apiClient.getUser(signedInEmail),
-          apiClient.getAdminInfoByEmail(signedInEmail),
-        ]);
+        const userInfo = await apiClient.getCurrentUser();
+
+        const adminInfo = userInfo?.email
+          ? await apiClient.getAdminInfoByEmail(userInfo.email)
+          : null;
 
         console.debug(
           '[AdminSettings] loadSettings: user + admin info loaded',
@@ -120,7 +154,7 @@ const AdminSettings: React.FC = () => {
 
         if (mounted) {
           setCurrentUser(userInfo);
-          setDisciplineCatalog(disciplines.filter((item) => item.isActive));
+          setDisciplineCatalog(disciplines);
           setSelectedDisciplines(adminInfo.disciplines ?? []);
           setSavedDisciplines(adminInfo.disciplines ?? []);
           setFirstName(userInfo.firstName ?? '');
@@ -180,9 +214,12 @@ const AdminSettings: React.FC = () => {
       }
 
       if (hasChanges) {
+        const sanitizedDisciplines = selectedDisciplines.filter((key) =>
+          activeDisciplineKeys.has(key),
+        );
         const updated = await apiClient.updateAdminDisciplines(
           currentUser.email,
-          selectedDisciplines,
+          sanitizedDisciplines,
         );
 
         setSavedDisciplines(updated.disciplines ?? []);
@@ -229,7 +266,7 @@ const AdminSettings: React.FC = () => {
   };
 
   const canSave =
-    selectedDisciplines.length > 0 &&
+    activeSelectedDisciplines.length > 0 &&
     firstName.trim().length > 0 &&
     lastName.trim().length > 0 &&
     (hasChanges || hasNameChanges) &&
@@ -406,7 +443,7 @@ const AdminSettings: React.FC = () => {
                       >
                         <Fieldset.Content>
                           <Stack maxH="180px" overflowY="auto" gap="2">
-                            <For each={disciplineCatalog}>
+                            <For each={disciplineOptions}>
                               {(value) => (
                                 <Checkbox.Root
                                   key={value.key}

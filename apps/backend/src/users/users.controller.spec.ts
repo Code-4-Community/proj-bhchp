@@ -9,6 +9,7 @@ const mockUsersService = {
   findAll: jest.fn(),
   findStandard: jest.fn(),
   findOne: jest.fn(),
+  update: jest.fn(),
   remove: jest.fn(),
 };
 
@@ -74,6 +75,52 @@ describe('UsersController', () => {
       undefined,
     );
     expect(mockUsersService.remove).toHaveBeenCalledWith('user@example.com');
+  });
+
+  it('should trim names and decode the email before updating a user', async () => {
+    const updatedUser = {
+      ...mockUser,
+      firstName: 'Updated',
+      lastName: 'Person',
+    };
+    mockUsersService.update.mockResolvedValue(updatedUser);
+
+    await expect(
+      controller.updateUserByEmail('user%40example.com', {
+        firstName: '  Updated  ',
+        lastName: ' Person ',
+      }),
+    ).resolves.toEqual(updatedUser);
+    expect(mockUsersService.update).toHaveBeenCalledWith('user@example.com', {
+      firstName: 'Updated',
+      lastName: 'Person',
+    });
+  });
+
+  it('should return the existing user when no valid updates are provided', async () => {
+    mockUsersService.findOne.mockResolvedValue(mockUser);
+
+    await expect(
+      controller.updateUserByEmail('user%40example.com', {}),
+    ).resolves.toEqual(mockUser);
+    expect(mockUsersService.findOne).toHaveBeenCalledWith('user@example.com');
+    expect(mockUsersService.update).not.toHaveBeenCalled();
+  });
+
+  it('should return NotFoundException when no valid updates are provided for a missing user', async () => {
+    mockUsersService.findOne.mockResolvedValue(null);
+
+    const result = await controller.updateUserByEmail('missing%40example.com', {
+      firstName: '   ',
+      lastName: '',
+    });
+
+    expect(result).toBeInstanceOf(NotFoundException);
+    expect((result as NotFoundException).message).toBe('User not found');
+    expect(mockUsersService.findOne).toHaveBeenCalledWith(
+      'missing@example.com',
+    );
+    expect(mockUsersService.update).not.toHaveBeenCalled();
   });
 
   it('should return the current user when present on the request', async () => {
