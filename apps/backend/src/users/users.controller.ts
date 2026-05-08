@@ -84,11 +84,9 @@ export class UsersController {
    * @returns {User | null} Returns the user object or nothing.
    */
   @Get('me')
-  async getCurrentUser(
-    @Req() req: { user?: User },
-  ): Promise<User | NotFoundException> {
+  async getCurrentUser(@Req() req: { user?: User }): Promise<User> {
     if (!req.user || !req.user.userType) {
-      return new NotFoundException('No user matching the JWT was found.');
+      throw new NotFoundException('No user matching the JWT was found.');
     }
     return req.user;
   }

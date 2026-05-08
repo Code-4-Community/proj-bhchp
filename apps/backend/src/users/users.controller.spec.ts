@@ -110,13 +110,12 @@ describe('UsersController', () => {
   it('should return NotFoundException when no valid updates are provided for a missing user', async () => {
     mockUsersService.findOne.mockResolvedValue(null);
 
-    const result = await controller.updateUserByEmail('missing%40example.com', {
-      firstName: '   ',
-      lastName: '',
-    });
-
-    expect(result).toBeInstanceOf(NotFoundException);
-    expect((result as NotFoundException).message).toBe('User not found');
+    await expect(
+      controller.updateUserByEmail('missing%40example.com', {
+        firstName: '   ',
+        lastName: '',
+      }),
+    ).rejects.toThrow(new NotFoundException('User not found'));
     expect(mockUsersService.findOne).toHaveBeenCalledWith(
       'missing@example.com',
     );
@@ -130,11 +129,8 @@ describe('UsersController', () => {
   });
 
   it('should return NotFoundException when the request user is missing', async () => {
-    const result = await controller.getCurrentUser({});
-
-    expect(result).toBeInstanceOf(NotFoundException);
-    expect((result as NotFoundException).message).toBe(
-      'No user matching the JWT was found.',
+    await expect(controller.getCurrentUser({})).rejects.toThrow(
+      new NotFoundException('No user matching the JWT was found.'),
     );
   });
 });
