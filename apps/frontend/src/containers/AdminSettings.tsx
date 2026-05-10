@@ -15,13 +15,13 @@ import {
   Text,
   For,
 } from '@chakra-ui/react';
+
 import NavBar from '@components/NavBar/NavBar';
 import ConfirmationPopoverContent from '@components/ConfirmationPopoverContent';
 import type { DisciplineCatalogItem, User } from '@api/types';
 import { UserType } from '@api/types';
 import apiClient from '@api/apiClient';
 import { getDisciplineAdminMapCached } from '@utils/disciplineAdminCache';
-import { getSignedInEmail } from '../auth/cognito';
 
 const normalizeDisciplines = (values: string[]): string[] => {
   return values
@@ -113,19 +113,7 @@ const AdminSettings: React.FC = () => {
         console.debug(
           '[AdminSettings] loadSettings: fetching email + disciplines',
         );
-        const [signedInEmail, disciplines] = await Promise.all([
-          getSignedInEmail(),
-          apiClient.getDisciplines(),
-        ]);
-
-        console.debug('[AdminSettings] loadSettings: signedInEmail', {
-          signedInEmail,
-          disciplinesCount: disciplines.length,
-        });
-
-        if (!signedInEmail) {
-          throw new Error('Missing current user email');
-        }
+        const [disciplines] = await Promise.all([apiClient.getDisciplines()]);
 
         console.debug(
           '[AdminSettings] loadSettings: fetching user + admin info',
