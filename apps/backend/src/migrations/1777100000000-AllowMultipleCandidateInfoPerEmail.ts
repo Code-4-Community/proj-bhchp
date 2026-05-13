@@ -7,23 +7,25 @@ export class AllowMultipleCandidateInfoPerEmail1777100000000
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "candidate_info" DROP CONSTRAINT "PK_49789311744921f9d181c9fc068"`,
+      `ALTER TABLE "candidate_info" RENAME COLUMN "appId" TO "appIds"`,
     );
     await queryRunner.query(
-      `ALTER TABLE "candidate_info" ADD CONSTRAINT "PK_candidate_info_appId" PRIMARY KEY ("appId")`,
+      `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" TYPE integer[] USING ARRAY["appIds"]`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_candidate_info_email" ON "candidate_info" ("email")`,
+      `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" SET DEFAULT '{}'`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX "public"."IDX_candidate_info_email"`);
     await queryRunner.query(
-      `ALTER TABLE "candidate_info" DROP CONSTRAINT "PK_candidate_info_appId"`,
+      `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" DROP DEFAULT`,
     );
     await queryRunner.query(
-      `ALTER TABLE "candidate_info" ADD CONSTRAINT "PK_49789311744921f9d181c9fc068" PRIMARY KEY ("email")`,
+      `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" TYPE integer USING "appIds"[1]`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "candidate_info" RENAME COLUMN "appIds" TO "appId"`,
     );
   }
 }

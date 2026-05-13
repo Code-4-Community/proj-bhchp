@@ -146,28 +146,28 @@ const EXTRA_CANDIDATE_PROFILES = Array.from({ length: 20 }, (_, index) => {
 
 const CANDIDATE_INFO_SEED: CandidateInfo[] = [
   {
-    appId: 1,
     email: 'janedoe@gmail.com',
+    appIds: [1],
   },
   {
-    appId: 2,
     email: 'standard@c4cneu.com',
+    appIds: [2],
   },
   {
-    appId: 3,
     email: 'sam@example.com',
+    appIds: [3],
   },
   {
-    appId: 4,
     email: 'rejected.learner@example.com',
+    appIds: [4],
   },
   {
-    appId: 5,
     email: 'approved.learner@example.com',
+    appIds: [5],
   },
   ...EXTRA_CANDIDATE_PROFILES.map(({ appId, email }) => ({
-    appId,
     email,
+    appIds: [appId],
   })),
 ];
 

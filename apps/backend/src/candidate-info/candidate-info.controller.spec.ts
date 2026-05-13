@@ -25,7 +25,6 @@ jest.mock('../util/aws-exports', () => ({
 const mockCandidateInfoService: Partial<CandidateInfoService> = {
   create: jest.fn(),
   findOne: jest.fn(),
-  findAllByEmail: jest.fn(),
   findAll: jest.fn(),
   findByAppId: jest.fn(),
   delete: jest.fn(),
@@ -36,8 +35,8 @@ const mockUsersService = {
 };
 
 const defaultCandidateInfo: CandidateInfo = {
-  appId: 1,
   email: 'john@example.com',
+  appIds: [1],
 };
 
 describe('CandidateInfoController', () => {
@@ -113,8 +112,8 @@ describe('CandidateInfoController', () => {
       const CandidateInfo: CandidateInfo[] = [
         defaultCandidateInfo,
         {
-          appId: 2,
           email: 'janedoe@gmail.com',
+          appIds: [2, 5],
         },
       ];
       jest
@@ -194,34 +193,15 @@ describe('CandidateInfoController', () => {
     });
   });
 
-  describe('getAllCandidateInfoByEmail', () => {
-    it('should return all CandidateInfo records for an email', async () => {
-      const candidateHistory = [
-        { appId: 3, email: 'john@example.com' },
-        defaultCandidateInfo,
-      ];
-
-      jest
-        .spyOn(mockCandidateInfoService, 'findAllByEmail')
-        .mockResolvedValue(candidateHistory);
-
-      await expect(
-        controller.getAllCandidateInfoByEmail('john@example.com'),
-      ).resolves.toEqual(candidateHistory);
-      expect(mockCandidateInfoService.findAllByEmail).toHaveBeenCalledWith(
-        'john@example.com',
-      );
-    });
-  });
-
   describe('deleteCandidateInfo', () => {
-    it('should delete CandidateInfo records by email', async () => {
-      const deleted = [defaultCandidateInfo];
-      jest.spyOn(mockCandidateInfoService, 'delete').mockResolvedValue(deleted);
+    it('should delete CandidateInfo by email', async () => {
+      jest
+        .spyOn(mockCandidateInfoService, 'delete')
+        .mockResolvedValue(defaultCandidateInfo);
 
       const result = await controller.deleteCandidateInfo('john@example.com');
 
-      expect(result).toEqual(deleted);
+      expect(result).toEqual(defaultCandidateInfo);
       expect(mockCandidateInfoService.delete).toHaveBeenCalledWith(
         'john@example.com',
       );

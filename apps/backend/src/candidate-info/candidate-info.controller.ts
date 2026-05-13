@@ -85,19 +85,6 @@ export class CandidateInfoController {
   }
 
   /**
-   * Exposes an endpoint to return all CandidateInfo records for a specific email ordered newest first.
-   * @param email The email of the desired CandidateInfo records.
-   * @returns The CandidateInfo records with the desired email.
-   */
-  @Get('email/:email/all')
-  @Roles(UserType.ADMIN)
-  async getAllCandidateInfoByEmail(
-    @Param('email') email: string,
-  ): Promise<CandidateInfo[]> {
-    return this.CandidateInfoService.findAllByEmail(email);
-  }
-
-  /**
    * Exposes an endpoint to return a specific CandidateInfo by appId (returns first match if multiple).
    * @param appId The appId of the desired CandidateInfo to return.
    * @returns The CandidateInfo(s) with the desired appId.
@@ -121,7 +108,7 @@ export class CandidateInfoController {
   @Roles(UserType.ADMIN)
   async deleteCandidateInfo(
     @Param('email') email: string,
-  ): Promise<CandidateInfo[]> {
+  ): Promise<CandidateInfo> {
     return this.CandidateInfoService.delete(email);
   }
 }

@@ -69,7 +69,7 @@ const mockUsersService = {
 };
 
 const mockCandidateInfoService = {
-  findOne: jest.fn(),
+  findLatestAppId: jest.fn(),
   findByApplicationId: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
@@ -984,10 +984,7 @@ describe('ApplicationsController', () => {
     });
 
     it('should return the current user application when candidate info exists', async () => {
-      mockCandidateInfoService.findOne.mockResolvedValue({
-        email: 'test@example.com',
-        appId: 1,
-      });
+      mockCandidateInfoService.findLatestAppId.mockResolvedValue(1);
       jest
         .spyOn(mockApplicationsService, 'findById')
         .mockResolvedValue(mockApplication);
@@ -1002,14 +999,14 @@ describe('ApplicationsController', () => {
           },
         }),
       ).resolves.toEqual(mockApplication);
-      expect(mockCandidateInfoService.findOne).toHaveBeenCalledWith(
+      expect(mockCandidateInfoService.findLatestAppId).toHaveBeenCalledWith(
         'test@example.com',
       );
       expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
     });
 
     it('should pass through candidate lookup errors', async () => {
-      mockCandidateInfoService.findOne.mockRejectedValue(
+      mockCandidateInfoService.findLatestAppId.mockRejectedValue(
         new NotFoundException(
           'candidate with email test@example.com not found',
         ),

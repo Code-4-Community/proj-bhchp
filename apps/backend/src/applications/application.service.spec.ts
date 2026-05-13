@@ -120,7 +120,7 @@ describe('ApplicationsService', () => {
   };
 
   const mockCandidateInfoService = {
-    findOne: jest.fn(),
+    findLatestAppId: jest.fn(),
   };
 
   const mockDisciplinesService = {
@@ -1269,10 +1269,7 @@ describe('ApplicationsService', () => {
   describe('private helpers', () => {
     describe('confidentiality form status access', () => {
       beforeEach(() => {
-        mockCandidateInfoService.findOne.mockResolvedValue({
-          appId: 1,
-          email: dummyApplication.email,
-        });
+        mockCandidateInfoService.findLatestAppId.mockResolvedValue(1);
       });
 
       it('allows upload for accepted applicants', async () => {

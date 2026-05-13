@@ -443,13 +443,13 @@ export class ApplicationsController {
     }
 
     try {
-      const candidateInfo = await this.candidateInfoService.findOne(
+      const latestAppId = await this.candidateInfoService.findLatestAppId(
         req.user.email,
       );
       this.logger.log(
-        `GET /applications/me candidate_info found email=${req.user.email} appId=${candidateInfo.appId}`,
+        `GET /applications/me candidate_info found email=${req.user.email} appId=${latestAppId}`,
       );
-      return this.applicationsService.findById(candidateInfo.appId);
+      return this.applicationsService.findById(latestAppId);
     } catch (error) {
       this.logger.error(
         `GET /applications/me failed for email=${req.user.email}`,

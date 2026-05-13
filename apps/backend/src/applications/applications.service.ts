@@ -110,8 +110,8 @@ export class ApplicationsService {
   private async findCurrentUserApplication(
     email: string,
   ): Promise<Application> {
-    const candidateInfo = await this.candidateInfoService.findOne(email);
-    return this.findById(candidateInfo.appId);
+    const latestAppId = await this.candidateInfoService.findLatestAppId(email);
+    return this.findById(latestAppId);
   }
 
   /**
