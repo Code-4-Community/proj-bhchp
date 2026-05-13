@@ -89,6 +89,12 @@ export class ApiClient {
     return this.get(`/api/applications/${appId}`) as Promise<Application>;
   }
 
+  public async getApplicationsByEmail(email: string): Promise<Application[]> {
+    return this.get(
+      `/api/applications/by-email/${encodeURIComponent(email)}`,
+    ) as Promise<Application[]>;
+  }
+
   public async getApplicants(): Promise<User[]> {
     return this.get('/api/users/standard') as Promise<User[]>;
   }

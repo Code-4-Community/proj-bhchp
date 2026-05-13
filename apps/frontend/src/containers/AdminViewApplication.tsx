@@ -1,7 +1,15 @@
 import NavBar from '@components/NavBar/NavBar';
-import { useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
 import apiClient from '@api/apiClient';
-import { Box, Flex, Heading, Spinner, Text } from '@chakra-ui/react';
+import {
+  Badge,
+  Box,
+  Flex,
+  Heading,
+  Spinner,
+  Text,
+  VStack,
+} from '@chakra-ui/react';
 import AvailabilityTable from '@components/AvailabilityTable';
 import { useEffect, useState } from 'react';
 import {
@@ -29,6 +37,9 @@ import { toS3FolderUrl } from '@utils/s3';
 const AdminViewApplication: React.FC = () => {
   const { appId } = useParams<{ appId: string }>();
   const [application, setApplication] = useState<Application | null>(null);
+  const [applicationHistory, setApplicationHistory] = useState<Application[]>(
+    [],
+  );
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,25 +70,62 @@ const AdminViewApplication: React.FC = () => {
 
   useEffect(() => {
     if (!appId) return;
-    setLoading(true);
-    apiClient
-      .getApplication(Number(appId))
-      .then((app) => {
+
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      setLearnerInfo(null);
+
+      try {
+        const app = await apiClient.getApplication(Number(appId));
+        if (cancelled) return;
+
         setApplication(app);
-        if (app?.applicantType === ApplicantType.LEARNER) {
-          apiClient
-            .getLearnerInfo(Number(appId))
-            .then(setLearnerInfo)
-            .catch(() => setError('Failed to load learner info'));
+
+        const [loadedUser, loadedHistory] = await Promise.all([
+          apiClient.getUser(app.email),
+          apiClient.getApplicationsByEmail(app.email),
+        ]);
+
+        if (cancelled) return;
+
+        setUser(loadedUser);
+        setApplicationHistory(loadedHistory);
+
+        if (app.applicantType === ApplicantType.LEARNER) {
+          const info = await apiClient.getLearnerInfo(app.appId);
+          if (cancelled) return;
+          setLearnerInfo(info);
         }
-        apiClient
-          .getUser(app.email)
-          .then(setUser)
-          .catch(() => setError('Failed to load user info'));
-      })
-      .catch(() => setError('Failed to load application'))
-      .finally(() => setLoading(false));
+      } catch {
+        if (!cancelled) {
+          setError('Failed to load application');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [appId]);
+
+  const currentApplicationId =
+    applicationHistory.length > 0
+      ? Math.max(...applicationHistory.map((app) => app.appId))
+      : application?.appId;
+  const isViewingCurrentApplication =
+    application !== null && currentApplicationId === application.appId;
+  const previousApplications = applicationHistory
+    .filter((app) => app.appId !== currentApplicationId)
+    .sort((left, right) => right.appId - left.appId);
 
   const handleAvailabilityUpdate = (updated: AvailabilityFields) => {
     setApplication((prev) => (prev ? { ...prev, ...updated } : prev));
@@ -177,6 +225,93 @@ const AdminViewApplication: React.FC = () => {
             />
           }
         />
+
+        {!isViewingCurrentApplication && currentApplicationId ? (
+          <Box borderWidth="1px" borderRadius="lg" p={5} bg="orange.50">
+            <Text fontWeight="700" color="orange.900">
+              Viewing a previous application
+            </Text>
+            <Text mt={2} color="orange.800">
+              History is attached to the current application only.
+            </Text>
+            <RouterLink
+              to={`/admin/view-application/${currentApplicationId}`}
+              style={{
+                display: 'inline-block',
+                marginTop: '0.75rem',
+                color: '#7b341e',
+                fontWeight: 700,
+                textDecoration: 'underline',
+              }}
+            >
+              Return to current application
+            </RouterLink>
+          </Box>
+        ) : null}
+
+        {isViewingCurrentApplication && previousApplications.length > 0 ? (
+          <Box borderWidth="1px" borderRadius="lg" p={6} bg="white">
+            <Flex
+              justify="space-between"
+              align={{ base: 'flex-start', md: 'center' }}
+              gap={3}
+              mb={4}
+              flexWrap="wrap"
+            >
+              <Box>
+                <Heading as="h2" size="md">
+                  Application History
+                </Heading>
+                <Text color="gray.600" mt={1}>
+                  Previous applications for this applicant.
+                </Text>
+              </Box>
+              <Badge colorPalette="green" variant="subtle" px={3} py={1}>
+                Current Application
+              </Badge>
+            </Flex>
+
+            <VStack align="stretch" gap={3}>
+              {previousApplications.map((historicalApplication) => (
+                <Flex
+                  key={historicalApplication.appId}
+                  justify="space-between"
+                  align={{ base: 'flex-start', md: 'center' }}
+                  gap={3}
+                  p={4}
+                  borderWidth="1px"
+                  borderRadius="md"
+                  bg="gray.50"
+                  flexWrap="wrap"
+                >
+                  <Box>
+                    <Text fontWeight="700">
+                      Application #{historicalApplication.appId}
+                    </Text>
+                    <Text color="gray.700">
+                      {historicalApplication.appStatus} •{' '}
+                      {historicalApplication.applicantType} •{' '}
+                      {historicalApplication.discipline}
+                    </Text>
+                    <Text color="gray.600" fontSize="sm">
+                      Proposed start: {historicalApplication.proposedStartDate}
+                    </Text>
+                  </Box>
+                  <RouterLink
+                    to={`/admin/view-application/${historicalApplication.appId}`}
+                    style={{
+                      color: '#0f766e',
+                      fontWeight: 700,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    View application
+                  </RouterLink>
+                </Flex>
+              ))}
+            </VStack>
+          </Box>
+        ) : null}
 
         {(application.appStatus === AppStatus.FORMS_SIGNED ||
           application.appStatus === AppStatus.ACTIVE ||

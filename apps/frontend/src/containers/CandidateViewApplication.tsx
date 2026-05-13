@@ -95,14 +95,21 @@ const CandidateViewApplication: React.FC = () => {
           return;
         }
 
+        const latestAppId = Math.max(...candidateInfo.appIds);
+
+        if (!Number.isFinite(latestAppId)) {
+          setError("Unable to get user's application id");
+          return;
+        }
+
         if (cancelled) return;
         console.debug('CandidateViewApplication: candidate info loaded', {
-          appId: candidateInfo.appId,
+          appId: latestAppId,
           email: candidateInfo.email,
         });
 
         console.debug('CandidateViewApplication: requesting application', {
-          appId: candidateInfo.appId,
+          appId: latestAppId,
         });
 
         const app = await apiClient.getCurrentApplication();
@@ -124,9 +131,9 @@ const CandidateViewApplication: React.FC = () => {
         if (app.applicantType === ApplicantType.LEARNER) {
           try {
             console.debug('CandidateViewApplication: requesting learner info', {
-              appId: candidateInfo.appId,
+              appId: app.appId,
             });
-            const info = await apiClient.getLearnerInfo(candidateInfo.appId);
+            const info = await apiClient.getLearnerInfo(app.appId);
             if (!cancelled) {
               setLearnerInfo(info);
               console.debug('CandidateViewApplication: learner info loaded', {
