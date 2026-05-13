@@ -218,6 +218,42 @@ describe('ApplicationsService', () => {
     });
   });
 
+  describe('findByEmail', () => {
+    it('should return applications for an email ordered by descending appId', async () => {
+      const applicationHistory: Application[] = [
+        { ...dummyApplication, appId: 3 },
+        dummyApplication,
+      ];
+
+      mockRepository.find.mockResolvedValue(applicationHistory);
+
+      await expect(service.findByEmail('test@example.com')).resolves.toEqual(
+        applicationHistory,
+      );
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should trim email before returning applications by email', async () => {
+      mockRepository.find.mockResolvedValue([dummyApplication]);
+
+      await service.findByEmail('  test@example.com  ');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should throw when applications email is missing', async () => {
+      await expect(service.findByEmail('')).rejects.toThrow(
+        'Application email is required',
+      );
+    });
+  });
+
   describe('count endpoints', () => {
     it('should return total applications count', async () => {
       mockRepository.count.mockResolvedValue(298);

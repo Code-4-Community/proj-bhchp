@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
 /**
  * Represents the desired columns for the database table in the repository for the system's candidates.
@@ -6,16 +6,17 @@ import { Entity, Column, PrimaryColumn } from 'typeorm';
 @Entity('candidate_info')
 export class CandidateInfo {
   /**
+   * Corresponding application id of the candidate.
+   */
+  @PrimaryColumn()
+  appId: number;
+
+  /**
    * The candidate's email.
    *
    * Example: 'jane.doe@northeastern.edu'.
    */
-  @PrimaryColumn({ name: 'email' })
+  @Index()
+  @Column()
   email: string;
-
-  /**
-   * Corresponding application id of the candidate.
-   */
-  @Column({ name: 'app_id' })
-  appId: number;
 }

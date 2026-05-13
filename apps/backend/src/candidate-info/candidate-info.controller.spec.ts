@@ -25,6 +25,7 @@ jest.mock('../util/aws-exports', () => ({
 const mockCandidateInfoService: Partial<CandidateInfoService> = {
   create: jest.fn(),
   findOne: jest.fn(),
+  findAllByEmail: jest.fn(),
   findAll: jest.fn(),
   findByAppId: jest.fn(),
   delete: jest.fn(),
@@ -193,15 +194,34 @@ describe('CandidateInfoController', () => {
     });
   });
 
-  describe('deleteCandidateInfo', () => {
-    it('should delete an CandidateInfo by email', async () => {
+  describe('getAllCandidateInfoByEmail', () => {
+    it('should return all CandidateInfo records for an email', async () => {
+      const candidateHistory = [
+        { appId: 3, email: 'john@example.com' },
+        defaultCandidateInfo,
+      ];
+
       jest
-        .spyOn(mockCandidateInfoService, 'delete')
-        .mockResolvedValue(defaultCandidateInfo);
+        .spyOn(mockCandidateInfoService, 'findAllByEmail')
+        .mockResolvedValue(candidateHistory);
+
+      await expect(
+        controller.getAllCandidateInfoByEmail('john@example.com'),
+      ).resolves.toEqual(candidateHistory);
+      expect(mockCandidateInfoService.findAllByEmail).toHaveBeenCalledWith(
+        'john@example.com',
+      );
+    });
+  });
+
+  describe('deleteCandidateInfo', () => {
+    it('should delete CandidateInfo records by email', async () => {
+      const deleted = [defaultCandidateInfo];
+      jest.spyOn(mockCandidateInfoService, 'delete').mockResolvedValue(deleted);
 
       const result = await controller.deleteCandidateInfo('john@example.com');
 
-      expect(result).toEqual(defaultCandidateInfo);
+      expect(result).toEqual(deleted);
       expect(mockCandidateInfoService.delete).toHaveBeenCalledWith(
         'john@example.com',
       );

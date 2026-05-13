@@ -218,6 +218,26 @@ export class ApplicationsService {
   }
 
   /**
+   * Returns all applications for the specified email ordered newest first.
+   * @param email The email to filter applications by.
+   * @returns A promise resolving to the applications for that email.
+   * @throws {BadRequestException} if email is invalid.
+   * @throws {Error} which is unchanged from what repository throws.
+   */
+  async findByEmail(email: string): Promise<Application[]> {
+    const normalizedEmail = email?.trim();
+
+    if (!normalizedEmail) {
+      throw new BadRequestException('Application email is required');
+    }
+
+    return this.applicationRepository.find({
+      where: { email: normalizedEmail },
+      order: { appId: 'DESC' },
+    });
+  }
+
+  /**
    * Returns the total number of applications.
    * @returns A promise resolving to the total number of applications.
    */

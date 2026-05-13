@@ -46,6 +46,7 @@ const mockApplicationsService: Partial<ApplicationsService> = {
   countRejected: jest.fn(),
   countApprovedOrActive: jest.fn(),
   findById: jest.fn(),
+  findByEmail: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   updateStatus: jest.fn(),
@@ -476,6 +477,26 @@ describe('ApplicationsController', () => {
           user: { email: 'admin@example.com', userType: UserType.ADMIN },
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getApplicationsByEmail', () => {
+    it('should return applications for a specific email newest first', async () => {
+      const mockApplications = [
+        { ...mockApplication, appId: 3 },
+        mockApplication,
+      ];
+
+      jest
+        .spyOn(mockApplicationsService, 'findByEmail')
+        .mockResolvedValue(mockApplications);
+
+      await expect(
+        controller.getApplicationsByEmail('test%40example.com'),
+      ).resolves.toEqual(mockApplications);
+      expect(mockApplicationsService.findByEmail).toHaveBeenCalledWith(
+        'test@example.com',
+      );
     });
   });
 

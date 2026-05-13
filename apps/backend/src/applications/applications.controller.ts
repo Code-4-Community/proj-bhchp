@@ -145,6 +145,19 @@ export class ApplicationsController {
   }
 
   /**
+   * Exposes an endpoint to return all applications for a specific email, newest first.
+   * @param email The email to filter applications by.
+   * @returns A promise of the applications with the specified email ordered by descending appId.
+   */
+  @Get('by-email/:email')
+  @Roles(UserType.ADMIN)
+  async getApplicationsByEmail(
+    @Param('email') email: string,
+  ): Promise<Application[]> {
+    return this.applicationsService.findByEmail(decodeURIComponent(email));
+  }
+
+  /**
    * Exposes an endpoint to return an application by id.
    * @param appId The desired application id to search for.
    * @param req The request object from the caller (frontend). Currently not used.

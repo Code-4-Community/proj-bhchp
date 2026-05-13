@@ -9,7 +9,7 @@ import { CandidateInfo } from './candidate-info.entity';
 const mockcandidatesRepository: Partial<Repository<CandidateInfo>> = {
   create: jest.fn(),
   save: jest.fn(),
-  findOneBy: jest.fn(),
+  findOne: jest.fn(),
   find: jest.fn(),
   remove: jest.fn(),
 };
@@ -128,36 +128,38 @@ describe('CandidateInfoService', () => {
       await expect(service.findOne('')).rejects.toThrow(
         'candidate email is required',
       );
-      expect(mockcandidatesRepository.findOneBy).not.toHaveBeenCalled();
+      expect(mockcandidatesRepository.findOne).not.toHaveBeenCalled();
     });
 
-    it('should find an CandidateInfo by email', async () => {
+    it('should find the latest CandidateInfo by email', async () => {
       jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
+        .spyOn(mockcandidatesRepository, 'findOne')
         .mockResolvedValue(candidate1);
 
       const result = await service.findOne('john@example.com');
 
       expect(result).toEqual(candidate1);
-      expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
-        email: 'john@example.com',
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        order: { appId: 'DESC' },
       });
     });
 
     it('should trim email before lookup', async () => {
       jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
+        .spyOn(mockcandidatesRepository, 'findOne')
         .mockResolvedValue(candidate1);
 
       await service.findOne('  john@example.com  ');
 
-      expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
-        email: 'john@example.com',
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        order: { appId: 'DESC' },
       });
     });
 
     it('should throw error if CandidateInfo is not found', async () => {
-      jest.spyOn(mockcandidatesRepository, 'findOneBy').mockResolvedValue(null);
+      jest.spyOn(mockcandidatesRepository, 'findOne').mockResolvedValue(null);
 
       await expect(service.findOne('notfound@example.com')).rejects.toThrow(
         'candidate with email notfound@example.com not found',
@@ -166,13 +168,37 @@ describe('CandidateInfoService', () => {
 
     it('should error out without information loss if the repository throws an error during retrieval', async () => {
       jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
+        .spyOn(mockcandidatesRepository, 'findOne')
         .mockRejectedValueOnce(
           new Error('There was a problem retrieving the info'),
         );
 
       await expect(service.findOne('john@example.com')).rejects.toThrow(
         'There was a problem retrieving the info',
+      );
+    });
+  });
+
+  describe('findAllByEmail', () => {
+    it('should return all CandidateInfo records for an email ordered by descending appId', async () => {
+      const candidates = [{ appId: 3, email: 'john@example.com' }, candidate1];
+
+      jest
+        .spyOn(mockcandidatesRepository, 'find')
+        .mockResolvedValue(candidates);
+
+      await expect(service.findAllByEmail('john@example.com')).resolves.toEqual(
+        candidates,
+      );
+      expect(mockcandidatesRepository.find).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should throw error if email is not provided for findAllByEmail', async () => {
+      await expect(service.findAllByEmail('')).rejects.toThrow(
+        'candidate email is required',
       );
     });
   });
@@ -254,40 +280,43 @@ describe('CandidateInfoService', () => {
   });
 
   describe('delete', () => {
-    it('should delete an CandidateInfo successfully', async () => {
+    it('should delete all CandidateInfo records for an email', async () => {
+      const candidates = [candidate1, { appId: 3, email: 'john@example.com' }];
       jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
-        .mockResolvedValue(candidate1);
+        .spyOn(mockcandidatesRepository, 'find')
+        .mockResolvedValue(candidates);
       jest
         .spyOn(mockcandidatesRepository, 'remove')
-        .mockResolvedValue(candidate1);
+        .mockResolvedValue(candidates as never);
 
       const result = await service.delete('john@example.com');
 
-      expect(result).toEqual(candidate1);
-      expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
-        email: 'john@example.com',
+      expect(result).toEqual(candidates);
+      expect(mockcandidatesRepository.find).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        order: { appId: 'DESC' },
       });
-      expect(mockcandidatesRepository.remove).toHaveBeenCalledWith(candidate1);
+      expect(mockcandidatesRepository.remove).toHaveBeenCalledWith(candidates);
     });
 
     it('should throw NotFoundException if CandidateInfo is not found', async () => {
-      jest.spyOn(mockcandidatesRepository, 'findOneBy').mockResolvedValue(null);
+      jest.spyOn(mockcandidatesRepository, 'find').mockResolvedValue([]);
 
       await expect(service.delete('notfound@example.com')).rejects.toThrow(
         new NotFoundException(
           'candidate with email notfound@example.com not found',
         ),
       );
-      expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
-        email: 'notfound@example.com',
+      expect(mockcandidatesRepository.find).toHaveBeenCalledWith({
+        where: { email: 'notfound@example.com' },
+        order: { appId: 'DESC' },
       });
       expect(mockcandidatesRepository.remove).not.toHaveBeenCalled();
     });
 
     it('should error out without information loss if the repository throws an error during retrieval', async () => {
       jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
+        .spyOn(mockcandidatesRepository, 'find')
         .mockRejectedValueOnce(
           new Error('There was a problem retrieving the info'),
         );
@@ -300,8 +329,8 @@ describe('CandidateInfoService', () => {
 
     it('should error out without information loss if the repository throws an error during removal', async () => {
       jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
-        .mockResolvedValue(candidate1);
+        .spyOn(mockcandidatesRepository, 'find')
+        .mockResolvedValue([candidate1]);
       jest
         .spyOn(mockcandidatesRepository, 'remove')
         .mockRejectedValueOnce(
@@ -311,10 +340,13 @@ describe('CandidateInfoService', () => {
       await expect(service.delete('john@example.com')).rejects.toThrow(
         'There was a problem removing the info',
       );
-      expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
-        email: 'john@example.com',
+      expect(mockcandidatesRepository.find).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        order: { appId: 'DESC' },
       });
-      expect(mockcandidatesRepository.remove).toHaveBeenCalledWith(candidate1);
+      expect(mockcandidatesRepository.remove).toHaveBeenCalledWith([
+        candidate1,
+      ]);
     });
   });
 });

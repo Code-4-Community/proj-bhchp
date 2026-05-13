@@ -54,6 +54,18 @@ export class CandidateInfoService {
    * @throws {Error} If the repository throws an error.
    */
   async findOne(email: string): Promise<CandidateInfo> {
+    return this.findLatestByEmail(email);
+  }
+
+  /**
+   * Returns the latest candidate mapping for an email using the highest appId.
+   * @param email The email of the desired candidate.
+   * @returns The latest candidate mapping for the email.
+   * @throws {BadRequestException} if email is invalid.
+   * @throws {NotFoundException} if no candidate mappings exist for the email.
+   * @throws {Error} If the repository throws an error.
+   */
+  async findLatestByEmail(email: string): Promise<CandidateInfo> {
     if (!email || email.trim().length === 0) {
       throw new BadRequestException('candidate email is required');
     }
@@ -61,7 +73,10 @@ export class CandidateInfoService {
     const normalizedEmail = email.trim();
     this.logger.log(`Looking up candidate_info by email=${normalizedEmail}`);
 
-    const candidate = await this.repo.findOneBy({ email: normalizedEmail });
+    const candidate = await this.repo.findOne({
+      where: { email: normalizedEmail },
+      order: { appId: 'DESC' },
+    });
     if (!candidate) {
       this.logger.warn(
         `No candidate_info found for email=${normalizedEmail}. Returning 404.`,
@@ -74,6 +89,24 @@ export class CandidateInfoService {
     );
 
     return candidate;
+  }
+
+  /**
+   * Returns all candidate mappings for a specific email, newest first.
+   * @param email The email of the desired candidate mappings.
+   * @returns All candidate mappings with the desired email ordered by descending appId.
+   * @throws {BadRequestException} if email is invalid.
+   * @throws {Error} If the repository throws an error.
+   */
+  async findAllByEmail(email: string): Promise<CandidateInfo[]> {
+    if (!email || email.trim().length === 0) {
+      throw new BadRequestException('candidate email is required');
+    }
+
+    return this.repo.find({
+      where: { email: email.trim() },
+      order: { appId: 'DESC' },
+    });
   }
 
   /**
@@ -107,8 +140,13 @@ export class CandidateInfoService {
    * @throws {Error} If the repository throws an error.
    * @throws {NotFoundException} if the candidate with the specified email does not exist.
    */
-  async delete(email: string): Promise<CandidateInfo> {
-    const candidate = await this.findOne(email);
-    return this.repo.remove(candidate);
+  async delete(email: string): Promise<CandidateInfo[]> {
+    const candidates = await this.findAllByEmail(email);
+
+    if (!candidates.length) {
+      throw new NotFoundException(`candidate with email ${email} not found`);
+    }
+
+    return this.repo.remove(candidates);
   }
 }
