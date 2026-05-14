@@ -12,7 +12,6 @@ import {
 } from '@chakra-ui/react';
 import AvailabilityTable from '@components/AvailabilityTable';
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import {
   AppStatus,
   ApplicantType,
