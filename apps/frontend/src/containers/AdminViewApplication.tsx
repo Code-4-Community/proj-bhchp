@@ -12,11 +12,13 @@ import {
 } from '@chakra-ui/react';
 import AvailabilityTable from '@components/AvailabilityTable';
 import { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
   AppStatus,
   ApplicantType,
   Application,
   AvailabilityFields,
+  DisciplineCatalogItem,
   LearnerInfo,
   User,
   UserType,
@@ -41,12 +43,21 @@ const AdminViewApplication: React.FC = () => {
     [],
   );
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
+  const [disciplines, setDisciplines] = useState<DisciplineCatalogItem[]>([]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const pronouns = application?.pronouns;
-  const discipline = application?.discipline;
+  const disciplineLabelByKey = new Map(
+    disciplines.map((disciplineItem) => [
+      disciplineItem.key,
+      disciplineItem.label,
+    ]),
+  );
+  const discipline = application?.discipline
+    ? disciplineLabelByKey.get(application.discipline) ?? application.discipline
+    : undefined;
   const uploadedDocuments: DocumentDownloadItem[] = [
     {
       variant: 'resume',
@@ -84,20 +95,33 @@ const AdminViewApplication: React.FC = () => {
 
         setApplication(app);
 
-        const [loadedUser, loadedHistory] = await Promise.all([
-          apiClient.getUser(app.email),
-          apiClient.getApplicationsByEmail(app.email),
-        ]);
+        const [loadedUser, loadedHistory, loadedDisciplines] =
+          await Promise.all([
+            apiClient.getUser(app.email),
+            apiClient.getApplicationsByEmail(app.email),
+            apiClient.getDisciplines(),
+          ]);
 
         if (cancelled) return;
 
         setUser(loadedUser);
         setApplicationHistory(loadedHistory);
+        setDisciplines(loadedDisciplines);
 
         if (app.applicantType === ApplicantType.LEARNER) {
-          const info = await apiClient.getLearnerInfo(app.appId);
-          if (cancelled) return;
-          setLearnerInfo(info);
+          try {
+            const info = await apiClient.getLearnerInfo(app.appId);
+            if (cancelled) return;
+            setLearnerInfo(info);
+          } catch (learnerInfoError) {
+            if (
+              !cancelled &&
+              (!axios.isAxiosError(learnerInfoError) ||
+                learnerInfoError.response?.status !== 404)
+            ) {
+              setError('Failed to load learner info');
+            }
+          }
         }
       } catch {
         if (!cancelled) {
@@ -181,12 +205,7 @@ const AdminViewApplication: React.FC = () => {
     );
   }
 
-  if (
-    error ||
-    application === null ||
-    (application.applicantType === ApplicantType.LEARNER &&
-      learnerInfo === null)
-  ) {
+  if (error || application === null) {
     return (
       <Flex direction="row">
         <NavBar logo="BHCHP" userType={UserType.STANDARD} />
@@ -291,7 +310,9 @@ const AdminViewApplication: React.FC = () => {
                     <Text color="gray.700">
                       {historicalApplication.appStatus} •{' '}
                       {historicalApplication.applicantType} •{' '}
-                      {historicalApplication.discipline}
+                      {disciplineLabelByKey.get(
+                        historicalApplication.discipline,
+                      ) ?? historicalApplication.discipline}
                     </Text>
                     <Text color="gray.600" fontSize="sm">
                       Proposed start: {historicalApplication.proposedStartDate}
