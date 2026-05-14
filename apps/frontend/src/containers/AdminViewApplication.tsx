@@ -114,11 +114,7 @@ const AdminViewApplication: React.FC = () => {
             if (cancelled) return;
             setLearnerInfo(info);
           } catch (learnerInfoError) {
-            if (
-              !cancelled &&
-              (!axios.isAxiosError(learnerInfoError) ||
-                learnerInfoError.response?.status !== 404)
-            ) {
+            if (!cancelled) {
               setError('Failed to load learner info');
             }
           }

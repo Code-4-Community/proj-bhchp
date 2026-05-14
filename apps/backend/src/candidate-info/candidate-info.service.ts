@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ArrayContains, Repository } from 'typeorm';
 import { CandidateInfo } from './candidate-info.entity';
 
 /**
@@ -122,9 +122,7 @@ export class CandidateInfoService {
       throw new BadRequestException('Valid app ID is required');
     }
 
-    const candidates = await this.repo.find();
-
-    return candidates.filter((candidate) => candidate.appIds.includes(appId));
+    return this.repo.find({ where: { appIds: ArrayContains([appId]) } });
   }
 
   /**
