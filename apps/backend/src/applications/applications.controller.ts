@@ -154,7 +154,8 @@ export class ApplicationsController {
   async getApplicationsByEmail(
     @Param('email') email: string,
   ): Promise<Application[]> {
-    return this.applicationsService.findByEmail(decodeURIComponent(email));
+    const decodedEmail = decodeURIComponent(email);
+    return this.applicationsService.findByEmail(decodedEmail);
   }
 
   /**

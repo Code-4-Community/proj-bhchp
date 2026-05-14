@@ -38,22 +38,28 @@ export class CandidateInfoService {
     }
 
     const normalizedEmail = email.trim();
-    const existing = await this.repo.findOneBy({ email: normalizedEmail });
 
-    if (existing) {
-      const nextAppIds = [...new Set([...existing.appIds, appId])].sort(
-        (a, b) => a - b,
-      );
-      existing.appIds = nextAppIds;
-      return this.repo.save(existing);
-    }
+    return this.repo.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(CandidateInfo);
+      const existing = await repo.findOne({
+        where: { email: normalizedEmail },
+        lock: { mode: 'pessimistic_write' },
+      });
 
-    const candidate: CandidateInfo = this.repo.create({
-      email: normalizedEmail,
-      appIds: [appId],
+      if (existing) {
+        if (!existing.appIds.includes(appId)) {
+          existing.appIds = [...existing.appIds, appId].sort((a, b) => a - b);
+        }
+        return repo.save(existing);
+      }
+
+      const candidate: CandidateInfo = repo.create({
+        email: normalizedEmail,
+        appIds: [appId],
+      });
+
+      return repo.save(candidate);
     });
-
-    return this.repo.save(candidate);
   }
 
   /**

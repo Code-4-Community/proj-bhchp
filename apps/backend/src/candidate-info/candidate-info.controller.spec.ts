@@ -64,6 +64,10 @@ describe('CandidateInfoController', () => {
     controller = module.get<CandidateInfoController>(CandidateInfoController);
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
@@ -164,6 +168,53 @@ describe('CandidateInfoController', () => {
       );
     });
 
+    it('should reject standard users requesting other emails', async () => {
+      await expect(
+        controller.getCandidateInfoByEmail('someoneelse@example.com', {
+          user: { email: 'john@example.com', userType: 'STANDARD' },
+        }),
+      ).rejects.toThrow(
+        'Standard users can only access their own candidate info.',
+      );
+      expect(mockCandidateInfoService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should return only the latest appId for standard users', async () => {
+      const candidateInfo: CandidateInfo = {
+        email: 'john@example.com',
+        appIds: [1, 3, 2],
+      };
+
+      jest
+        .spyOn(mockCandidateInfoService, 'findOne')
+        .mockResolvedValue(candidateInfo);
+
+      const result = await controller.getCandidateInfoByEmail(
+        'john@example.com',
+        { user: { email: 'john@example.com', userType: 'STANDARD' } },
+      );
+
+      expect(result).toEqual({ email: 'john@example.com', appIds: [3] });
+    });
+
+    it('should return all appIds for admin users', async () => {
+      const candidateInfo: CandidateInfo = {
+        email: 'john@example.com',
+        appIds: [1, 3, 2],
+      };
+
+      jest
+        .spyOn(mockCandidateInfoService, 'findOne')
+        .mockResolvedValue(candidateInfo);
+
+      const result = await controller.getCandidateInfoByEmail(
+        'john@example.com',
+        { user: { email: 'admin@example.com', userType: 'ADMIN' } },
+      );
+
+      expect(result).toEqual(candidateInfo);
+    });
+
     it('should throw an error if CandidateInfo is not found', async () => {
       const errorMessage =
         'CandidateInfo with email notfound@example.com not found';
@@ -173,7 +224,7 @@ describe('CandidateInfoController', () => {
 
       await expect(
         controller.getCandidateInfoByEmail('notfound@example.com', {
-          user: { email: 'john@example.com', userType: 'STANDARD' },
+          user: { email: 'notfound@example.com', userType: 'STANDARD' },
         }),
       ).rejects.toThrow(errorMessage);
     });

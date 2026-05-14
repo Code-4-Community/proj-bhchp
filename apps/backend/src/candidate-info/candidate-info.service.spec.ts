@@ -1,17 +1,25 @@
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
+import { ArrayContains, Repository } from 'typeorm';
 
 import { CandidateInfoService } from './candidate-info.service';
 import { CandidateInfo } from './candidate-info.entity';
+
+const mockEntityManager = {
+  getRepository: jest.fn(),
+};
 
 const mockcandidatesRepository: Partial<Repository<CandidateInfo>> = {
   create: jest.fn(),
   save: jest.fn(),
   findOneBy: jest.fn(),
+  findOne: jest.fn(),
   find: jest.fn(),
   remove: jest.fn(),
+  manager: {
+    transaction: jest.fn(),
+  } as never,
 };
 
 const candidate1: CandidateInfo = {
@@ -28,6 +36,11 @@ describe('CandidateInfoService', () => {
   let service: CandidateInfoService;
 
   beforeEach(async () => {
+    mockEntityManager.getRepository.mockReturnValue(mockcandidatesRepository);
+    (
+      mockcandidatesRepository.manager?.transaction as jest.Mock
+    ).mockImplementation(async (callback) => callback(mockEntityManager));
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CandidateInfoService,
@@ -51,7 +64,7 @@ describe('CandidateInfoService', () => {
 
   describe('create', () => {
     it('should create a new candidate', async () => {
-      jest.spyOn(mockcandidatesRepository, 'findOneBy').mockResolvedValue(null);
+      jest.spyOn(mockcandidatesRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(mockcandidatesRepository, 'create')
         .mockReturnValue(candidate1);
@@ -62,6 +75,10 @@ describe('CandidateInfoService', () => {
       const result = await service.create(1, 'john@example.com');
 
       expect(result).toEqual(candidate1);
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        lock: { mode: 'pessimistic_write' },
+      });
       expect(mockcandidatesRepository.create).toHaveBeenCalledWith({
         email: 'john@example.com',
         appIds: [1],
@@ -70,7 +87,7 @@ describe('CandidateInfoService', () => {
     });
 
     it('should trim email before creating a candidate', async () => {
-      jest.spyOn(mockcandidatesRepository, 'findOneBy').mockResolvedValue(null);
+      jest.spyOn(mockcandidatesRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(mockcandidatesRepository, 'create')
         .mockReturnValue(candidate1);
@@ -80,8 +97,9 @@ describe('CandidateInfoService', () => {
 
       await service.create(1, '  john@example.com  ');
 
-      expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
-        email: 'john@example.com',
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        lock: { mode: 'pessimistic_write' },
       });
       expect(mockcandidatesRepository.create).toHaveBeenCalledWith({
         email: 'john@example.com',
@@ -100,13 +118,17 @@ describe('CandidateInfoService', () => {
       };
 
       jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
+        .spyOn(mockcandidatesRepository, 'findOne')
         .mockResolvedValue(existing);
       jest.spyOn(mockcandidatesRepository, 'save').mockResolvedValue(updated);
 
       await expect(service.create(5, 'john@example.com')).resolves.toEqual(
         updated,
       );
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        lock: { mode: 'pessimistic_write' },
+      });
       expect(mockcandidatesRepository.create).not.toHaveBeenCalled();
       expect(mockcandidatesRepository.save).toHaveBeenCalledWith(updated);
     });
@@ -118,12 +140,16 @@ describe('CandidateInfoService', () => {
       };
 
       jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
+        .spyOn(mockcandidatesRepository, 'findOne')
         .mockResolvedValue(existing);
       jest.spyOn(mockcandidatesRepository, 'save').mockResolvedValue(existing);
 
       await service.create(3, 'john@example.com');
 
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        lock: { mode: 'pessimistic_write' },
+      });
       expect(mockcandidatesRepository.save).toHaveBeenCalledWith(existing);
       expect(existing.appIds).toEqual([1, 3]);
     });
@@ -226,7 +252,6 @@ describe('CandidateInfoService', () => {
       const candidates = [
         candidate1,
         { email: 'another@example.com', appIds: [1, 7] },
-        candidate2,
       ];
       jest
         .spyOn(mockcandidatesRepository, 'find')
@@ -234,21 +259,22 @@ describe('CandidateInfoService', () => {
 
       const result = await service.findByAppId(1);
 
-      expect(result).toEqual([
-        candidate1,
-        { email: 'another@example.com', appIds: [1, 7] },
-      ]);
+      expect(result).toEqual(candidates);
+      expect(mockcandidatesRepository.find).toHaveBeenCalledWith({
+        where: { appIds: ArrayContains([1]) },
+      });
       expect(mockcandidatesRepository.find).toHaveBeenCalledTimes(1);
     });
 
     it('should return empty array when no candidates found for app id', async () => {
-      jest
-        .spyOn(mockcandidatesRepository, 'find')
-        .mockResolvedValue([candidate2]);
+      jest.spyOn(mockcandidatesRepository, 'find').mockResolvedValue([]);
 
       const result = await service.findByAppId(999);
 
       expect(result).toEqual([]);
+      expect(mockcandidatesRepository.find).toHaveBeenCalledWith({
+        where: { appIds: ArrayContains([999]) },
+      });
     });
 
     it('should throw error if appId is invalid', async () => {
