@@ -22,10 +22,20 @@ export class AllowMultipleCandidateInfoPerEmail1777100000000
       `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" DROP DEFAULT`,
     );
     await queryRunner.query(
-      `UPDATE "candidate_info" SET "appIds" = ARRAY[0] WHERE cardinality("appIds") = 0`,
+      `DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM "candidate_info"
+          WHERE cardinality("appIds") = 0
+        ) THEN
+          RAISE EXCEPTION 'Cannot roll back AllowMultipleCandidateInfoPerEmail: candidate_info.appIds contains empty arrays that cannot be converted to a valid appId';
+        END IF;
+      END
+      $$;`,
     );
     await queryRunner.query(
-      `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" TYPE integer USING COALESCE("appIds"[1], 0)`,
+      `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" TYPE integer USING "appIds"[1]`,
     );
     await queryRunner.query(
       `ALTER TABLE "candidate_info" RENAME COLUMN "appIds" TO "appId"`,
