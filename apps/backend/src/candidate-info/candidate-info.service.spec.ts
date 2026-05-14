@@ -8,6 +8,7 @@ import { CandidateInfo } from './candidate-info.entity';
 
 const mockEntityManager = {
   getRepository: jest.fn(),
+  query: jest.fn(),
 };
 
 const mockcandidatesRepository: Partial<Repository<CandidateInfo>> = {
@@ -37,6 +38,7 @@ describe('CandidateInfoService', () => {
 
   beforeEach(async () => {
     mockEntityManager.getRepository.mockReturnValue(mockcandidatesRepository);
+    mockEntityManager.query.mockResolvedValue([]);
     (
       mockcandidatesRepository.manager?.transaction as jest.Mock
     ).mockImplementation(async (callback) => callback(mockEntityManager));

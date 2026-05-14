@@ -40,6 +40,11 @@ export class CandidateInfoService {
     const normalizedEmail = email.trim();
 
     return this.repo.manager.transaction(async (manager) => {
+      await manager.query(
+        'SELECT pg_advisory_xact_lock(hashtext($1)::bigint)',
+        [normalizedEmail],
+      );
+
       const repo = manager.getRepository(CandidateInfo);
       const existing = await repo.findOne({
         where: { email: normalizedEmail },

@@ -22,7 +22,10 @@ export class AllowMultipleCandidateInfoPerEmail1777100000000
       `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" DROP DEFAULT`,
     );
     await queryRunner.query(
-      `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" TYPE integer USING "appIds"[1]`,
+      `UPDATE "candidate_info" SET "appIds" = ARRAY[0] WHERE cardinality("appIds") = 0`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "candidate_info" ALTER COLUMN "appIds" TYPE integer USING COALESCE("appIds"[1], 0)`,
     );
     await queryRunner.query(
       `ALTER TABLE "candidate_info" RENAME COLUMN "appIds" TO "appId"`,
