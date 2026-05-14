@@ -77,23 +77,24 @@ export class CandidateInfoController {
     @Param('email') email: string,
     @Req() req: { user?: { email?: string; userType?: string } },
   ): Promise<CandidateInfo> {
+    const decodedEmail = decodeURIComponent(email);
     const requesterEmail = req.user?.email;
     const requesterType = req.user?.userType;
     const isStandardUser = requesterType === UserType.STANDARD;
 
     this.logger.log(
-      `GET /CandidateInfo/email requestedEmail=${email} requesterEmail=${
+      `GET /CandidateInfo/email requestedEmail=${decodedEmail} requesterEmail=${
         requesterEmail ?? 'unknown'
       } requesterType=${requesterType ?? 'unknown'}`,
     );
 
-    if (isStandardUser && requesterEmail !== email) {
+    if (isStandardUser && requesterEmail !== decodedEmail) {
       throw new ForbiddenException(
         'Standard users can only access their own candidate info.',
       );
     }
 
-    const candidateInfo = await this.CandidateInfoService.findOne(email);
+    const candidateInfo = await this.CandidateInfoService.findOne(decodedEmail);
 
     if (!isStandardUser) {
       return candidateInfo;
