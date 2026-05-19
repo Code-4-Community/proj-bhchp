@@ -1,46 +1,55 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ApplicationsService } from '../applications/applications.service';
-import { CandidateInfoService } from '../candidate-info/candidate-info.service';
-import { LearnerInfoService } from '../learner-info/learner-info.service';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { pandadocMapper } from '../pandadoc-helpers/pandadoc-mapper';
-import { AppStatus, ApplicantType } from '../applications/types';
-import { CreateApplicationDto } from '../applications/dto/create-application.request.dto';
-import { CreateLearnerInfoDto } from '../learner-info/dto/create-learner-info.request.dto';
+import { AppStatus, ApplicantType, PHONE_REGEX } from '../applications/types';
+import { Application } from '../applications/application.entity';
+import { CandidateInfo } from '../candidate-info/candidate-info.entity';
+import { LearnerInfo } from '../learner-info/learner-info.entity';
 
 /**
  * Orchestrates creation of Application, CandidateInfo, and LearnerInfo
  * records from a PandaDoc webhook payload.
+ *
+ * All three inserts run inside a single TypeORM transaction so a failure
+ * in any step rolls back the others — preventing orphaned Application
+ * rows without their candidate/learner data.
  */
 @Injectable()
 export class PandadocWebhookService {
   private readonly logger = new Logger(PandadocWebhookService.name);
 
-  constructor(
-    private readonly applicationsService: ApplicationsService,
-    private readonly candidateInfoService: CandidateInfoService,
-    private readonly learnerInfoService: LearnerInfoService,
-  ) {}
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   /**
-   * Formats a Date object into a YYYY-MM-DD string.
-   * Returns the value as-is if it is already a string.
+   * Formats a Date object or ISO-8601 string into a YYYY-MM-DD string.
+   * Returns `undefined` when the input is null/undefined.
    */
   private formatDate(value: unknown): string | undefined {
     if (value == null) return undefined;
-    if (typeof value === 'string') return value;
-    if (value instanceof Date) {
-      const yyyy = value.getFullYear();
-      const mm = String(value.getMonth() + 1).padStart(2, '0');
-      const dd = String(value.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
+    if (value instanceof Date) return this.toYmd(value);
+    if (typeof value === 'string') {
+      // Already YYYY-MM-DD? leave as-is.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+      // Parse ISO or other date strings and reformat.
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? value : this.toYmd(parsed);
     }
     return String(value);
   }
 
+  private toYmd(date: Date): string {
+    const yyyy = date.getUTCFullYear();
+    const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(date.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
   /**
-   * Process a PandaDoc webhook payload: map fields, create all three records.
+   * Process a PandaDoc webhook payload: map fields, create all three
+   * records inside a single transaction.
    *
-   * @param payload - Raw PandaDoc webhook body (flat field id -> value record)
+   * @param payload Raw PandaDoc webhook body (flat field id -> value record)
    * @returns Object containing the created appId
    */
   async processWebhook(
@@ -48,70 +57,74 @@ export class PandadocWebhookService {
   ): Promise<{ appId: number }> {
     this.logger.log('[PandaDoc] Received webhook payload');
 
-    // Run the raw payload through the field mapper
     const buckets = pandadocMapper(payload);
     this.logger.log(
       `[PandaDoc] Mapped payload into buckets: application(${
         Object.keys(buckets.application).length
-      } fields), ` +
-        `candidateInfo(${Object.keys(buckets.candidateInfo).length} fields), ` +
-        `learnerInfo(${Object.keys(buckets.learnerInfo).length} fields)`,
+      } fields), candidateInfo(${
+        Object.keys(buckets.candidateInfo).length
+      } fields), learnerInfo(${
+        Object.keys(buckets.learnerInfo).length
+      } fields)`,
     );
 
-    // Set defaults for fields the mapper does not produce
-    buckets.application['appStatus'] = AppStatus.APP_SUBMITTED;
-
-    // Derive applicantType: if schoolDepartment is present, it's a learner
-    buckets.application['applicantType'] = buckets.learnerInfo[
-      'schoolDepartment'
-    ]
-      ? ApplicantType.LEARNER
-      : ApplicantType.VOLUNTEER;
-
-    // Convert Date objects to YYYY-MM-DD strings for DTO validation
-    if (buckets.application['proposedStartDate']) {
-      buckets.application['proposedStartDate'] = this.formatDate(
+    const applicationData = {
+      ...buckets.application,
+      appStatus: AppStatus.APP_SUBMITTED,
+      applicantType: buckets.learnerInfo['schoolDepartment']
+        ? ApplicantType.LEARNER
+        : ApplicantType.VOLUNTEER,
+      proposedStartDate: this.formatDate(
         buckets.application['proposedStartDate'],
-      );
-    }
-    if (buckets.application['endDate']) {
-      buckets.application['endDate'] = this.formatDate(
-        buckets.application['endDate'],
-      );
-    }
-    if (buckets.learnerInfo['dateOfBirth']) {
-      buckets.learnerInfo['dateOfBirth'] = this.formatDate(
-        buckets.learnerInfo['dateOfBirth'],
-      );
-    }
+      ),
+      endDate: this.formatDate(buckets.application['endDate']),
+    };
+    this.validatePhone(applicationData['phone']);
 
-    this.logger.log(
-      `[PandaDoc] Creating application for email=${buckets.application['email']}`,
-    );
-
-    // 1. Create Application (generates appId)
-    const application = await this.applicationsService.create(
-      buckets.application as unknown as CreateApplicationDto,
-    );
-    const { appId } = application;
-    this.logger.log(`[PandaDoc] Application created with appId=${appId}`);
-
-    // 2. Create CandidateInfo
-    const email = String(buckets.candidateInfo['email'] ?? '');
-    await this.candidateInfoService.create(appId, email);
-    this.logger.log(`[PandaDoc] CandidateInfo created for appId=${appId}`);
-
-    // 3. Create LearnerInfo
-    const learnerDto = {
+    const learnerData = {
       ...buckets.learnerInfo,
-      appId,
-    } as unknown as CreateLearnerInfoDto;
-    await this.learnerInfoService.create(learnerDto);
-    this.logger.log(`[PandaDoc] LearnerInfo created for appId=${appId}`);
+      dateOfBirth: this.formatDate(buckets.learnerInfo['dateOfBirth']),
+    };
+
+    const email = String(buckets.candidateInfo['email'] ?? '');
+    if (!email.trim()) {
+      throw new BadRequestException('Webhook payload missing applicant email');
+    }
+
+    this.logger.log(`[PandaDoc] Creating application for email=${email}`);
+
+    const appId = await this.dataSource.transaction(
+      async (em: EntityManager) => {
+        const application = em.create(Application, applicationData);
+        const saved = await em.save(application);
+
+        const candidate = em.create(CandidateInfo, {
+          appId: saved.appId,
+          email: email.trim(),
+        });
+        await em.save(candidate);
+
+        const learner = em.create(LearnerInfo, {
+          ...learnerData,
+          appId: saved.appId,
+        });
+        await em.save(learner);
+
+        return saved.appId;
+      },
+    );
 
     this.logger.log(
       `[PandaDoc] Webhook processing complete for appId=${appId}`,
     );
     return { appId };
+  }
+
+  private validatePhone(phone: unknown): void {
+    if (typeof phone !== 'string' || !PHONE_REGEX.test(phone)) {
+      throw new BadRequestException(
+        'Phone number must be in ###-###-#### format',
+      );
+    }
   }
 }
