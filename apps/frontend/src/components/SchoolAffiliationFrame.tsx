@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Button, Circle, Flex, Heading, Input, Text } from '@chakra-ui/react';
+import {
+  Button,
+  Circle,
+  Flex,
+  Heading,
+  Image,
+  Input,
+  Text,
+} from '@chakra-ui/react';
 import { normalizeDateToDay } from '@utils/applicationFilters';
+import { schoolEmblemPublicUrl } from '@utils/schoolEmblemUrl';
 
 export interface SchoolAffiliationProps {
   schoolName: string;
@@ -47,6 +56,12 @@ const SchoolAffiliationFrame = ({
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const emblemUrl = schoolEmblemPublicUrl(schoolName);
+  const [emblemFailed, setEmblemFailed] = useState(false);
+
+  useEffect(() => {
+    setEmblemFailed(false);
+  }, [emblemUrl]);
 
   useEffect(() => {
     if (isEditing) return;
@@ -136,8 +151,18 @@ const SchoolAffiliationFrame = ({
       >
         {isLearner ? (
           <>
-            <Circle size="120px" bg="gray.300" flexShrink={0}>
-              {/* Placeholder for University Logo */}
+            <Circle size="120px" bg="gray.300" flexShrink={0} overflow="hidden">
+              {emblemUrl && !emblemFailed ? (
+                <Image
+                  src={emblemUrl}
+                  alt=""
+                  w="100%"
+                  h="100%"
+                  objectFit="contain"
+                  aria-hidden
+                  onError={() => setEmblemFailed(true)}
+                />
+              ) : null}
             </Circle>
 
             {/* University Column */}
