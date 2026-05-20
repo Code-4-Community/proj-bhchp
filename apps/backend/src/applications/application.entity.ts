@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 import {
   AppStatus,
@@ -18,6 +24,18 @@ export class Application {
    */
   @PrimaryGeneratedColumn()
   appId!: number;
+
+  /**
+   * When the application was created.
+   */
+  @CreateDateColumn({ type: 'timestamp' })
+  createdAt!: Date;
+
+  /**
+   * When the application was last updated.
+   */
+  @UpdateDateColumn({ type: 'timestamp' })
+  updatedAt!: Date;
 
   /**
    * Email of the applicant.

@@ -47,6 +47,8 @@ const mockApplications: Application[] = [
     fridayAvailability: '9-5',
     saturdayAvailability: 'none',
     heardAboutFrom: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   },
   {
     appId: 2,
@@ -73,6 +75,8 @@ const mockApplications: Application[] = [
     fridayAvailability: 'none',
     saturdayAvailability: 'none',
     heardAboutFrom: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
   },
 ];
 

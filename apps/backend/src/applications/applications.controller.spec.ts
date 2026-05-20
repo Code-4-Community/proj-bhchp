@@ -82,6 +82,8 @@ const disciplineKeys = {
 
 const mockApplication: Application = {
   appId: 1,
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   appStatus: AppStatus.APP_SUBMITTED,
   mondayAvailability: '12pm and on every other week',
   tuesdayAvailability: 'approximately 10am-3pm',

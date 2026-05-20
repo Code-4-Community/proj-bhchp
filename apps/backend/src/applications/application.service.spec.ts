@@ -41,6 +41,8 @@ const disciplineKeys = {
 
 const dummyApplication: Application = {
   appId: 1,
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   appStatus: AppStatus.APP_SUBMITTED,
   mondayAvailability: '12pm and on every other week',
   tuesdayAvailability: 'approximately 10am-3pm',
@@ -351,6 +353,8 @@ describe('ApplicationsService', () => {
     it('should handle returning an application with no changes when optional fields are ommitted', async () => {
       const mockApplication: Application = {
         appId: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         appStatus: AppStatus.APP_SUBMITTED,
         mondayAvailability: '12pm and on every other week',
         tuesdayAvailability: 'approximately 10am-3pm',
@@ -400,6 +404,8 @@ describe('ApplicationsService', () => {
     it('should create and save a new application', async () => {
       const savedApplication: Application = {
         appId: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         ...dummyCreateApplicationDto,
         proposedStartDate: new Date('2024-01-01'),
         endDate: new Date('2024-06-30'),
@@ -433,6 +439,8 @@ describe('ApplicationsService', () => {
 
       const savedApplication: Application = {
         appId: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         ...createApplicationDto,
         proposedStartDate: new Date('2024-01-01'),
         endDate: new Date('2024-06-30'),
@@ -453,6 +461,8 @@ describe('ApplicationsService', () => {
 
       const savedApplication: Application = {
         appId: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         ...createApplicationDto,
         proposedStartDate: new Date('2024-01-01'),
         endDate: new Date('2024-06-30'),
@@ -473,6 +483,8 @@ describe('ApplicationsService', () => {
 
       const savedApplication: Application = {
         appId: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         ...createApplicationDto,
         proposedStartDate: new Date('2024-01-01'),
         endDate: new Date('2024-06-30'),
@@ -493,6 +505,8 @@ describe('ApplicationsService', () => {
 
       const savedApplication: Application = {
         appId: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         ...createApplicationDto,
         proposedStartDate: new Date('2024-01-01'),
         endDate: new Date('2024-06-30'),
@@ -513,6 +527,8 @@ describe('ApplicationsService', () => {
 
       const savedApplication: Application = {
         appId: 1,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         ...createApplicationDto,
         proposedStartDate: new Date('2024-01-01'),
         endDate: new Date('2024-06-30'),
@@ -528,6 +544,8 @@ describe('ApplicationsService', () => {
     it('should send an email when creating an application', async () => {
       const savedApplication: Application = {
         appId: 2,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         ...dummyCreateApplicationDto,
         email: 'jane.doe@example.com',
         proposedStartDate: new Date('2024-01-01'),
@@ -553,6 +571,8 @@ describe('ApplicationsService', () => {
     it('should pass along email service errors without information loss', async () => {
       const savedApplication: Application = {
         appId: 3,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         ...dummyCreateApplicationDto,
         email: 'fail@example.com',
         proposedStartDate: new Date('2024-01-01'),
@@ -982,6 +1002,8 @@ describe('ApplicationsService', () => {
       const mockApplications: Application[] = [
         {
           appId: 1,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
           appStatus: AppStatus.APP_SUBMITTED,
           mondayAvailability: '12pm and on every other week',
           tuesdayAvailability: 'approximately 10am-3pm',
@@ -1010,6 +1032,8 @@ describe('ApplicationsService', () => {
         },
         {
           appId: 2,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
           appStatus: AppStatus.IN_REVIEW,
           mondayAvailability: '12pm and on every other week',
           tuesdayAvailability: 'approximately 10am-3pm',
