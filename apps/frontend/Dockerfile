@@ -4,7 +4,7 @@ FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
-RUN npm install -g yarn@1.22.22
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 
 COPY package.json yarn.lock nx.json tsconfig.base.json jest.preset.js ./
 

@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Static frontend hosting with S3 + CloudFront (cheapest practical)
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Existing S3 bucket name with static assets
+  PriceClass:
+    Type: String
+    AllowedValues: ["PriceClass_100", "PriceClass_200", "PriceClass_All"]
+    Default: "PriceClass_100"
+  EnableCompression:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+  CreateBucketPolicy:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+
+Conditions:
+  EnableCompressionCond: !Equals [!Ref EnableCompression, "true"]
+  CreateBucketPolicyCond: !Equals [!Ref CreateBucketPolicy, "true"]
+
+Resources:
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: CreateBucketPolicyCond
+    Properties:
+      Bucket: !Ref BucketName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action:
+              - s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${BucketName}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Static frontend distribution
+        DefaultRootObject: index.html
+        PriceClass: !Ref PriceClass
+        Origins:
+          - Id: S3Origin
+            DomainName: !Sub "${BucketName}.s3.${AWS::Region}.amazonaws.com"
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: ["GET", "HEAD", "OPTIONS"]
+          CachedMethods: ["GET", "HEAD", "OPTIONS"]
+          Compress: !If [EnableCompressionCond, true, false]
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponsePagePath: /index.html
+            ResponseCode: 200
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 404
+            ResponsePagePath: /index.html
+            ResponseCode: 200
+            ErrorCachingMinTTL: 0
+
+Outputs:
+  BucketName:
+    Value: !Ref BucketName
+  CloudFrontDomainName:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  CloudFrontDistributionId:
+    Value: !Ref CloudFrontDistribution

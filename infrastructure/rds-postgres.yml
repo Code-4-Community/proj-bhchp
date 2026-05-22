@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cheapest practical private RDS PostgreSQL (single-AZ, gp3, dev/test)
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC for the RDS instance
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnets in at least two AZs
+  AllowedCidr:
+    Type: String
+    Default: ""
+    Description: Optional CIDR allowed to reach Postgres (leave empty for none)
+  ECSSecurityGroupId:
+    Type: String
+    Default: ""
+    Description: Optional ECS service security group to allow
+
+  DBInstanceIdentifier:
+    Type: String
+    Default: bhchp-postgres
+  DBName:
+    Type: String
+    Default: bhchp
+  DBUsername:
+    Type: String
+    Default: postgres
+  DBPassword:
+    Type: String
+    NoEcho: true
+
+  DBInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+  MaxAllocatedStorage:
+    Type: Number
+    Default: 0
+    Description: 0 disables storage autoscaling
+  BackupRetentionDays:
+    Type: Number
+    Default: 1
+  PubliclyAccessible:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+  DeletionProtection:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+Conditions:
+  UseMaxStorage: !Not [!Equals [!Ref MaxAllocatedStorage, 0]]
+  AllowEcsSg: !Not [!Equals [!Ref ECSSecurityGroupId, ""]]
+  AllowCidr: !Not [!Equals [!Ref AllowedCidr, ""]]
+
+Resources:
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow Postgres access
+      VpcId: !Ref VpcId
+
+  RdsSecurityGroupIngressFromCidr:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: AllowCidr
+    Properties:
+      GroupId: !Ref RdsSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      CidrIp: !Ref AllowedCidr
+
+  RdsSecurityGroupIngressFromEcs:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: AllowEcsSg
+    Properties:
+      GroupId: !Ref RdsSecurityGroup
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref ECSSecurityGroupId
+
+  RdsSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: RDS subnets
+      SubnetIds: !Ref SubnetIds
+
+  RdsInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      DBName: !Ref DBName
+      Engine: postgres
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      MaxAllocatedStorage: !If [UseMaxStorage, !Ref MaxAllocatedStorage, !Ref "AWS::NoValue"]
+      StorageType: gp3
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      BackupRetentionPeriod: !Ref BackupRetentionDays
+      MultiAZ: false
+      PubliclyAccessible: !Ref PubliclyAccessible
+      DeletionProtection: !Ref DeletionProtection
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroup
+      DBSubnetGroupName: !Ref RdsSubnetGroup
+
+Outputs:
+  DbEndpoint:
+    Value: !GetAtt RdsInstance.Endpoint.Address
+  DbPort:
+    Value: !GetAtt RdsInstance.Endpoint.Port
+  DbSecurityGroupId:
+    Value: !Ref RdsSecurityGroup
