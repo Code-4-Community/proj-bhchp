@@ -228,7 +228,7 @@ const USER_SEED: User[] = [
   })),
 ];
 
-const APPLICATION_SEED: Application[] = [
+const APPLICATION_SEED: Partial<Application>[] = [
   {
     appId: 1,
     appStatus: AppStatus.APP_SUBMITTED,
