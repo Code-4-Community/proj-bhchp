@@ -108,7 +108,8 @@ describe('AWSS3Service', () => {
       // cleanup uploaded object(s) from S3 using helper
       try {
         await deleteObjects({
-          bucketName: process.env.AWS_BUCKET_NAME,
+          bucketName:
+            process.env.BHCHP_AWS_BUCKET_NAME || process.env.AWS_BUCKET_NAME,
           keys: [uploadedFileName],
         });
       } catch (cleanupErr) {
@@ -121,7 +122,8 @@ describe('AWSS3Service', () => {
 
       try {
         await getObjectFromS3({
-          bucketName: process.env.AWS_BUCKET_NAME,
+          bucketName:
+            process.env.BHCHP_AWS_BUCKET_NAME || process.env.AWS_BUCKET_NAME,
           key: uploadedFileName,
         });
       } catch (err) {
@@ -152,10 +154,13 @@ describe('AWSS3Service', () => {
  */
 const deleteObjects = async ({ bucketName, keys }) => {
   const client = new S3Client({
-    region: process.env.AWS_REGION,
+    region: process.env.BHCHP_AWS_REGION || process.env.AWS_REGION,
     credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      accessKeyId:
+        process.env.BHCHP_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey:
+        process.env.BHCHP_AWS_SECRET_ACCESS_KEY ||
+        process.env.AWS_SECRET_ACCESS_KEY,
     },
   });
 

@@ -20,7 +20,7 @@ import {
 } from './types';
 
 const defaultBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+  import.meta.env.VITE_API_BASE_URL ?? 'http://3.14.133.216';
 
 export class ApiClient {
   private axiosInstance: AxiosInstance;
