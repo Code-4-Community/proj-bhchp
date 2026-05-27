@@ -1,0 +1,13 @@
+1d9c7d9a783ff19efd57dad1cb9893cf
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UserType = void 0;
+/**
+ * Type of the user (admin or standard).
+ */
+var UserType;
+(function (UserType) {
+    UserType["ADMIN"] = "ADMIN";
+    UserType["STANDARD"] = "STANDARD";
+})(UserType || (exports.UserType = UserType = {}));
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiQzpcXFVzZXJzXFxTY2hvb2xcXEdpdGh1YlxccHJvai1iaGNocFxcYXBwc1xcYmFja2VuZFxcc3JjXFx1c2Vyc1xcdHlwZXMudHMiLCJtYXBwaW5ncyI6Ijs7O0FBQUE7O0dBRUc7QUFDSCxJQUFZLFFBR1g7QUFIRCxXQUFZLFFBQVE7SUFDbEIsMkJBQWUsQ0FBQTtJQUNmLGlDQUFxQixDQUFBO0FBQ3ZCLENBQUMsRUFIVyxRQUFRLHdCQUFSLFFBQVEsUUFHbkIiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiQzpcXFVzZXJzXFxTY2hvb2xcXEdpdGh1YlxccHJvai1iaGNocFxcYXBwc1xcYmFja2VuZFxcc3JjXFx1c2Vyc1xcdHlwZXMudHMiXSwic291cmNlc0NvbnRlbnQiOlsiLyoqXG4gKiBUeXBlIG9mIHRoZSB1c2VyIChhZG1pbiBvciBzdGFuZGFyZCkuXG4gKi9cbmV4cG9ydCBlbnVtIFVzZXJUeXBlIHtcbiAgQURNSU4gPSAnQURNSU4nLFxuICBTVEFOREFSRCA9ICdTVEFOREFSRCcsXG59XG4iXSwidmVyc2lvbiI6M30=

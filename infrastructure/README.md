@@ -50,7 +50,7 @@ Template: `ecs-fargate.yml`
 - AWS CLI configured with access to your AWS account.
 - An ECR repository or public image URI for the backend container.
 - VPC and subnets (public subnets if `AssignPublicIp=ENABLED`).
-- An ACM certificate ARN (existing cert or from the optional DNS/ACM stack).
+- A verified SES identity ARN that is authorized to send the configured email address.
 
 ### Deploy (example)
 
@@ -67,7 +67,14 @@ aws cloudformation deploy \
     DbName=bhchp \
     DbUsername=postgres \
     DbPassword=YOUR_STRONG_PASSWORD \
-    AcmCertificateArn=arn:aws:acm:us-east-2:123456789012:certificate/your-cert-id \
+    BhchpAwsBucketName=bhchp-bucket \
+    BhchpAwsSesSenderEmail=sender@example.com \
+    BhchpAwsSesIdentityArn=arn:aws:ses:us-east-2:123456789012:identity/sender@example.com \
+    CognitoRegion=us-east-2 \
+    CognitoUserPoolId=us-east-2_example \
+    CognitoAppClientId=backend-client-id \
+    CognitoClientSecret=backend-client-secret \
+    ViteCognitoAppClientId=frontend-client-id \
     AllowedCidr=0.0.0.0/0 \
     AssignPublicIp=ENABLED
 ```
@@ -83,6 +90,7 @@ aws cloudformation deploy \
 - This template uses the smallest Fargate size (`Cpu=256`, `Memory=512`).
 - `AssignPublicIp=ENABLED` avoids NAT costs but exposes the service to the internet; lock down `AllowedCidr`.
 - For private subnets, set `AssignPublicIp=DISABLED` and ensure NAT access for pulling images.
+- The backend container now relies on the AWS SDK default credential chain. On ECS, attach least-privilege permissions to the task role instead of passing static access keys as environment variables.
 
 ## DNS + ACM (separate stack)
 

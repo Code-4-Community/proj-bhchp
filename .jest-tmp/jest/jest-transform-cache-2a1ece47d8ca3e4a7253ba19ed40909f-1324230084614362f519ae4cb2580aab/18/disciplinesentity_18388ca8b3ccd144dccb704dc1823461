@@ -1,0 +1,45 @@
+931ef26a0ae39d17413b815eee4da349
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Discipline = void 0;
+const tslib_1 = require("tslib");
+const typeorm_1 = require("typeorm");
+/**
+ * Represents the desired columns for the database table
+ * in the repository for the system's medical disciplines
+ * (BHCHP medical discipline) and their admin emails.
+ *
+ * e.g.: Volunteers, Nursing, Public Health, MD, PA, NP,.
+ * Research, Social work, Psychiatry, Pharmacy, IT.
+ */
+let Discipline = class Discipline {
+};
+exports.Discipline = Discipline;
+tslib_1.__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)(),
+    tslib_1.__metadata("design:type", Number)
+], Discipline.prototype, "id", void 0);
+tslib_1.__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', unique: true, nullable: false }),
+    tslib_1.__metadata("design:type", String)
+], Discipline.prototype, "key", void 0);
+tslib_1.__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', unique: true, nullable: false }),
+    tslib_1.__metadata("design:type", String)
+], Discipline.prototype, "label", void 0);
+tslib_1.__decorate([
+    (0, typeorm_1.Column)({ type: 'boolean', default: true }),
+    tslib_1.__metadata("design:type", Boolean)
+], Discipline.prototype, "isActive", void 0);
+tslib_1.__decorate([
+    (0, typeorm_1.CreateDateColumn)({ type: 'timestamp' }),
+    tslib_1.__metadata("design:type", Date)
+], Discipline.prototype, "createdAt", void 0);
+tslib_1.__decorate([
+    (0, typeorm_1.UpdateDateColumn)({ type: 'timestamp' }),
+    tslib_1.__metadata("design:type", Date)
+], Discipline.prototype, "updatedAt", void 0);
+exports.Discipline = Discipline = tslib_1.__decorate([
+    (0, typeorm_1.Entity)('discipline')
+], Discipline);
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiQzpcXFVzZXJzXFxTY2hvb2xcXEdpdGh1YlxccHJvai1iaGNocFxcYXBwc1xcYmFja2VuZFxcc3JjXFxkaXNjaXBsaW5lc1xcZGlzY2lwbGluZXMuZW50aXR5LnRzIiwibWFwcGluZ3MiOiI7Ozs7QUFBQSxxQ0FNaUI7QUFFakI7Ozs7Ozs7R0FPRztBQUVJLElBQU0sVUFBVSxHQUFoQixNQUFNLFVBQVU7Q0FrQnRCLENBQUE7QUFsQlksZ0NBQVU7QUFFckI7SUFEQyxJQUFBLGdDQUFzQixHQUFFOztzQ0FDYjtBQUdaO0lBREMsSUFBQSxnQkFBTSxFQUFDLEVBQUUsSUFBSSxFQUFFLFNBQVMsRUFBRSxNQUFNLEVBQUUsSUFBSSxFQUFFLFFBQVEsRUFBRSxLQUFLLEVBQUUsQ0FBQzs7dUNBQzlDO0FBR2I7SUFEQyxJQUFBLGdCQUFNLEVBQUMsRUFBRSxJQUFJLEVBQUUsU0FBUyxFQUFFLE1BQU0sRUFBRSxJQUFJLEVBQUUsUUFBUSxFQUFFLEtBQUssRUFBRSxDQUFDOzt5Q0FDNUM7QUFHZjtJQURDLElBQUEsZ0JBQU0sRUFBQyxFQUFFLElBQUksRUFBRSxTQUFTLEVBQUUsT0FBTyxFQUFFLElBQUksRUFBRSxDQUFDOzs0Q0FDeEI7QUFHbkI7SUFEQyxJQUFBLDBCQUFnQixFQUFDLEVBQUUsSUFBSSxFQUFFLFdBQVcsRUFBRSxDQUFDO3NDQUM1QixJQUFJOzZDQUFDO0FBR2pCO0lBREMsSUFBQSwwQkFBZ0IsRUFBQyxFQUFFLElBQUksRUFBRSxXQUFXLEVBQUUsQ0FBQztzQ0FDNUIsSUFBSTs2Q0FBQztxQkFqQk4sVUFBVTtJQUR0QixJQUFBLGdCQUFNLEVBQUMsWUFBWSxDQUFDO0dBQ1IsVUFBVSxDQWtCdEIiLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiQzpcXFVzZXJzXFxTY2hvb2xcXEdpdGh1YlxccHJvai1iaGNocFxcYXBwc1xcYmFja2VuZFxcc3JjXFxkaXNjaXBsaW5lc1xcZGlzY2lwbGluZXMuZW50aXR5LnRzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7XG4gIENvbHVtbixcbiAgQ3JlYXRlRGF0ZUNvbHVtbixcbiAgRW50aXR5LFxuICBQcmltYXJ5R2VuZXJhdGVkQ29sdW1uLFxuICBVcGRhdGVEYXRlQ29sdW1uLFxufSBmcm9tICd0eXBlb3JtJztcblxuLyoqXG4gKiBSZXByZXNlbnRzIHRoZSBkZXNpcmVkIGNvbHVtbnMgZm9yIHRoZSBkYXRhYmFzZSB0YWJsZVxuICogaW4gdGhlIHJlcG9zaXRvcnkgZm9yIHRoZSBzeXN0ZW0ncyBtZWRpY2FsIGRpc2NpcGxpbmVzXG4gKiAoQkhDSFAgbWVkaWNhbCBkaXNjaXBsaW5lKSBhbmQgdGhlaXIgYWRtaW4gZW1haWxzLlxuICpcbiAqIGUuZy46IFZvbHVudGVlcnMsIE51cnNpbmcsIFB1YmxpYyBIZWFsdGgsIE1ELCBQQSwgTlAsLlxuICogUmVzZWFyY2gsIFNvY2lhbCB3b3JrLCBQc3ljaGlhdHJ5LCBQaGFybWFjeSwgSVQuXG4gKi9cbkBFbnRpdHkoJ2Rpc2NpcGxpbmUnKVxuZXhwb3J0IGNsYXNzIERpc2NpcGxpbmUge1xuICBAUHJpbWFyeUdlbmVyYXRlZENvbHVtbigpXG4gIGlkITogbnVtYmVyO1xuXG4gIEBDb2x1bW4oeyB0eXBlOiAndmFyY2hhcicsIHVuaXF1ZTogdHJ1ZSwgbnVsbGFibGU6IGZhbHNlIH0pXG4gIGtleSE6IHN0cmluZztcblxuICBAQ29sdW1uKHsgdHlwZTogJ3ZhcmNoYXInLCB1bmlxdWU6IHRydWUsIG51bGxhYmxlOiBmYWxzZSB9KVxuICBsYWJlbCE6IHN0cmluZztcblxuICBAQ29sdW1uKHsgdHlwZTogJ2Jvb2xlYW4nLCBkZWZhdWx0OiB0cnVlIH0pXG4gIGlzQWN0aXZlITogYm9vbGVhbjtcblxuICBAQ3JlYXRlRGF0ZUNvbHVtbih7IHR5cGU6ICd0aW1lc3RhbXAnIH0pXG4gIGNyZWF0ZWRBdD86IERhdGU7XG5cbiAgQFVwZGF0ZURhdGVDb2x1bW4oeyB0eXBlOiAndGltZXN0YW1wJyB9KVxuICB1cGRhdGVkQXQ/OiBEYXRlO1xufVxuIl0sInZlcnNpb24iOjN9

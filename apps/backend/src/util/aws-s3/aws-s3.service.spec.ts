@@ -22,8 +22,6 @@ jest.mock('../aws-exports', () => ({
   __esModule: true,
   default: {
     AWSConfig: {
-      accessKeyId: 'test-access-key',
-      secretAccessKey: 'test-secret-key',
       region: 'us-east-2',
       bucketName: 'bucket',
     },
@@ -155,13 +153,6 @@ describe('AWSS3Service', () => {
 const deleteObjects = async ({ bucketName, keys }) => {
   const client = new S3Client({
     region: process.env.BHCHP_AWS_REGION || process.env.AWS_REGION,
-    credentials: {
-      accessKeyId:
-        process.env.BHCHP_AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey:
-        process.env.BHCHP_AWS_SECRET_ACCESS_KEY ||
-        process.env.AWS_SECRET_ACCESS_KEY,
-    },
   });
 
   try {

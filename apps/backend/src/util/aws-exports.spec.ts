@@ -1,13 +1,11 @@
 type AwsExports = {
   AWSConfig: {
-    accessKeyId?: string;
-    secretAccessKey?: string;
     bucketName?: string;
+    region?: string;
   };
   CognitoAuthConfig: {
     userPoolId?: string;
     clientId?: string;
-    region?: string;
     clientSecret?: string;
   };
 };
@@ -15,12 +13,6 @@ type AwsExports = {
 const ORIGINAL_ENV = { ...process.env };
 
 const ENV_KEYS = [
-  'BHCHP_AWS_ACCESS_KEY_ID',
-  'AWS_ACCESS_KEY_ID',
-  'NX_AWS_ACCESS_KEY',
-  'BHCHP_AWS_SECRET_ACCESS_KEY',
-  'AWS_SECRET_ACCESS_KEY',
-  'NX_AWS_SECRET_ACCESS_KEY',
   'BHCHP_AWS_BUCKET_NAME',
   'AWS_BUCKET_NAME',
   'BHCHP_AWS_REGION',
@@ -59,19 +51,15 @@ describe('aws-exports', () => {
   });
 
   it('loads config when required primary env vars are present', async () => {
-    process.env.BHCHP_AWS_ACCESS_KEY_ID = 'aws-key';
-    process.env.BHCHP_AWS_SECRET_ACCESS_KEY = 'aws-secret';
     process.env.BHCHP_AWS_BUCKET_NAME = 'app-bucket';
+    process.env.BHCHP_AWS_REGION = 'us-west-2';
     process.env.COGNITO_APP_CLIENT_ID = 'cognito-client';
     process.env.COGNITO_CLIENT_SECRET = 'cognito-secret';
     process.env.COGNITO_USER_POOL_ID = 'pool-id';
-    process.env.COGNITO_REGION = 'us-west-2';
 
     const config = await loadAwsExports();
 
     expect(config.AWSConfig).toEqual({
-      accessKeyId: 'aws-key',
-      secretAccessKey: 'aws-secret',
       region: 'us-west-2',
       bucketName: 'app-bucket',
     });
@@ -83,8 +71,6 @@ describe('aws-exports', () => {
   });
 
   it('uses NX and VITE fallback env vars when primary vars are absent', async () => {
-    process.env.NX_AWS_ACCESS_KEY = 'nx-aws-key';
-    process.env.NX_AWS_SECRET_ACCESS_KEY = 'nx-aws-secret';
     process.env.BHCHP_AWS_BUCKET_NAME = 'fallback-bucket';
     process.env.VITE_COGNITO_APP_CLIENT_ID = 'vite-client';
     process.env.COGNITO_CLIENT_SECRET = 'cognito-secret';
@@ -94,8 +80,6 @@ describe('aws-exports', () => {
     const config = await loadAwsExports();
 
     expect(config.AWSConfig).toEqual({
-      accessKeyId: 'nx-aws-key',
-      secretAccessKey: 'nx-aws-secret',
       region: 'eu-west-1',
       bucketName: 'fallback-bucket',
     });
@@ -108,28 +92,24 @@ describe('aws-exports', () => {
 
   it('throws when required AWS env vars are missing', async () => {
     await expect(loadAwsExports()).rejects.toThrow(
-      'The following environmental variables are missing:BHCHP_AWS_ACCESS_KEY_ID,BHCHP_AWS_SECRET_ACCESS_KEY,BHCHP_AWS_BUCKET_NAME,COGNITO_REGION',
+      'The following environmental variables are missing:BHCHP_AWS_BUCKET_NAME,AWS_REGION',
     );
   });
 
-  it('throws when Cognito region vars are missing', async () => {
-    process.env.BHCHP_AWS_ACCESS_KEY_ID = 'aws-key';
-    process.env.BHCHP_AWS_SECRET_ACCESS_KEY = 'aws-secret';
+  it('throws when AWS and Cognito region vars are missing', async () => {
     process.env.BHCHP_AWS_BUCKET_NAME = 'app-bucket';
     process.env.COGNITO_APP_CLIENT_ID = 'cognito-client';
     process.env.COGNITO_CLIENT_SECRET = 'cognito-secret';
     process.env.COGNITO_USER_POOL_ID = 'pool-id';
 
     await expect(loadAwsExports()).rejects.toThrow(
-      'The following environmental variables are missing:COGNITO_REGION',
+      'The following environmental variables are missing:AWS_REGION',
     );
   });
 
   it('throws when Cognito app client and client secret are missing', async () => {
-    process.env.BHCHP_AWS_ACCESS_KEY_ID = 'aws-key';
-    process.env.BHCHP_AWS_SECRET_ACCESS_KEY = 'aws-secret';
     process.env.BHCHP_AWS_BUCKET_NAME = 'app-bucket';
-    process.env.COGNITO_REGION = 'us-west-2';
+    process.env.AWS_REGION = 'us-west-2';
 
     await expect(loadAwsExports()).rejects.toThrow(
       'The following environmental variables are missing:COGNITO_APP_CLIENT_ID,COGNITO_CLIENT_SECRET',

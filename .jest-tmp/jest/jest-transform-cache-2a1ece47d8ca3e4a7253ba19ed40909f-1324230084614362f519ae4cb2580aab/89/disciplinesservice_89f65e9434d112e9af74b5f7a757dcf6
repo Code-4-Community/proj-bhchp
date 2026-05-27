@@ -1,0 +1,139 @@
+d75be0dac282210e92b4ab383d0caa41
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DisciplinesService = void 0;
+const tslib_1 = require("tslib");
+const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
+const typeorm_2 = require("typeorm");
+const disciplines_entity_1 = require("./disciplines.entity");
+/**
+ * Service to interface with the disciplines repository.
+ */
+let DisciplinesService = class DisciplinesService {
+    constructor(disciplinesRepository) {
+        this.disciplinesRepository = disciplinesRepository;
+    }
+    /**
+     * Returns a list of all disciplines in the repository
+     * @returns a list of all disciplines in the repository
+     */
+    findAll() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            return this.disciplinesRepository.find({
+                where: { isActive: true },
+                order: { label: 'ASC' },
+            });
+        });
+    }
+    /**
+     * Returns all disciplines, including inactive rows.
+     * @returns a list of all disciplines sorted by label.
+     */
+    findAllIncludingInactive() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            return this.disciplinesRepository.find({
+                order: { label: 'ASC' },
+            });
+        });
+    }
+    /**
+     * Returns a discipline from the repository with the respective email
+     * @param email the email corresponding to the desired discipline
+     * @returns a discipline from the repository with the respective email
+     */
+    findOne(id) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const discipline = yield this.disciplinesRepository.findOneBy({ id });
+            if (!discipline) {
+                throw new common_1.NotFoundException(`Discipline with id ${id} not found`);
+            }
+            return discipline;
+        });
+    }
+    /**
+     * Returns active discipline keys from the catalog.
+     * @returns a sorted list of active discipline keys.
+     */
+    getActiveDisciplineKeys() {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const rows = yield this.disciplinesRepository.find({
+                where: { isActive: true },
+                select: { key: true },
+                order: { key: 'ASC' },
+            });
+            return rows.map((row) => row.key);
+        });
+    }
+    /**
+     * Validates that a discipline key exists and is active.
+     * @param key the discipline key to validate.
+     * @throws {BadRequestException} if the key is invalid or inactive.
+     * @throws {Error} anything that the repository throws.
+     */
+    ensureActiveDisciplineKey(key) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const isValid = yield this.disciplinesRepository.exists({
+                where: { key, isActive: true },
+            });
+            if (!isValid) {
+                const validDisciplines = yield this.getActiveDisciplineKeys();
+                throw new common_1.BadRequestException(`Invalid discipline: ${key}. Valid disciplines are: ${validDisciplines.join(', ')}`);
+            }
+        });
+    }
+    /**
+     * Validates that all provided discipline keys exist and are active.
+     * @param keys the discipline keys to validate.
+     * @throws {BadRequestException} if the list is empty or any key is invalid/inactive.
+     * @throws {Error} anything that the repository throws.
+     */
+    ensureActiveDisciplineKeys(keys) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            if (!keys.length) {
+                throw new common_1.BadRequestException('At least one discipline is required');
+            }
+            const uniqueKeys = [...new Set(keys)];
+            for (const key of uniqueKeys) {
+                yield this.ensureActiveDisciplineKey(key);
+            }
+        });
+    }
+    /**
+     * Creates a discipline record in the repository.
+     * @param createDto object containing key, label, and optional active flag.
+     * @returns the newly created discipline.
+     * @throws {Error} anything that the repository throws.
+     */
+    create(createDto) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const discipline = this.disciplinesRepository.create({
+                key: createDto.key.trim().toLowerCase(),
+                label: createDto.label.trim(),
+                isActive: (_a = createDto.isActive) !== null && _a !== void 0 ? _a : true,
+            });
+            return this.disciplinesRepository.save(discipline);
+        });
+    }
+    /**
+     * Deletes a discipline by id
+     * @param email the id of the discipline to delete
+     * @returns the deleted discipline
+     * @throws {NotFoundException} if a discipline of the specified id doesn't exist in the repository.
+     * @throws {Error} if the repository throws an error.
+     */
+    remove(id) {
+        return tslib_1.__awaiter(this, void 0, void 0, function* () {
+            const discipline = yield this.findOne(id);
+            return this.disciplinesRepository.remove(discipline);
+        });
+    }
+};
+exports.DisciplinesService = DisciplinesService;
+exports.DisciplinesService = DisciplinesService = tslib_1.__decorate([
+    (0, common_1.Injectable)(),
+    tslib_1.__param(0, (0, typeorm_1.InjectRepository)(disciplines_entity_1.Discipline)),
+    tslib_1.__metadata("design:paramtypes", [typeorm_2.Repository])
+], DisciplinesService);
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJmaWxlIjoiQzpcXFVzZXJzXFxTY2hvb2xcXEdpdGh1YlxccHJvai1iaGNocFxcYXBwc1xcYmFja2VuZFxcc3JjXFxkaXNjaXBsaW5lc1xcZGlzY2lwbGluZXMuc2VydmljZS50cyIsIm1hcHBpbmdzIjoiOzs7O0FBQUEsMkNBSXdCO0FBQ3hCLDZDQUFtRDtBQUNuRCxxQ0FBcUM7QUFDckMsNkRBQWtEO0FBR2xEOztHQUVHO0FBRUksSUFBTSxrQkFBa0IsR0FBeEIsTUFBTSxrQkFBa0I7SUFDN0IsWUFFVSxxQkFBNkM7UUFBN0MsMEJBQXFCLEdBQXJCLHFCQUFxQixDQUF3QjtJQUNwRCxDQUFDO0lBRUo7OztPQUdHO0lBQ0csT0FBTzs7WUFDWCxPQUFPLElBQUksQ0FBQyxxQkFBcUIsQ0FBQyxJQUFJLENBQUM7Z0JBQ3JDLEtBQUssRUFBRSxFQUFFLFFBQVEsRUFBRSxJQUFJLEVBQUU7Z0JBQ3pCLEtBQUssRUFBRSxFQUFFLEtBQUssRUFBRSxLQUFLLEVBQUU7YUFDeEIsQ0FBQyxDQUFDO1FBQ0wsQ0FBQztLQUFBO0lBRUQ7OztPQUdHO0lBQ0csd0JBQXdCOztZQUM1QixPQUFPLElBQUksQ0FBQyxxQkFBcUIsQ0FBQyxJQUFJLENBQUM7Z0JBQ3JDLEtBQUssRUFBRSxFQUFFLEtBQUssRUFBRSxLQUFLLEVBQUU7YUFDeEIsQ0FBQyxDQUFDO1FBQ0wsQ0FBQztLQUFBO0lBRUQ7Ozs7T0FJRztJQUNHLE9BQU8sQ0FBQyxFQUFVOztZQUN0QixNQUFNLFVBQVUsR0FBRyxNQUFNLElBQUksQ0FBQyxxQkFBcUIsQ0FBQyxTQUFTLENBQUMsRUFBRSxFQUFFLEVBQUUsQ0FBQyxDQUFDO1lBQ3RFLElBQUksQ0FBQyxVQUFVLEVBQUUsQ0FBQztnQkFDaEIsTUFBTSxJQUFJLDBCQUFpQixDQUFDLHNCQUFzQixFQUFFLFlBQVksQ0FBQyxDQUFDO1lBQ3BFLENBQUM7WUFDRCxPQUFPLFVBQVUsQ0FBQztRQUNwQixDQUFDO0tBQUE7SUFFRDs7O09BR0c7SUFDRyx1QkFBdUI7O1lBQzNCLE1BQU0sSUFBSSxHQUFHLE1BQU0sSUFBSSxDQUFDLHFCQUFxQixDQUFDLElBQUksQ0FBQztnQkFDakQsS0FBSyxFQUFFLEVBQUUsUUFBUSxFQUFFLElBQUksRUFBRTtnQkFDekIsTUFBTSxFQUFFLEVBQUUsR0FBRyxFQUFFLElBQUksRUFBRTtnQkFDckIsS0FBSyxFQUFFLEVBQUUsR0FBRyxFQUFFLEtBQUssRUFBRTthQUN0QixDQUFDLENBQUM7WUFFSCxPQUFPLElBQUksQ0FBQyxHQUFHLENBQUMsQ0FBQyxHQUFHLEVBQUUsRUFBRSxDQUFDLEdBQUcsQ0FBQyxHQUFHLENBQUMsQ0FBQztRQUNwQyxDQUFDO0tBQUE7SUFFRDs7Ozs7T0FLRztJQUNHLHlCQUF5QixDQUFDLEdBQVc7O1lBQ3pDLE1BQU0sT0FBTyxHQUFHLE1BQU0sSUFBSSxDQUFDLHFCQUFxQixDQUFDLE1BQU0sQ0FBQztnQkFDdEQsS0FBSyxFQUFFLEVBQUUsR0FBRyxFQUFFLFFBQVEsRUFBRSxJQUFJLEVBQUU7YUFDL0IsQ0FBQyxDQUFDO1lBRUgsSUFBSSxDQUFDLE9BQU8sRUFBRSxDQUFDO2dCQUNiLE1BQU0sZ0JBQWdCLEdBQUcsTUFBTSxJQUFJLENBQUMsdUJBQXVCLEVBQUUsQ0FBQztnQkFDOUQsTUFBTSxJQUFJLDRCQUFtQixDQUMzQix1QkFBdUIsR0FBRyw0QkFBNEIsZ0JBQWdCLENBQUMsSUFBSSxDQUN6RSxJQUFJLENBQ0wsRUFBRSxDQUNKLENBQUM7WUFDSixDQUFDO1FBQ0gsQ0FBQztLQUFBO0lBRUQ7Ozs7O09BS0c7SUFDRywwQkFBMEIsQ0FBQyxJQUFjOztZQUM3QyxJQUFJLENBQUMsSUFBSSxDQUFDLE1BQU0sRUFBRSxDQUFDO2dCQUNqQixNQUFNLElBQUksNEJBQW1CLENBQUMscUNBQXFDLENBQUMsQ0FBQztZQUN2RSxDQUFDO1lBRUQsTUFBTSxVQUFVLEdBQUcsQ0FBQyxHQUFHLElBQUksR0FBRyxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUM7WUFDdEMsS0FBSyxNQUFNLEdBQUcsSUFBSSxVQUFVLEVBQUUsQ0FBQztnQkFDN0IsTUFBTSxJQUFJLENBQUMseUJBQXlCLENBQUMsR0FBRyxDQUFDLENBQUM7WUFDNUMsQ0FBQztRQUNILENBQUM7S0FBQTtJQUVEOzs7OztPQUtHO0lBQ0csTUFBTSxDQUFDLFNBQXFDOzs7WUFDaEQsTUFBTSxVQUFVLEdBQUcsSUFBSSxDQUFDLHFCQUFxQixDQUFDLE1BQU0sQ0FBQztnQkFDbkQsR0FBRyxFQUFFLFNBQVMsQ0FBQyxHQUFHLENBQUMsSUFBSSxFQUFFLENBQUMsV0FBVyxFQUFFO2dCQUN2QyxLQUFLLEVBQUUsU0FBUyxDQUFDLEtBQUssQ0FBQyxJQUFJLEVBQUU7Z0JBQzdCLFFBQVEsRUFBRSxNQUFBLFNBQVMsQ0FBQyxRQUFRLG1DQUFJLElBQUk7YUFDckMsQ0FBQyxDQUFDO1lBQ0gsT0FBTyxJQUFJLENBQUMscUJBQXFCLENBQUMsSUFBSSxDQUFDLFVBQVUsQ0FBQyxDQUFDO1FBQ3JELENBQUM7S0FBQTtJQUVEOzs7Ozs7T0FNRztJQUNHLE1BQU0sQ0FBQyxFQUFVOztZQUNyQixNQUFNLFVBQVUsR0FBRyxNQUFNLElBQUksQ0FBQyxPQUFPLENBQUMsRUFBRSxDQUFDLENBQUM7WUFDMUMsT0FBTyxJQUFJLENBQUMscUJBQXFCLENBQUMsTUFBTSxDQUFDLFVBQVUsQ0FBQyxDQUFDO1FBQ3ZELENBQUM7S0FBQTtDQUNGLENBQUE7QUF0SFksZ0RBQWtCOzZCQUFsQixrQkFBa0I7SUFEOUIsSUFBQSxtQkFBVSxHQUFFO0lBR1IsbUJBQUEsSUFBQSwwQkFBZ0IsRUFBQywrQkFBVSxDQUFDLENBQUE7NkNBQ0Usb0JBQVU7R0FIaEMsa0JBQWtCLENBc0g5QiIsIm5hbWVzIjpbXSwic291cmNlcyI6WyJDOlxcVXNlcnNcXFNjaG9vbFxcR2l0aHViXFxwcm9qLWJoY2hwXFxhcHBzXFxiYWNrZW5kXFxzcmNcXGRpc2NpcGxpbmVzXFxkaXNjaXBsaW5lcy5zZXJ2aWNlLnRzIl0sInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7XG4gIEJhZFJlcXVlc3RFeGNlcHRpb24sXG4gIEluamVjdGFibGUsXG4gIE5vdEZvdW5kRXhjZXB0aW9uLFxufSBmcm9tICdAbmVzdGpzL2NvbW1vbic7XG5pbXBvcnQgeyBJbmplY3RSZXBvc2l0b3J5IH0gZnJvbSAnQG5lc3Rqcy90eXBlb3JtJztcbmltcG9ydCB7IFJlcG9zaXRvcnkgfSBmcm9tICd0eXBlb3JtJztcbmltcG9ydCB7IERpc2NpcGxpbmUgfSBmcm9tICcuL2Rpc2NpcGxpbmVzLmVudGl0eSc7XG5pbXBvcnQgeyBDcmVhdGVEaXNjaXBsaW5lUmVxdWVzdER0byB9IGZyb20gJy4vZHRvL2NyZWF0ZS1kaXNjaXBsaW5lLnJlcXVlc3QuZHRvJztcblxuLyoqXG4gKiBTZXJ2aWNlIHRvIGludGVyZmFjZSB3aXRoIHRoZSBkaXNjaXBsaW5lcyByZXBvc2l0b3J5LlxuICovXG5ASW5qZWN0YWJsZSgpXG5leHBvcnQgY2xhc3MgRGlzY2lwbGluZXNTZXJ2aWNlIHtcbiAgY29uc3RydWN0b3IoXG4gICAgQEluamVjdFJlcG9zaXRvcnkoRGlzY2lwbGluZSlcbiAgICBwcml2YXRlIGRpc2NpcGxpbmVzUmVwb3NpdG9yeTogUmVwb3NpdG9yeTxEaXNjaXBsaW5lPixcbiAgKSB7fVxuXG4gIC8qKlxuICAgKiBSZXR1cm5zIGEgbGlzdCBvZiBhbGwgZGlzY2lwbGluZXMgaW4gdGhlIHJlcG9zaXRvcnlcbiAgICogQHJldHVybnMgYSBsaXN0IG9mIGFsbCBkaXNjaXBsaW5lcyBpbiB0aGUgcmVwb3NpdG9yeVxuICAgKi9cbiAgYXN5bmMgZmluZEFsbCgpOiBQcm9taXNlPERpc2NpcGxpbmVbXT4ge1xuICAgIHJldHVybiB0aGlzLmRpc2NpcGxpbmVzUmVwb3NpdG9yeS5maW5kKHtcbiAgICAgIHdoZXJlOiB7IGlzQWN0aXZlOiB0cnVlIH0sXG4gICAgICBvcmRlcjogeyBsYWJlbDogJ0FTQycgfSxcbiAgICB9KTtcbiAgfVxuXG4gIC8qKlxuICAgKiBSZXR1cm5zIGFsbCBkaXNjaXBsaW5lcywgaW5jbHVkaW5nIGluYWN0aXZlIHJvd3MuXG4gICAqIEByZXR1cm5zIGEgbGlzdCBvZiBhbGwgZGlzY2lwbGluZXMgc29ydGVkIGJ5IGxhYmVsLlxuICAgKi9cbiAgYXN5bmMgZmluZEFsbEluY2x1ZGluZ0luYWN0aXZlKCk6IFByb21pc2U8RGlzY2lwbGluZVtdPiB7XG4gICAgcmV0dXJuIHRoaXMuZGlzY2lwbGluZXNSZXBvc2l0b3J5LmZpbmQoe1xuICAgICAgb3JkZXI6IHsgbGFiZWw6ICdBU0MnIH0sXG4gICAgfSk7XG4gIH1cblxuICAvKipcbiAgICogUmV0dXJucyBhIGRpc2NpcGxpbmUgZnJvbSB0aGUgcmVwb3NpdG9yeSB3aXRoIHRoZSByZXNwZWN0aXZlIGVtYWlsXG4gICAqIEBwYXJhbSBlbWFpbCB0aGUgZW1haWwgY29ycmVzcG9uZGluZyB0byB0aGUgZGVzaXJlZCBkaXNjaXBsaW5lXG4gICAqIEByZXR1cm5zIGEgZGlzY2lwbGluZSBmcm9tIHRoZSByZXBvc2l0b3J5IHdpdGggdGhlIHJlc3BlY3RpdmUgZW1haWxcbiAgICovXG4gIGFzeW5jIGZpbmRPbmUoaWQ6IG51bWJlcik6IFByb21pc2U8RGlzY2lwbGluZT4ge1xuICAgIGNvbnN0IGRpc2NpcGxpbmUgPSBhd2FpdCB0aGlzLmRpc2NpcGxpbmVzUmVwb3NpdG9yeS5maW5kT25lQnkoeyBpZCB9KTtcbiAgICBpZiAoIWRpc2NpcGxpbmUpIHtcbiAgICAgIHRocm93IG5ldyBOb3RGb3VuZEV4Y2VwdGlvbihgRGlzY2lwbGluZSB3aXRoIGlkICR7aWR9IG5vdCBmb3VuZGApO1xuICAgIH1cbiAgICByZXR1cm4gZGlzY2lwbGluZTtcbiAgfVxuXG4gIC8qKlxuICAgKiBSZXR1cm5zIGFjdGl2ZSBkaXNjaXBsaW5lIGtleXMgZnJvbSB0aGUgY2F0YWxvZy5cbiAgICogQHJldHVybnMgYSBzb3J0ZWQgbGlzdCBvZiBhY3RpdmUgZGlzY2lwbGluZSBrZXlzLlxuICAgKi9cbiAgYXN5bmMgZ2V0QWN0aXZlRGlzY2lwbGluZUtleXMoKTogUHJvbWlzZTxzdHJpbmdbXT4ge1xuICAgIGNvbnN0IHJvd3MgPSBhd2FpdCB0aGlzLmRpc2NpcGxpbmVzUmVwb3NpdG9yeS5maW5kKHtcbiAgICAgIHdoZXJlOiB7IGlzQWN0aXZlOiB0cnVlIH0sXG4gICAgICBzZWxlY3Q6IHsga2V5OiB0cnVlIH0sXG4gICAgICBvcmRlcjogeyBrZXk6ICdBU0MnIH0sXG4gICAgfSk7XG5cbiAgICByZXR1cm4gcm93cy5tYXAoKHJvdykgPT4gcm93LmtleSk7XG4gIH1cblxuICAvKipcbiAgICogVmFsaWRhdGVzIHRoYXQgYSBkaXNjaXBsaW5lIGtleSBleGlzdHMgYW5kIGlzIGFjdGl2ZS5cbiAgICogQHBhcmFtIGtleSB0aGUgZGlzY2lwbGluZSBrZXkgdG8gdmFsaWRhdGUuXG4gICAqIEB0aHJvd3Mge0JhZFJlcXVlc3RFeGNlcHRpb259IGlmIHRoZSBrZXkgaXMgaW52YWxpZCBvciBpbmFjdGl2ZS5cbiAgICogQHRocm93cyB7RXJyb3J9IGFueXRoaW5nIHRoYXQgdGhlIHJlcG9zaXRvcnkgdGhyb3dzLlxuICAgKi9cbiAgYXN5bmMgZW5zdXJlQWN0aXZlRGlzY2lwbGluZUtleShrZXk6IHN0cmluZyk6IFByb21pc2U8dm9pZD4ge1xuICAgIGNvbnN0IGlzVmFsaWQgPSBhd2FpdCB0aGlzLmRpc2NpcGxpbmVzUmVwb3NpdG9yeS5leGlzdHMoe1xuICAgICAgd2hlcmU6IHsga2V5LCBpc0FjdGl2ZTogdHJ1ZSB9LFxuICAgIH0pO1xuXG4gICAgaWYgKCFpc1ZhbGlkKSB7XG4gICAgICBjb25zdCB2YWxpZERpc2NpcGxpbmVzID0gYXdhaXQgdGhpcy5nZXRBY3RpdmVEaXNjaXBsaW5lS2V5cygpO1xuICAgICAgdGhyb3cgbmV3IEJhZFJlcXVlc3RFeGNlcHRpb24oXG4gICAgICAgIGBJbnZhbGlkIGRpc2NpcGxpbmU6ICR7a2V5fS4gVmFsaWQgZGlzY2lwbGluZXMgYXJlOiAke3ZhbGlkRGlzY2lwbGluZXMuam9pbihcbiAgICAgICAgICAnLCAnLFxuICAgICAgICApfWAsXG4gICAgICApO1xuICAgIH1cbiAgfVxuXG4gIC8qKlxuICAgKiBWYWxpZGF0ZXMgdGhhdCBhbGwgcHJvdmlkZWQgZGlzY2lwbGluZSBrZXlzIGV4aXN0IGFuZCBhcmUgYWN0aXZlLlxuICAgKiBAcGFyYW0ga2V5cyB0aGUgZGlzY2lwbGluZSBrZXlzIHRvIHZhbGlkYXRlLlxuICAgKiBAdGhyb3dzIHtCYWRSZXF1ZXN0RXhjZXB0aW9ufSBpZiB0aGUgbGlzdCBpcyBlbXB0eSBvciBhbnkga2V5IGlzIGludmFsaWQvaW5hY3RpdmUuXG4gICAqIEB0aHJvd3Mge0Vycm9yfSBhbnl0aGluZyB0aGF0IHRoZSByZXBvc2l0b3J5IHRocm93cy5cbiAgICovXG4gIGFzeW5jIGVuc3VyZUFjdGl2ZURpc2NpcGxpbmVLZXlzKGtleXM6IHN0cmluZ1tdKTogUHJvbWlzZTx2b2lkPiB7XG4gICAgaWYgKCFrZXlzLmxlbmd0aCkge1xuICAgICAgdGhyb3cgbmV3IEJhZFJlcXVlc3RFeGNlcHRpb24oJ0F0IGxlYXN0IG9uZSBkaXNjaXBsaW5lIGlzIHJlcXVpcmVkJyk7XG4gICAgfVxuXG4gICAgY29uc3QgdW5pcXVlS2V5cyA9IFsuLi5uZXcgU2V0KGtleXMpXTtcbiAgICBmb3IgKGNvbnN0IGtleSBvZiB1bmlxdWVLZXlzKSB7XG4gICAgICBhd2FpdCB0aGlzLmVuc3VyZUFjdGl2ZURpc2NpcGxpbmVLZXkoa2V5KTtcbiAgICB9XG4gIH1cblxuICAvKipcbiAgICogQ3JlYXRlcyBhIGRpc2NpcGxpbmUgcmVjb3JkIGluIHRoZSByZXBvc2l0b3J5LlxuICAgKiBAcGFyYW0gY3JlYXRlRHRvIG9iamVjdCBjb250YWluaW5nIGtleSwgbGFiZWwsIGFuZCBvcHRpb25hbCBhY3RpdmUgZmxhZy5cbiAgICogQHJldHVybnMgdGhlIG5ld2x5IGNyZWF0ZWQgZGlzY2lwbGluZS5cbiAgICogQHRocm93cyB7RXJyb3J9IGFueXRoaW5nIHRoYXQgdGhlIHJlcG9zaXRvcnkgdGhyb3dzLlxuICAgKi9cbiAgYXN5bmMgY3JlYXRlKGNyZWF0ZUR0bzogQ3JlYXRlRGlzY2lwbGluZVJlcXVlc3REdG8pOiBQcm9taXNlPERpc2NpcGxpbmU+IHtcbiAgICBjb25zdCBkaXNjaXBsaW5lID0gdGhpcy5kaXNjaXBsaW5lc1JlcG9zaXRvcnkuY3JlYXRlKHtcbiAgICAgIGtleTogY3JlYXRlRHRvLmtleS50cmltKCkudG9Mb3dlckNhc2UoKSxcbiAgICAgIGxhYmVsOiBjcmVhdGVEdG8ubGFiZWwudHJpbSgpLFxuICAgICAgaXNBY3RpdmU6IGNyZWF0ZUR0by5pc0FjdGl2ZSA/PyB0cnVlLFxuICAgIH0pO1xuICAgIHJldHVybiB0aGlzLmRpc2NpcGxpbmVzUmVwb3NpdG9yeS5zYXZlKGRpc2NpcGxpbmUpO1xuICB9XG5cbiAgLyoqXG4gICAqIERlbGV0ZXMgYSBkaXNjaXBsaW5lIGJ5IGlkXG4gICAqIEBwYXJhbSBlbWFpbCB0aGUgaWQgb2YgdGhlIGRpc2NpcGxpbmUgdG8gZGVsZXRlXG4gICAqIEByZXR1cm5zIHRoZSBkZWxldGVkIGRpc2NpcGxpbmVcbiAgICogQHRocm93cyB7Tm90Rm91bmRFeGNlcHRpb259IGlmIGEgZGlzY2lwbGluZSBvZiB0aGUgc3BlY2lmaWVkIGlkIGRvZXNuJ3QgZXhpc3QgaW4gdGhlIHJlcG9zaXRvcnkuXG4gICAqIEB0aHJvd3Mge0Vycm9yfSBpZiB0aGUgcmVwb3NpdG9yeSB0aHJvd3MgYW4gZXJyb3IuXG4gICAqL1xuICBhc3luYyByZW1vdmUoaWQ6IG51bWJlcik6IFByb21pc2U8RGlzY2lwbGluZT4ge1xuICAgIGNvbnN0IGRpc2NpcGxpbmUgPSBhd2FpdCB0aGlzLmZpbmRPbmUoaWQpO1xuICAgIHJldHVybiB0aGlzLmRpc2NpcGxpbmVzUmVwb3NpdG9yeS5yZW1vdmUoZGlzY2lwbGluZSk7XG4gIH1cbn1cbiJdLCJ2ZXJzaW9uIjozfQ==

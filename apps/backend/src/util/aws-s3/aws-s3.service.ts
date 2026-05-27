@@ -26,15 +26,8 @@ export class AWSS3Service {
   }
 
   constructor() {
-    const accessKeyId = envVars.AWSConfig.accessKeyId ?? '';
-    const secretAccessKey = envVars.AWSConfig.secretAccessKey ?? '';
-
     this.client = new S3Client({
       region: this.region,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
     });
   }
 

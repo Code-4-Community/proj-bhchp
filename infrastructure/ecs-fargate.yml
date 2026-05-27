@@ -61,16 +61,13 @@ Parameters:
     Type: String
     NoEcho: true
 
-  BhchpAwsAccessKeyId:
-    Type: String
-    NoEcho: true
-  BhchpAwsSecretAccessKey:
-    Type: String
-    NoEcho: true
   BhchpAwsBucketName:
     Type: String
   BhchpAwsSesSenderEmail:
     Type: String
+  BhchpAwsSesIdentityArn:
+    Type: String
+    Description: Verified SES identity ARN allowed for SendRawEmail
   CognitoRegion:
     Type: String
   CognitoUserPoolId:
@@ -117,6 +114,27 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub "${ServiceName}-aws-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Uploads
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${BhchpAwsBucketName}/*"
+              - Sid: SesRawEmail
+                Effect: Allow
+                Action:
+                  - ses:SendRawEmail
+                Resource: !Ref BhchpAwsSesIdentityArn
+              - Sid: CognitoAdminProvisioning
+                Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminDeleteUser
+                Resource: !Sub "arn:aws:cognito-idp:${CognitoRegion}:${AWS::AccountId}:userpool/${CognitoUserPoolId}"
 
   ServiceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -240,12 +258,10 @@ Resources:
               Value: !Ref DbPassword
             - Name: NX_DB_SSL_CA_PATH
               Value: /app/global-bundle.pem
-            - Name: BHCHP_AWS_ACCESS_KEY_ID
-              Value: !Ref BhchpAwsAccessKeyId
-            - Name: BHCHP_AWS_SECRET_ACCESS_KEY
-              Value: !Ref BhchpAwsSecretAccessKey
             - Name: BHCHP_AWS_BUCKET_NAME
               Value: !Ref BhchpAwsBucketName
+            - Name: BHCHP_AWS_REGION
+              Value: !Ref "AWS::Region"
             - Name: BHCHP_AWS_SES_SENDER_EMAIL
               Value: !Ref BhchpAwsSesSenderEmail
             - Name: COGNITO_REGION
