@@ -50,6 +50,7 @@ Template: `ecs-fargate.yml`
 - AWS CLI configured with access to your AWS account.
 - An ECR repository or public image URI for the backend container.
 - VPC and subnets (public subnets if `AssignPublicIp=ENABLED`).
+- An ACM certificate ARN (existing cert or from the optional DNS/ACM stack).
 
 ### Deploy (example)
 
@@ -66,6 +67,7 @@ aws cloudformation deploy \
     DbName=bhchp \
     DbUsername=postgres \
     DbPassword=YOUR_STRONG_PASSWORD \
+    AcmCertificateArn=arn:aws:acm:us-east-2:123456789012:certificate/your-cert-id \
     AllowedCidr=0.0.0.0/0 \
     AssignPublicIp=ENABLED
 ```
@@ -73,12 +75,89 @@ aws cloudformation deploy \
 ### Outputs
 
 - `ServiceSecurityGroupId` - use this for the RDS stack `ECSSecurityGroupId`
+- `LoadBalancerDnsName` - ALB DNS name (used by DNS/ACM stack)
+- `LoadBalancerHostedZoneId` - ALB hosted zone ID (used by DNS/ACM stack)
 
 ### Notes
 
 - This template uses the smallest Fargate size (`Cpu=256`, `Memory=512`).
 - `AssignPublicIp=ENABLED` avoids NAT costs but exposes the service to the internet; lock down `AllowedCidr`.
 - For private subnets, set `AssignPublicIp=DISABLED` and ensure NAT access for pulling images.
+
+## DNS + ACM (separate stack)
+
+Template: `dns-acm.yml`
+
+### Purpose (optional helper)
+
+- Creates an ACM certificate for the domain.
+- Optionally creates a Route53 alias record to the ALB (after the ALB exists).
+
+If you already have a domain and ACM certificate (via clickops), skip this stack
+and pass the existing cert ARN into the ECS stack. You can manage Route53 DNS
+records manually or with your own tooling.
+
+### Deploy (step 1: create cert)
+
+```bash
+aws cloudformation deploy \
+  --region us-east-2 \
+  --stack-name bhchp-dns-acm \
+  --template-file infrastructure/dns-acm.yml \
+  --parameter-overrides \
+    HostedZoneId=Z123EXAMPLE \
+    DomainName=api.example.com
+```
+
+### Deploy (step 2: attach ALB DNS once ECS exists)
+
+```bash
+aws cloudformation deploy \
+  --region us-east-2 \
+  --stack-name bhchp-dns-acm \
+  --template-file infrastructure/dns-acm.yml \
+  --parameter-overrides \
+    HostedZoneId=Z123EXAMPLE \
+    DomainName=api.example.com \
+    LoadBalancerDnsName=your-alb-dns-name \
+    LoadBalancerHostedZoneId=your-alb-zone-id
+```
+
+### Outputs
+
+- `AcmCertificateArn` - pass this into the ECS stack as `AcmCertificateArn`
+
+### Use DNS/ACM outputs with ECS stack
+
+If you deploy `dns-acm.yml`, use its outputs to set the ECS HTTPS parameter.
+
+Get the certificate ARN from the DNS/ACM stack:
+
+```bash
+aws cloudformation describe-stacks \
+  --region us-east-2 \
+  --stack-name bhchp-dns-acm \
+  --query "Stacks[0].Outputs[?OutputKey=='AcmCertificateArn'].OutputValue" \
+  --output text
+```
+
+Then update the ECS stack (or your parameter file) with that value:
+
+```bash
+aws cloudformation deploy \
+  --region us-east-2 \
+  --stack-name bhchp-ecs \
+  --template-file infrastructure/ecs-fargate.yml \
+  --parameter-overrides \
+    AcmCertificateArn=arn:aws:acm:us-east-2:123456789012:certificate/your-cert-id
+```
+
+If you prefer to use `params.json`, set the value there and then run the
+update command with `--parameters file://params.json`:
+
+```json
+{ "ParameterKey": "AcmCertificateArn", "ParameterValue": "arn:aws:acm:us-east-2:123456789012:certificate/your-cert-id" }
+```
 
 ## Static Frontend (S3 + CloudFront)
 

@@ -16,9 +16,15 @@ Parameters:
     Type: String
     Default: 0.0.0.0/0
     Description: CIDR allowed to reach the service port
+  HostedZoneId:
+    Type: String
+    Description: Route53 hosted zone ID for the domain
+  DomainName:
+    Type: String
+    Description: Domain name for the ALB (e.g. api.example.com)
   HealthCheckPath:
     Type: String
-    Default: /api
+    Default: /api/health
     Description: HTTP path used by the ALB target group health check
 
   ClusterName:
@@ -54,6 +60,27 @@ Parameters:
   DbPassword:
     Type: String
     NoEcho: true
+
+  BhchpAwsAccessKeyId:
+    Type: String
+    NoEcho: true
+  BhchpAwsSecretAccessKey:
+    Type: String
+    NoEcho: true
+  BhchpAwsBucketName:
+    Type: String
+  BhchpAwsSesSenderEmail:
+    Type: String
+  CognitoRegion:
+    Type: String
+  CognitoUserPoolId:
+    Type: String
+  CognitoAppClientId:
+    Type: String
+  CognitoClientSecret:
+    Type: String
+  ViteCognitoAppClientId:
+    Type: String
 
 Resources:
   LogGroup:
@@ -112,6 +139,10 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: !Ref AllowedCidr
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllowedCidr
 
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -121,6 +152,25 @@ Resources:
       Subnets: !Ref SubnetIds
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
+
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+
+  TlsCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -140,6 +190,21 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 80
       Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: "443"
+            StatusCode: HTTP_301
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref TlsCertificate
       DefaultActions:
         - Type: forward
           TargetGroupArn: !Ref TargetGroup
@@ -173,6 +238,26 @@ Resources:
               Value: !Ref DbUsername
             - Name: NX_DB_PASSWORD
               Value: !Ref DbPassword
+            - Name: NX_DB_SSL_CA_PATH
+              Value: /app/global-bundle.pem
+            - Name: BHCHP_AWS_ACCESS_KEY_ID
+              Value: !Ref BhchpAwsAccessKeyId
+            - Name: BHCHP_AWS_SECRET_ACCESS_KEY
+              Value: !Ref BhchpAwsSecretAccessKey
+            - Name: BHCHP_AWS_BUCKET_NAME
+              Value: !Ref BhchpAwsBucketName
+            - Name: BHCHP_AWS_SES_SENDER_EMAIL
+              Value: !Ref BhchpAwsSesSenderEmail
+            - Name: COGNITO_REGION
+              Value: !Ref CognitoRegion
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref CognitoUserPoolId
+            - Name: COGNITO_APP_CLIENT_ID
+              Value: !Ref CognitoAppClientId
+            - Name: COGNITO_CLIENT_SECRET
+              Value: !Ref CognitoClientSecret
+            - Name: VITE_COGNITO_APP_CLIENT_ID
+              Value: !Ref ViteCognitoAppClientId
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -182,7 +267,10 @@ Resources:
 
   Service:
     Type: AWS::ECS::Service
-    DependsOn: LogGroup
+    DependsOn:
+      - LogGroup
+      - HttpListener
+      - HttpsListener
     Properties:
       ServiceName: !Ref ServiceName
       Cluster: !Ref Cluster
@@ -209,3 +297,5 @@ Outputs:
     Value: !Ref ServiceSecurityGroup
   LoadBalancerDnsName:
     Value: !GetAtt LoadBalancer.DNSName
+  PublicApiDomain:
+    Value: !Ref DomainName
