@@ -17,6 +17,8 @@ export interface ApplicationRow {
   desiredExperience: string;
   applicantType: string;
   status: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface UseApplicationsResult {
@@ -50,6 +52,8 @@ function toRows(
       desiredExperience: app.desiredExperience,
       applicantType: app.applicantType,
       status: app.appStatus,
+      createdAt: app.createdAt,
+      updatedAt: app.updatedAt,
     };
   });
 }

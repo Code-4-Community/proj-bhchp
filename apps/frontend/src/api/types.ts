@@ -83,6 +83,8 @@ export interface Application extends AvailabilityFields {
   email: string;
   proposedStartDate: string;
   actualStartDate?: string;
+  createdAt: string;
+  updatedAt: string;
   discipline: string;
   otherDisciplineDescription?: string;
   appStatus: AppStatus;

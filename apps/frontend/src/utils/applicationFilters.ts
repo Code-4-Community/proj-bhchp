@@ -6,6 +6,10 @@ export type ApplicationFilters = {
   proposedStartDateDirection?: DateFilterDirection;
   actualStartDate?: string;
   actualStartDateDirection?: DateFilterDirection;
+  createdAt?: string;
+  createdAtDirection?: DateFilterDirection;
+  updatedAt?: string;
+  updatedAtDirection?: DateFilterDirection;
 };
 
 export type DateFilterDirection = 'before' | 'after';
@@ -18,6 +22,10 @@ export const EMPTY_APPLICATION_FILTERS: ApplicationFilters = {
   proposedStartDateDirection: 'after',
   actualStartDate: undefined,
   actualStartDateDirection: 'after',
+  createdAt: undefined,
+  createdAtDirection: 'after',
+  updatedAt: undefined,
+  updatedAtDirection: 'after',
 };
 
 interface FilterableApplication {
@@ -26,6 +34,8 @@ interface FilterableApplication {
   disciplineAdminName: string;
   proposedStartDate: string;
   actualStartDate: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface SearchableApplication extends FilterableApplication {
@@ -119,7 +129,9 @@ export function countActiveFilters(filters: ApplicationFilters): number {
     filters.disciplines.length +
     filters.disciplineAdminNames.length +
     (normalizeDateToDay(filters.proposedStartDate) ? 1 : 0) +
-    (normalizeDateToDay(filters.actualStartDate) ? 1 : 0)
+    (normalizeDateToDay(filters.actualStartDate) ? 1 : 0) +
+    (normalizeDateToDay(filters.createdAt) ? 1 : 0) +
+    (normalizeDateToDay(filters.updatedAt) ? 1 : 0)
   );
 }
 
@@ -135,9 +147,13 @@ export function compileApplicationSearchPredicate(
   return (application: SearchableApplication): boolean => {
     const proposedIso = normalizeDateToDay(application.proposedStartDate);
     const actualIso = normalizeDateToDay(application.actualStartDate);
+    const createdIso = normalizeDateToDay(application.createdAt);
+    const updatedIso = normalizeDateToDay(application.updatedAt);
 
     const proposedFormatted = formatIsoToMmddyyyy(proposedIso);
     const actualFormatted = formatIsoToMmddyyyy(actualIso);
+    const createdFormatted = formatIsoToMmddyyyy(createdIso);
+    const updatedFormatted = formatIsoToMmddyyyy(updatedIso);
     const normalizedHaystacks = [
       application.name,
       application.email,
@@ -150,6 +166,10 @@ export function compileApplicationSearchPredicate(
       proposedFormatted,
       actualIso,
       actualFormatted,
+      createdIso,
+      createdFormatted,
+      updatedIso,
+      updatedFormatted,
     ]
       .filter((value): value is string => !!value)
       .map((value) => normalizeText(value));
@@ -210,6 +230,9 @@ export function compileApplicationFilterPredicate(
   );
   const normalizedActualFilter = normalizeDateToDay(filters.actualStartDate);
 
+  const normalizedCreatedFilter = normalizeDateToDay(filters.createdAt);
+  const normalizedUpdatedFilter = normalizeDateToDay(filters.updatedAt);
+
   return (application: FilterableApplication): boolean => {
     if (
       allowedStatuses &&
@@ -253,6 +276,32 @@ export function compileApplicationFilterPredicate(
         normalizedActualApplicationDate,
         normalizedActualFilter,
         filters.actualStartDateDirection,
+      )
+    ) {
+      return false;
+    }
+
+    const normalizedCreatedApplicationDate = normalizeDateToDay(
+      application.createdAt,
+    );
+    if (
+      !matchesDateDirection(
+        normalizedCreatedApplicationDate,
+        normalizedCreatedFilter,
+        filters.createdAtDirection,
+      )
+    ) {
+      return false;
+    }
+
+    const normalizedUpdatedApplicationDate = normalizeDateToDay(
+      application.updatedAt,
+    );
+    if (
+      !matchesDateDirection(
+        normalizedUpdatedApplicationDate,
+        normalizedUpdatedFilter,
+        filters.updatedAtDirection,
       )
     ) {
       return false;
