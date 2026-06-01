@@ -47,9 +47,6 @@ function checkAuthSecrets(): void {
   ) {
     missingVars.push('COGNITO_APP_CLIENT_ID');
   }
-  if (!process.env.COGNITO_CLIENT_SECRET) {
-    missingVars.push('COGNITO_CLIENT_SECRET');
-  }
   if (missingVars.length > 0) {
     throw new Error(
       'The following environmental variables are missing:' +
@@ -65,7 +62,6 @@ const CognitoAuthConfig = {
     process.env.COGNITO_USER_POOL_ID || process.env.VITE_COGNITO_USER_POOL_ID,
   clientId:
     process.env.COGNITO_APP_CLIENT_ID || process.env.VITE_COGNITO_APP_CLIENT_ID,
-  clientSecret: process.env.COGNITO_CLIENT_SECRET,
 };
 
 export default { CognitoAuthConfig, AWSConfig };

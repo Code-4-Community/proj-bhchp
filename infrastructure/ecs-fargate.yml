@@ -74,8 +74,6 @@ Parameters:
     Type: String
   CognitoAppClientId:
     Type: String
-  CognitoClientSecret:
-    Type: String
   ViteCognitoAppClientId:
     Type: String
 
@@ -270,8 +268,6 @@ Resources:
               Value: !Ref CognitoUserPoolId
             - Name: COGNITO_APP_CLIENT_ID
               Value: !Ref CognitoAppClientId
-            - Name: COGNITO_CLIENT_SECRET
-              Value: !Ref CognitoClientSecret
             - Name: VITE_COGNITO_APP_CLIENT_ID
               Value: !Ref ViteCognitoAppClientId
           LogConfiguration:

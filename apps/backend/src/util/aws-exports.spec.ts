@@ -6,7 +6,6 @@ type AwsExports = {
   CognitoAuthConfig: {
     userPoolId?: string;
     clientId?: string;
-    clientSecret?: string;
   };
 };
 
@@ -21,7 +20,6 @@ const ENV_KEYS = [
   'AWS_SES_SENDER_EMAIL',
   'COGNITO_APP_CLIENT_ID',
   'VITE_COGNITO_APP_CLIENT_ID',
-  'COGNITO_CLIENT_SECRET',
   'COGNITO_USER_POOL_ID',
   'VITE_COGNITO_USER_POOL_ID',
   'COGNITO_REGION',
@@ -54,7 +52,6 @@ describe('aws-exports', () => {
     process.env.BHCHP_AWS_BUCKET_NAME = 'app-bucket';
     process.env.BHCHP_AWS_REGION = 'us-west-2';
     process.env.COGNITO_APP_CLIENT_ID = 'cognito-client';
-    process.env.COGNITO_CLIENT_SECRET = 'cognito-secret';
     process.env.COGNITO_USER_POOL_ID = 'pool-id';
 
     const config = await loadAwsExports();
@@ -66,14 +63,12 @@ describe('aws-exports', () => {
     expect(config.CognitoAuthConfig).toEqual({
       userPoolId: 'pool-id',
       clientId: 'cognito-client',
-      clientSecret: 'cognito-secret',
     });
   });
 
   it('uses NX and VITE fallback env vars when primary vars are absent', async () => {
     process.env.BHCHP_AWS_BUCKET_NAME = 'fallback-bucket';
     process.env.VITE_COGNITO_APP_CLIENT_ID = 'vite-client';
-    process.env.COGNITO_CLIENT_SECRET = 'cognito-secret';
     process.env.VITE_COGNITO_USER_POOL_ID = 'vite-pool';
     process.env.VITE_COGNITO_REGION = 'eu-west-1';
 
@@ -86,7 +81,6 @@ describe('aws-exports', () => {
     expect(config.CognitoAuthConfig).toEqual({
       userPoolId: 'vite-pool',
       clientId: 'vite-client',
-      clientSecret: 'cognito-secret',
     });
   });
 
@@ -99,7 +93,6 @@ describe('aws-exports', () => {
   it('throws when AWS and Cognito region vars are missing', async () => {
     process.env.BHCHP_AWS_BUCKET_NAME = 'app-bucket';
     process.env.COGNITO_APP_CLIENT_ID = 'cognito-client';
-    process.env.COGNITO_CLIENT_SECRET = 'cognito-secret';
     process.env.COGNITO_USER_POOL_ID = 'pool-id';
 
     await expect(loadAwsExports()).rejects.toThrow(
@@ -107,12 +100,12 @@ describe('aws-exports', () => {
     );
   });
 
-  it('throws when Cognito app client and client secret are missing', async () => {
+  it('throws when Cognito app client is missing', async () => {
     process.env.BHCHP_AWS_BUCKET_NAME = 'app-bucket';
     process.env.AWS_REGION = 'us-west-2';
 
     await expect(loadAwsExports()).rejects.toThrow(
-      'The following environmental variables are missing:COGNITO_APP_CLIENT_ID,COGNITO_CLIENT_SECRET',
+      'The following environmental variables are missing:COGNITO_APP_CLIENT_ID',
     );
   });
 });
