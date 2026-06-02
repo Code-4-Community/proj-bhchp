@@ -44,3 +44,7 @@ Thumbs.db
 !example.env
 .vscode
 .postman
+infrastructure/params/03-cognito.json
+infrastructure/params/05-ecs-fargate.json
+infrastructure/params/07-amplify-app.json
+shared/
