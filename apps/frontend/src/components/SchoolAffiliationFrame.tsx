@@ -57,6 +57,7 @@ const SchoolAffiliationFrame = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const emblemUrl = schoolEmblemPublicUrl(schoolName);
+  const showWhiteBg = schoolName !== 'Other' && schoolName !== 'Does not apply';
   const [emblemFailed, setEmblemFailed] = useState(false);
 
   useEffect(() => {
@@ -151,7 +152,12 @@ const SchoolAffiliationFrame = ({
       >
         {isLearner ? (
           <>
-            <Circle size="120px" bg="gray.300" flexShrink={0} overflow="hidden">
+            <Circle
+              size="120px"
+              bg={showWhiteBg ? 'white' : 'gray.300'}
+              flexShrink={0}
+              overflow="hidden"
+            >
               {emblemUrl && !emblemFailed ? (
                 <Image
                   src={emblemUrl}
