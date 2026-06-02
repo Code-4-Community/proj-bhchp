@@ -109,6 +109,8 @@ const mockApplication: Application = {
   heardAboutFrom: [],
   proposedStartDate: new Date('2024-01-01'),
   endDate: new Date('2024-06-30'),
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
 };
 
 function createMockHttpHost(body: Record<string, unknown> | undefined) {

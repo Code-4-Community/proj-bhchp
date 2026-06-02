@@ -55,6 +55,8 @@ const dummyApplication: Application = {
   email: 'test@example.com',
   discipline: disciplineKeys.rn,
   proposedStartDate: new Date('2024-01-01'),
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
   referred: false,
   weeklyHours: 20,
   pronouns: 'they/them',
@@ -365,6 +367,8 @@ describe('ApplicationsService', () => {
         email: 'test@example.com',
         discipline: disciplineKeys.rn,
         proposedStartDate: new Date('2024-01-01'),
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         weeklyHours: 20,
         pronouns: 'they/them',
         nonEnglishLangs: 'none',
@@ -405,6 +409,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -438,6 +444,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -459,6 +467,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -479,6 +489,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -499,6 +511,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -519,6 +533,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -534,6 +550,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -559,6 +577,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -992,6 +1012,8 @@ describe('ApplicationsService', () => {
           interest: [InterestArea.WOMENS_HEALTH],
           license: '',
           proposedStartDate: new Date('2025-11-12'),
+          createdAt: new Date('2025-11-12'),
+          updatedAt: new Date('2025-11-12'),
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
           email: 'test@example.com',
@@ -1019,6 +1041,8 @@ describe('ApplicationsService', () => {
           saturdayAvailability: 'no availability',
           interest: [InterestArea.WOMENS_HEALTH],
           proposedStartDate: new Date('2025-11-12'),
+          createdAt: new Date('2025-11-12'),
+          updatedAt: new Date('2025-11-12'),
           license: '',
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
