@@ -3,13 +3,17 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
+  CheckboxGroup,
+  Fieldset,
   Flex,
   Heading,
   HStack,
   Input,
   Popover,
-  chakra,
   Text,
+  Stack,
+  For,
 } from '@chakra-ui/react';
 import { FaUserPlus } from 'react-icons/fa6';
 import { useNavigate } from 'react-router-dom';
@@ -289,36 +293,43 @@ const CreateNewAdmin: React.FC = () => {
                 <Text fontWeight="700" fontSize="14px" color="#5E5E5E" mb="2">
                   DISCIPLINES
                 </Text>
-                <chakra.select
-                  value={disciplines}
-                  multiple
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                    const selected = Array.from(
-                      e.target.selectedOptions,
-                      (option) => option.value,
-                    );
-                    setDisciplines(selected);
-                    setSubmitError(null);
-                  }}
-                  w="100%"
-                  minH="120px"
+                <Box
                   borderWidth="1px"
                   borderStyle="solid"
                   borderColor="#676767"
                   borderRadius="6px"
                   bg="white"
                   px="3"
-                  fontSize="16px"
-                  color={disciplines.length ? '#000000' : '#777777'}
-                  _focus={{ boxShadow: 'outline', borderColor: '#4C72C9' }}
-                  _hover={{ borderColor: '#4C72C9' }}
+                  py="3"
                 >
-                  {disciplineCatalog.map((value) => (
-                    <option key={value.key} value={value.key}>
-                      {value.label}
-                    </option>
-                  ))}
-                </chakra.select>
+                  <Text fontSize="12px" color="#5E5E5E" mb="2">
+                    Select one or more disciplines
+                  </Text>
+                  <Fieldset.Root>
+                    <CheckboxGroup
+                      name="new_admin_disciplines"
+                      value={disciplines}
+                      onValueChange={(value) => {
+                        setDisciplines(value);
+                        setSubmitError(null);
+                      }}
+                    >
+                      <Fieldset.Content>
+                        <Stack maxH="180px" overflowY="auto" gap="2">
+                          <For each={disciplineCatalog}>
+                            {(value) => (
+                              <Checkbox.Root key={value.key} value={value.key}>
+                                <Checkbox.HiddenInput />
+                                <Checkbox.Control />
+                                <Checkbox.Label>{value.label}</Checkbox.Label>
+                              </Checkbox.Root>
+                            )}
+                          </For>
+                        </Stack>
+                      </Fieldset.Content>
+                    </CheckboxGroup>
+                  </Fieldset.Root>
+                </Box>
               </Box>
             </Flex>
           </Box>

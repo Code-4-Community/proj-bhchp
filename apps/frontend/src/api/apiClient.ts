@@ -89,6 +89,12 @@ export class ApiClient {
     return this.get(`/api/applications/${appId}`) as Promise<Application>;
   }
 
+  public async getApplicationsByEmail(email: string): Promise<Application[]> {
+    return this.get(
+      `/api/applications/by-email/${encodeURIComponent(email)}`,
+    ) as Promise<Application[]>;
+  }
+
   public async getApplicants(): Promise<User[]> {
     return this.get('/api/users/standard') as Promise<User[]>;
   }
@@ -111,6 +117,16 @@ export class ApiClient {
     return this.get(
       `/api/admin-info/by-email/${encodeURIComponent(email)}`,
     ) as Promise<AdminInfo | null>;
+  }
+
+  public async updateAdminDisciplines(
+    email: string,
+    disciplines: string[],
+  ): Promise<AdminInfo> {
+    return this.patch(
+      `/api/admin-info/email/${encodeURIComponent(email)}/disciplines`,
+      { disciplines },
+    ) as Promise<AdminInfo>;
   }
 
   public async getDisciplineAdminMap(): Promise<DisciplineAdminMap> {
@@ -255,19 +271,73 @@ export class ApiClient {
   }
 
   private async post(path: string, body: unknown): Promise<unknown> {
-    return this.axiosInstance
-      .post(path, body)
-      .then((response) => response.data);
+    try {
+      console.debug('ApiClient POST: request start', {
+        baseURL: defaultBaseUrl,
+        path,
+      });
+      const response = await this.axiosInstance.post(path, body);
+      console.debug('ApiClient POST: request success', {
+        path,
+        status: response.status,
+      });
+      return response.data;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error('ApiClient POST: request failed', {
+          path,
+          status: err.response?.status,
+          url: err.config?.url,
+          method: err.config?.method,
+          data: err.response?.data,
+        });
+      } else {
+        console.error('ApiClient POST: request failed', { path, err });
+      }
+      throw err;
+    }
   }
 
   private async patch(path: string, body: unknown): Promise<unknown> {
-    return this.axiosInstance
-      .patch(path, body)
-      .then((response) => response.data);
+    try {
+      console.debug('ApiClient PATCH: request start', {
+        baseURL: defaultBaseUrl,
+        path,
+      });
+      const response = await this.axiosInstance.patch(path, body);
+      console.debug('ApiClient PATCH: request success', {
+        path,
+        status: response.status,
+      });
+      return response.data;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error('ApiClient PATCH: request failed', {
+          path,
+          status: err.response?.status,
+          url: err.config?.url,
+          method: err.config?.method,
+          data: err.response?.data,
+        });
+      } else {
+        console.error('ApiClient PATCH: request failed', { path, err });
+      }
+      throw err;
+    }
   }
 
   public async getCurrentUser(): Promise<User | null> {
     return this.get('/api/users/me') as Promise<User | null>;
+  }
+
+  public async updateUserByEmail(
+    email: string,
+    profile: Pick<User, 'firstName' | 'lastName'>,
+  ): Promise<User> {
+    return this.patch(
+      `/api/users/email/${encodeURIComponent(email)}`,
+      profile,
+    ) as Promise<User>;
   }
 
   public async getCurrentApplication(): Promise<Application | null> {

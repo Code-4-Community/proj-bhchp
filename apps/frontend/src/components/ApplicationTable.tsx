@@ -1,13 +1,17 @@
-import { useMemo } from 'react';
-import { Table } from '@chakra-ui/react';
+import { useEffect, useMemo, useState } from 'react';
+import { Flex, Input, InputGroup, Spacer, Table } from '@chakra-ui/react';
 import type { ApplicationRow } from '@hooks/useApplications';
 import StatusPill, { StatusPillConfig, StatusVariant } from './StatusPill';
 import {
   compileApplicationFilterPredicate,
   compileApplicationSearchPredicate,
   EMPTY_APPLICATION_FILTERS,
+  normalizeDateToDay,
   type ApplicationFilters,
 } from '@utils/applicationFilters';
+import apiClient from '@api/apiClient';
+import { MdEdit } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
 
 const COLUMNS = [
   'Name',
@@ -67,6 +71,11 @@ export function ApplicationTable({
   searchQuery = '',
   filters = EMPTY_APPLICATION_FILTERS,
 }: ApplicationTableProps) {
+  const navigate = useNavigate();
+  const [actualStartDates, setActualStartDates] = useState<
+    Record<number, string>
+  >({});
+  const [editingIds, setEditingIds] = useState<Set<number>>(new Set());
   const matchesStructuredFilters = useMemo(
     () => compileApplicationFilterPredicate(filters),
     [filters],
@@ -76,6 +85,19 @@ export function ApplicationTable({
     () => compileApplicationSearchPredicate(searchQuery),
     [searchQuery],
   );
+
+  useEffect(() => {
+    setActualStartDates((prev) => {
+      const next = { ...prev };
+      applications.forEach((application) => {
+        if (next[application.appId] === undefined) {
+          next[application.appId] =
+            normalizeDateToDay(application.actualStartDate) ?? '';
+        }
+      });
+      return next;
+    });
+  }, [applications]);
 
   const filteredApplications = useMemo(
     () =>
@@ -87,6 +109,19 @@ export function ApplicationTable({
       }),
     [applications, matchesSearchQuery, matchesStructuredFilters],
   );
+
+  const handleActualStartDateUpdate = async (
+    nextDate: string,
+    application: ApplicationRow,
+  ) => {
+    if (!application) return;
+    const updatedApplication = await apiClient.updateApplicationActualStartDate(
+      application.appId,
+      nextDate,
+    );
+    //    setApplicationsState(updatedApplication); TODO
+    console.log('we clicked the button!');
+  };
 
   return (
     <Table.Root striped stickyHeader minW="900px">
@@ -104,38 +139,102 @@ export function ApplicationTable({
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {filteredApplications.map((application) => (
-          <Table.Row key={application.appId}>
-            <Table.Cell>
-              <a
-                href={`/admin/view-application/${application.appId}`}
-                aria-label={`View application ${application.appId}`}
-                style={{ color: '#0b5fff', textDecoration: 'underline' }}
+        {filteredApplications.map((application) => {
+          const isEditingActualStart = editingIds.has(application.appId);
+
+          return (
+            <Table.Row
+              key={application.appId}
+              onClick={() =>
+                navigate(`/admin/view-application/${application.appId}`)
+              }
+              transition="background-color 240ms ease-in-out"
+              _hover={{
+                backgroundColor: '#DBEAFE',
+                '& > td': {
+                  backgroundColor: '#DBEAFE',
+                  transition: 'background-color 240ms ease-in-out',
+                },
+              }}
+            >
+              <Table.Cell>{titleCaseName(application.name)}</Table.Cell>
+              <Table.Cell>
+                {formatDate(application.proposedStartDate)}
+              </Table.Cell>
+              <Table.Cell
+                onClick={(event) => {
+                  if (isEditingActualStart) {
+                    event.stopPropagation();
+                  }
+                }}
               >
-                {titleCaseName(application.name)}
-              </a>
-            </Table.Cell>
-            <Table.Cell>{formatDate(application.proposedStartDate)}</Table.Cell>
-            <Table.Cell>{formatDate(application.actualStartDate)}</Table.Cell>
-            <Table.Cell>
-              {formatDesiredExperience(application.desiredExperience)}
-            </Table.Cell>
-            <Table.Cell>{application.applicantType}</Table.Cell>
-            <Table.Cell>{application.discipline}</Table.Cell>
-            <Table.Cell>
-              {titleCaseName(application.disciplineAdminName)}
-            </Table.Cell>
-            <Table.Cell>
-              {StatusPillConfig[application.status as StatusVariant] ? (
-                <StatusPill variant={application.status as StatusVariant}>
-                  {StatusPillConfig[application.status as StatusVariant].label}
-                </StatusPill>
-              ) : (
-                application.status
-              )}
-            </Table.Cell>
-          </Table.Row>
-        ))}
+                <Flex align="center">
+                  {isEditingActualStart ? (
+                    <InputGroup width="115px" flex="1">
+                      <Input
+                        type="date"
+                        size="xs"
+                        value={actualStartDates[application.appId] ?? ''}
+                        onChange={(event) => {
+                          event.stopPropagation();
+                          const value = event.target.value;
+                          setActualStartDates((prev) => ({
+                            ...prev,
+                            [application.appId]: value,
+                          }));
+                        }}
+                      />
+                    </InputGroup>
+                  ) : (
+                    formatDate(actualStartDates[application.appId])
+                  )}
+                  <Spacer />
+                  <MdEdit
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (editingIds.has(application.appId)) {
+                        handleActualStartDateUpdate(
+                          actualStartDates[application.appId] ?? '',
+                          application,
+                        );
+
+                        setEditingIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(application.appId);
+                          return next;
+                        });
+                      } else {
+                        setEditingIds((prev) =>
+                          new Set(prev).add(application.appId),
+                        );
+                      }
+                    }}
+                  />
+                </Flex>
+              </Table.Cell>
+              <Table.Cell>
+                {formatDesiredExperience(application.desiredExperience)}
+              </Table.Cell>
+              <Table.Cell>{application.applicantType}</Table.Cell>
+              <Table.Cell>{application.discipline}</Table.Cell>
+              <Table.Cell>
+                {titleCaseName(application.disciplineAdminName)}
+              </Table.Cell>
+              <Table.Cell>
+                {StatusPillConfig[application.status as StatusVariant] ? (
+                  <StatusPill variant={application.status as StatusVariant}>
+                    {
+                      StatusPillConfig[application.status as StatusVariant]
+                        .label
+                    }
+                  </StatusPill>
+                ) : (
+                  application.status
+                )}
+              </Table.Cell>
+            </Table.Row>
+          );
+        })}
       </Table.Body>
     </Table.Root>
   );

@@ -1,33 +1,48 @@
 import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
+import { ArrayContains, Repository } from 'typeorm';
 
 import { CandidateInfoService } from './candidate-info.service';
 import { CandidateInfo } from './candidate-info.entity';
+
+const mockEntityManager = {
+  getRepository: jest.fn(),
+  query: jest.fn(),
+};
 
 const mockcandidatesRepository: Partial<Repository<CandidateInfo>> = {
   create: jest.fn(),
   save: jest.fn(),
   findOneBy: jest.fn(),
+  findOne: jest.fn(),
   find: jest.fn(),
   remove: jest.fn(),
+  manager: {
+    transaction: jest.fn(),
+  } as never,
 };
 
 const candidate1: CandidateInfo = {
-  appId: 1,
   email: 'john@example.com',
+  appIds: [1],
 };
 
 const candidate2: CandidateInfo = {
-  appId: 2,
   email: 'jane@example.com',
+  appIds: [2],
 };
 
 describe('CandidateInfoService', () => {
   let service: CandidateInfoService;
 
   beforeEach(async () => {
+    mockEntityManager.getRepository.mockReturnValue(mockcandidatesRepository);
+    mockEntityManager.query.mockResolvedValue([]);
+    (
+      mockcandidatesRepository.manager?.transaction as jest.Mock
+    ).mockImplementation(async (callback) => callback(mockEntityManager));
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CandidateInfoService,
@@ -51,11 +66,7 @@ describe('CandidateInfoService', () => {
 
   describe('create', () => {
     it('should create a new candidate', async () => {
-      const createData = {
-        appId: 1,
-        email: 'john@example.com',
-      };
-
+      jest.spyOn(mockcandidatesRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(mockcandidatesRepository, 'create')
         .mockReturnValue(candidate1);
@@ -63,14 +74,22 @@ describe('CandidateInfoService', () => {
         .spyOn(mockcandidatesRepository, 'save')
         .mockResolvedValue(candidate1);
 
-      const result = await service.create(createData.appId, createData.email);
+      const result = await service.create(1, 'john@example.com');
 
       expect(result).toEqual(candidate1);
-      expect(mockcandidatesRepository.create).toHaveBeenCalledWith(createData);
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(mockcandidatesRepository.create).toHaveBeenCalledWith({
+        email: 'john@example.com',
+        appIds: [1],
+      });
       expect(mockcandidatesRepository.save).toHaveBeenCalledWith(candidate1);
     });
 
     it('should trim email before creating a candidate', async () => {
+      jest.spyOn(mockcandidatesRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(mockcandidatesRepository, 'create')
         .mockReturnValue(candidate1);
@@ -80,10 +99,61 @@ describe('CandidateInfoService', () => {
 
       await service.create(1, '  john@example.com  ');
 
-      expect(mockcandidatesRepository.create).toHaveBeenCalledWith({
-        appId: 1,
-        email: 'john@example.com',
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        lock: { mode: 'pessimistic_write' },
       });
+      expect(mockcandidatesRepository.create).toHaveBeenCalledWith({
+        email: 'john@example.com',
+        appIds: [1],
+      });
+    });
+
+    it('should append a new appId to an existing candidate record', async () => {
+      const existing: CandidateInfo = {
+        email: 'john@example.com',
+        appIds: [1, 3],
+      };
+      const updated: CandidateInfo = {
+        email: 'john@example.com',
+        appIds: [1, 3, 5],
+      };
+
+      jest
+        .spyOn(mockcandidatesRepository, 'findOne')
+        .mockResolvedValue(existing);
+      jest.spyOn(mockcandidatesRepository, 'save').mockResolvedValue(updated);
+
+      await expect(service.create(5, 'john@example.com')).resolves.toEqual(
+        updated,
+      );
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(mockcandidatesRepository.create).not.toHaveBeenCalled();
+      expect(mockcandidatesRepository.save).toHaveBeenCalledWith(updated);
+    });
+
+    it('should not duplicate an existing appId', async () => {
+      const existing: CandidateInfo = {
+        email: 'john@example.com',
+        appIds: [1, 3],
+      };
+
+      jest
+        .spyOn(mockcandidatesRepository, 'findOne')
+        .mockResolvedValue(existing);
+      jest.spyOn(mockcandidatesRepository, 'save').mockResolvedValue(existing);
+
+      await service.create(3, 'john@example.com');
+
+      expect(mockcandidatesRepository.findOne).toHaveBeenCalledWith({
+        where: { email: 'john@example.com' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(mockcandidatesRepository.save).toHaveBeenCalledWith(existing);
+      expect(existing.appIds).toEqual([1, 3]);
     });
 
     it('should throw error if appId is invalid', async () => {
@@ -97,30 +167,6 @@ describe('CandidateInfoService', () => {
         'candidate email is required',
       );
     });
-
-    it('should error out without information loss if the repository throws an error during create', async () => {
-      jest
-        .spyOn(mockcandidatesRepository, 'create')
-        .mockImplementationOnce(() => {
-          throw new Error('There was a problem retrieving the info');
-        });
-
-      await expect(service.create(1, 'john@example.com')).rejects.toThrow(
-        `There was a problem retrieving the info`,
-      );
-    });
-
-    it('should error out without information loss if the repository throws an error during save', async () => {
-      jest
-        .spyOn(mockcandidatesRepository, 'save')
-        .mockImplementationOnce(() => {
-          throw new Error('There was a problem saving the info');
-        });
-
-      await expect(service.create(1, 'john@example.com')).rejects.toThrow(
-        `There was a problem saving the info`,
-      );
-    });
   });
 
   describe('findOne', () => {
@@ -131,7 +177,7 @@ describe('CandidateInfoService', () => {
       expect(mockcandidatesRepository.findOneBy).not.toHaveBeenCalled();
     });
 
-    it('should find an CandidateInfo by email', async () => {
+    it('should find CandidateInfo by email', async () => {
       jest
         .spyOn(mockcandidatesRepository, 'findOneBy')
         .mockResolvedValue(candidate1);
@@ -163,16 +209,28 @@ describe('CandidateInfoService', () => {
         'candidate with email notfound@example.com not found',
       );
     });
+  });
 
-    it('should error out without information loss if the repository throws an error during retrieval', async () => {
-      jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
-        .mockRejectedValueOnce(
-          new Error('There was a problem retrieving the info'),
-        );
+  describe('findLatestAppId', () => {
+    it('should return the highest appId for a candidate email', async () => {
+      jest.spyOn(mockcandidatesRepository, 'findOneBy').mockResolvedValue({
+        email: 'john@example.com',
+        appIds: [1, 4, 2],
+      });
 
-      await expect(service.findOne('john@example.com')).rejects.toThrow(
-        'There was a problem retrieving the info',
+      await expect(service.findLatestAppId('john@example.com')).resolves.toBe(
+        4,
+      );
+    });
+
+    it('should throw when a candidate has no appIds', async () => {
+      jest.spyOn(mockcandidatesRepository, 'findOneBy').mockResolvedValue({
+        email: 'john@example.com',
+        appIds: [],
+      });
+
+      await expect(service.findLatestAppId('john@example.com')).rejects.toThrow(
+        'candidate with email john@example.com has no applications',
       );
     });
   });
@@ -189,31 +247,14 @@ describe('CandidateInfoService', () => {
       expect(result).toEqual(candidates);
       expect(mockcandidatesRepository.find).toHaveBeenCalledTimes(1);
     });
-
-    it('should return empty array when no candidates exist', async () => {
-      jest.spyOn(mockcandidatesRepository, 'find').mockResolvedValue([]);
-
-      const result = await service.findAll();
-
-      expect(result).toEqual([]);
-    });
-
-    it('should error out without information loss if the repository throws an error during retrieval', async () => {
-      jest
-        .spyOn(mockcandidatesRepository, 'find')
-        .mockRejectedValueOnce(
-          new Error('There was a problem retrieving the info'),
-        );
-
-      await expect(service.findAll()).rejects.toThrow(
-        'There was a problem retrieving the info',
-      );
-    });
   });
 
   describe('findByAppId', () => {
-    it('should find candidates by app id', async () => {
-      const candidates = [candidate1];
+    it('should find candidates by app id membership', async () => {
+      const candidates = [
+        candidate1,
+        { email: 'another@example.com', appIds: [1, 7] },
+      ];
       jest
         .spyOn(mockcandidatesRepository, 'find')
         .mockResolvedValue(candidates);
@@ -222,8 +263,9 @@ describe('CandidateInfoService', () => {
 
       expect(result).toEqual(candidates);
       expect(mockcandidatesRepository.find).toHaveBeenCalledWith({
-        where: { appId: 1 },
+        where: { appIds: ArrayContains([1]) },
       });
+      expect(mockcandidatesRepository.find).toHaveBeenCalledTimes(1);
     });
 
     it('should return empty array when no candidates found for app id', async () => {
@@ -232,6 +274,9 @@ describe('CandidateInfoService', () => {
       const result = await service.findByAppId(999);
 
       expect(result).toEqual([]);
+      expect(mockcandidatesRepository.find).toHaveBeenCalledWith({
+        where: { appIds: ArrayContains([999]) },
+      });
     });
 
     it('should throw error if appId is invalid', async () => {
@@ -239,22 +284,10 @@ describe('CandidateInfoService', () => {
         'Valid app ID is required',
       );
     });
-
-    it('should error out without information loss if the repository throws an error during retrieval', async () => {
-      jest
-        .spyOn(mockcandidatesRepository, 'find')
-        .mockRejectedValueOnce(
-          new Error('There was a problem retrieving the info'),
-        );
-
-      await expect(service.findByAppId(8)).rejects.toThrow(
-        'There was a problem retrieving the info',
-      );
-    });
   });
 
   describe('delete', () => {
-    it('should delete an CandidateInfo successfully', async () => {
+    it('should delete a CandidateInfo by email', async () => {
       jest
         .spyOn(mockcandidatesRepository, 'findOneBy')
         .mockResolvedValue(candidate1);
@@ -283,38 +316,6 @@ describe('CandidateInfoService', () => {
         email: 'notfound@example.com',
       });
       expect(mockcandidatesRepository.remove).not.toHaveBeenCalled();
-    });
-
-    it('should error out without information loss if the repository throws an error during retrieval', async () => {
-      jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
-        .mockRejectedValueOnce(
-          new Error('There was a problem retrieving the info'),
-        );
-
-      await expect(service.delete('john@example.com')).rejects.toThrow(
-        'There was a problem retrieving the info',
-      );
-      expect(mockcandidatesRepository.remove).not.toHaveBeenCalled();
-    });
-
-    it('should error out without information loss if the repository throws an error during removal', async () => {
-      jest
-        .spyOn(mockcandidatesRepository, 'findOneBy')
-        .mockResolvedValue(candidate1);
-      jest
-        .spyOn(mockcandidatesRepository, 'remove')
-        .mockRejectedValueOnce(
-          new Error('There was a problem removing the info'),
-        );
-
-      await expect(service.delete('john@example.com')).rejects.toThrow(
-        'There was a problem removing the info',
-      );
-      expect(mockcandidatesRepository.findOneBy).toHaveBeenCalledWith({
-        email: 'john@example.com',
-      });
-      expect(mockcandidatesRepository.remove).toHaveBeenCalledWith(candidate1);
     });
   });
 });

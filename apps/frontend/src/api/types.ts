@@ -179,7 +179,7 @@ export interface User {
 
 export interface CandidateInfo {
   email: string;
-  appId: number;
+  appIds: number[];
 }
 
 export interface AdminInfo {

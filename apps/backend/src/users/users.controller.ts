@@ -1,8 +1,10 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   NotFoundException,
+  Patch,
   Param,
   Req,
   UseGuards,
@@ -16,6 +18,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserType } from './types';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { UpdateUserNameDto } from './dto/update-user-name.dto';
 
 /**
  * Controller to expose callable HTTP endpoints to
@@ -81,12 +84,49 @@ export class UsersController {
    * @returns {User | null} Returns the user object or nothing.
    */
   @Get('me')
-  async getCurrentUser(
-    @Req() req: { user?: User },
-  ): Promise<User | NotFoundException> {
+  async getCurrentUser(@Req() req: { user?: User }): Promise<User> {
     if (!req.user || !req.user.userType) {
-      return new NotFoundException('No user matching the JWT was found.');
+      throw new NotFoundException('No user matching the JWT was found.');
     }
     return req.user;
+  }
+
+  /**
+   * Updates a user's name by email.
+   * @param email The email of the user to update (URL-encoded).
+   * @param body fields to update on the user profile
+   * @returns {User} Updated user profile
+   */
+  @Patch('email/:email')
+  @UseGuards(RolesGuard)
+  @Roles(UserType.ADMIN)
+  async updateUserByEmail(
+    @Param('email') email: string,
+    @Body() body: UpdateUserNameDto,
+  ): Promise<User> {
+    const decoded = decodeURIComponent(email);
+    const updates: { firstName?: string; lastName?: string } = {};
+    if (typeof body.firstName === 'string') {
+      const firstName = body.firstName.trim();
+      if (firstName) {
+        updates.firstName = firstName;
+      }
+    }
+    if (typeof body.lastName === 'string') {
+      const lastName = body.lastName.trim();
+      if (lastName) {
+        updates.lastName = lastName;
+      }
+    }
+
+    if (!updates.firstName && !updates.lastName) {
+      const existing = await this.usersService.findOne(decoded);
+      if (!existing) {
+        throw new NotFoundException('User not found');
+      }
+      return existing;
+    }
+
+    return this.usersService.update(decoded, updates);
   }
 }

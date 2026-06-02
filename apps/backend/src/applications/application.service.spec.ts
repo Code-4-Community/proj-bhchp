@@ -120,7 +120,7 @@ describe('ApplicationsService', () => {
   };
 
   const mockCandidateInfoService = {
-    findOne: jest.fn(),
+    findLatestAppId: jest.fn(),
   };
 
   const mockDisciplinesService = {
@@ -214,6 +214,42 @@ describe('ApplicationsService', () => {
 
       await expect(service.findAll()).rejects.toThrow(
         `There was a problem retrieving the info`,
+      );
+    });
+  });
+
+  describe('findByEmail', () => {
+    it('should return applications for an email ordered by descending appId', async () => {
+      const applicationHistory: Application[] = [
+        { ...dummyApplication, appId: 3 },
+        dummyApplication,
+      ];
+
+      mockRepository.find.mockResolvedValue(applicationHistory);
+
+      await expect(service.findByEmail('test@example.com')).resolves.toEqual(
+        applicationHistory,
+      );
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should trim email before returning applications by email', async () => {
+      mockRepository.find.mockResolvedValue([dummyApplication]);
+
+      await service.findByEmail('  test@example.com  ');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should throw when applications email is missing', async () => {
+      await expect(service.findByEmail('')).rejects.toThrow(
+        'Application email is required',
       );
     });
   });
@@ -1233,10 +1269,7 @@ describe('ApplicationsService', () => {
   describe('private helpers', () => {
     describe('confidentiality form status access', () => {
       beforeEach(() => {
-        mockCandidateInfoService.findOne.mockResolvedValue({
-          appId: 1,
-          email: dummyApplication.email,
-        });
+        mockCandidateInfoService.findLatestAppId.mockResolvedValue(1);
       });
 
       it('allows upload for accepted applicants', async () => {

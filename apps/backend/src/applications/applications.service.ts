@@ -110,8 +110,8 @@ export class ApplicationsService {
   private async findCurrentUserApplication(
     email: string,
   ): Promise<Application> {
-    const candidateInfo = await this.candidateInfoService.findOne(email);
-    return this.findById(candidateInfo.appId);
+    const latestAppId = await this.candidateInfoService.findLatestAppId(email);
+    return this.findById(latestAppId);
   }
 
   /**
@@ -215,6 +215,26 @@ export class ApplicationsService {
    */
   async findAll(): Promise<Application[]> {
     return await this.applicationRepository.find();
+  }
+
+  /**
+   * Returns all applications for the specified email ordered newest first.
+   * @param email The email to filter applications by.
+   * @returns A promise resolving to the applications for that email.
+   * @throws {BadRequestException} if email is invalid.
+   * @throws {Error} which is unchanged from what repository throws.
+   */
+  async findByEmail(email: string): Promise<Application[]> {
+    const normalizedEmail = email?.trim();
+
+    if (!normalizedEmail) {
+      throw new BadRequestException('Application email is required');
+    }
+
+    return this.applicationRepository.find({
+      where: { email: normalizedEmail },
+      order: { appId: 'DESC' },
+    });
   }
 
   /**

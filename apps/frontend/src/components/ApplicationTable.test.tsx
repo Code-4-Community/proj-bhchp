@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
+import { MemoryRouter } from 'react-router-dom';
 import ApplicationTable from './ApplicationTable';
 import type { ApplicationRow } from '@hooks/useApplications';
 import {
@@ -9,7 +10,11 @@ import {
 } from '@utils/applicationFilters';
 
 function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
+  return render(
+    <ChakraProvider value={defaultSystem}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </ChakraProvider>,
+  );
 }
 
 const mockApplications: ApplicationRow[] = [

@@ -46,6 +46,7 @@ const mockApplicationsService: Partial<ApplicationsService> = {
   countRejected: jest.fn(),
   countApprovedOrActive: jest.fn(),
   findById: jest.fn(),
+  findByEmail: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   updateStatus: jest.fn(),
@@ -68,7 +69,7 @@ const mockUsersService = {
 };
 
 const mockCandidateInfoService = {
-  findOne: jest.fn(),
+  findLatestAppId: jest.fn(),
   findByApplicationId: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
@@ -476,6 +477,26 @@ describe('ApplicationsController', () => {
           user: { email: 'admin@example.com', userType: UserType.ADMIN },
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getApplicationsByEmail', () => {
+    it('should return applications for a specific email newest first', async () => {
+      const mockApplications = [
+        { ...mockApplication, appId: 3 },
+        mockApplication,
+      ];
+
+      jest
+        .spyOn(mockApplicationsService, 'findByEmail')
+        .mockResolvedValue(mockApplications);
+
+      await expect(
+        controller.getApplicationsByEmail('test%40example.com'),
+      ).resolves.toEqual(mockApplications);
+      expect(mockApplicationsService.findByEmail).toHaveBeenCalledWith(
+        'test@example.com',
+      );
     });
   });
 
@@ -963,10 +984,7 @@ describe('ApplicationsController', () => {
     });
 
     it('should return the current user application when candidate info exists', async () => {
-      mockCandidateInfoService.findOne.mockResolvedValue({
-        email: 'test@example.com',
-        appId: 1,
-      });
+      mockCandidateInfoService.findLatestAppId.mockResolvedValue(1);
       jest
         .spyOn(mockApplicationsService, 'findById')
         .mockResolvedValue(mockApplication);
@@ -981,14 +999,14 @@ describe('ApplicationsController', () => {
           },
         }),
       ).resolves.toEqual(mockApplication);
-      expect(mockCandidateInfoService.findOne).toHaveBeenCalledWith(
+      expect(mockCandidateInfoService.findLatestAppId).toHaveBeenCalledWith(
         'test@example.com',
       );
       expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
     });
 
     it('should pass through candidate lookup errors', async () => {
-      mockCandidateInfoService.findOne.mockRejectedValue(
+      mockCandidateInfoService.findLatestAppId.mockRejectedValue(
         new NotFoundException(
           'candidate with email test@example.com not found',
         ),
