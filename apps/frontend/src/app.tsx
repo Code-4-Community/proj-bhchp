@@ -13,6 +13,7 @@ import PasswordReset from './containers/PasswordReset';
 import FormsPage from '@containers/FormsPage';
 import CreateNewAdmin from '@containers/CreateNewAdmin';
 import AdminSettings from '@containers/AdminSettings';
+import AdminExportData from '@containers/AdminExportData';
 
 export const App: React.FC = () => {
   return (
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
                   path="view-application/:appId"
                   element={<AdminViewApplication />}
                 />
+                <Route path="export-data" element={<AdminExportData />} />
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="create" element={<CreateNewAdmin />} />
               </Route>

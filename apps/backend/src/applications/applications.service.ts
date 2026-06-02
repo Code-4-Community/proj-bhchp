@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { Readable } from 'stream';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
 import { AppStatus, PHONE_REGEX } from './types';
@@ -14,6 +15,157 @@ import { UsersService } from '../users/users.service';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 import { DisciplinesService } from '../disciplines/disciplines.service';
+import { User } from '../users/user.entity';
+import { LearnerInfo } from '../learner-info/learner-info.entity';
+
+type ApplicationExportRawRow = {
+  appId: number;
+  createdAt: Date | string | null;
+  updatedAt: Date | string | null;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  proposedStartDate: Date | string | null;
+  actualStartDate: Date | string | null;
+  endDate: Date | string | null;
+  discipline: string | null;
+  otherDisciplineDescription: string | null;
+  appStatus: string | null;
+  mondayAvailability: string | null;
+  tuesdayAvailability: string | null;
+  wednesdayAvailability: string | null;
+  thursdayAvailability: string | null;
+  fridayAvailability: string | null;
+  saturdayAvailability: string | null;
+  interest: string | null;
+  license: string | null;
+  phone: string | null;
+  applicantType: string | null;
+  referred: boolean | null;
+  referredEmail: string | null;
+  weeklyHours: number | null;
+  pronouns: string | null;
+  nonEnglishLangs: string | null;
+  desiredExperience: string | null;
+  elaborateOtherDiscipline: string | null;
+  resume: string | null;
+  coverLetter: string | null;
+  confidentialityForm: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelationship: string | null;
+  heardAboutFrom: string | null;
+  school: string | null;
+  otherSchool: string | null;
+  schoolDepartment: string | null;
+  isSupervisorApplying: boolean | null;
+  isLegalAdult: boolean | null;
+  dateOfBirth: Date | string | null;
+  courseRequirements: string | null;
+  instructorInfo: string | null;
+  syllabus: string | null;
+};
+
+const APPLICATION_EXPORT_BATCH_SIZE = 500;
+
+const APPLICATION_EXPORT_COLUMNS: ReadonlyArray<
+  readonly [keyof ApplicationExportRawRow, string]
+> = [
+  ['appId', 'Application ID'],
+  ['createdAt', 'Created At'],
+  ['updatedAt', 'Updated At'],
+  ['email', 'Email'],
+  ['firstName', 'First Name'],
+  ['lastName', 'Last Name'],
+  ['proposedStartDate', 'Proposed Start Date'],
+  ['actualStartDate', 'Actual Start Date'],
+  ['endDate', 'End Date'],
+  ['discipline', 'Discipline'],
+  ['otherDisciplineDescription', 'Other Discipline Description'],
+  ['appStatus', 'Application Status'],
+  ['mondayAvailability', 'Monday Availability'],
+  ['tuesdayAvailability', 'Tuesday Availability'],
+  ['wednesdayAvailability', 'Wednesday Availability'],
+  ['thursdayAvailability', 'Thursday Availability'],
+  ['fridayAvailability', 'Friday Availability'],
+  ['saturdayAvailability', 'Saturday Availability'],
+  ['interest', 'Interest Areas'],
+  ['license', 'License'],
+  ['phone', 'Phone'],
+  ['applicantType', 'Applicant Type'],
+  ['referred', 'Referred'],
+  ['referredEmail', 'Referred Email'],
+  ['weeklyHours', 'Weekly Hours'],
+  ['pronouns', 'Pronouns'],
+  ['nonEnglishLangs', 'Non-English Languages'],
+  ['desiredExperience', 'Desired Experience'],
+  ['elaborateOtherDiscipline', 'Elaborate Other Discipline'],
+  ['resume', 'Resume File'],
+  ['coverLetter', 'Cover Letter File'],
+  ['confidentialityForm', 'Confidentiality Form File'],
+  ['emergencyContactName', 'Emergency Contact Name'],
+  ['emergencyContactPhone', 'Emergency Contact Phone'],
+  ['emergencyContactRelationship', 'Emergency Contact Relationship'],
+  ['heardAboutFrom', 'Heard About From'],
+  ['school', 'School'],
+  ['otherSchool', 'Other School'],
+  ['schoolDepartment', 'School Department'],
+  ['isSupervisorApplying', 'Supervisor Applying'],
+  ['isLegalAdult', 'Legal Adult'],
+  ['dateOfBirth', 'Date of Birth'],
+  ['courseRequirements', 'Course Requirements'],
+  ['instructorInfo', 'Instructor Info'],
+  ['syllabus', 'Syllabus File'],
+];
+
+function toCsvValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No';
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const text = String(value).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  return text;
+}
+
+function parseDateOnly(value: string, label: string): Date {
+  const normalizedValue = value?.trim();
+  const match = normalizedValue?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) {
+    throw new BadRequestException(
+      `${label} must be provided in YYYY-MM-DD format`,
+    );
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    throw new BadRequestException(
+      `${label} must be provided in YYYY-MM-DD format`,
+    );
+  }
+
+  return parsed;
+}
 
 const STATUS_EMAIL_SUBJECTS: Partial<Record<AppStatus, string>> = {
   [AppStatus.ACCEPTED]: 'Your Application Has Been Updated',
@@ -60,6 +212,9 @@ export class ApplicationsService {
     'Confidentiality_Form.pdf';
   private static readonly CONFIDENTIALITY_UPLOAD_FOLDER =
     'confidentiality-forms';
+
+  private static readonly APPLICATION_EXPORT_HEADERS =
+    APPLICATION_EXPORT_COLUMNS.map(([, header]) => header).join(',');
 
   constructor(
     @InjectRepository(Application)
@@ -346,6 +501,171 @@ export class ApplicationsService {
     return this.applicationRepository.find({
       where: { discipline: In(uniqueDisciplines) },
     });
+  }
+
+  private buildApplicationExportQuery(
+    startDateInclusive: Date,
+    endDateExclusive: Date,
+    lastSeenAppId?: number,
+  ) {
+    const queryBuilder = this.applicationRepository
+      .createQueryBuilder('application')
+      .leftJoin(User, 'applicant', 'applicant.email = application.email')
+      .leftJoin(
+        LearnerInfo,
+        'learnerInfo',
+        'learnerInfo.appId = application.appId',
+      )
+      .select('application.appId', 'appId')
+      .addSelect('application.createdAt', 'createdAt')
+      .addSelect('application.updatedAt', 'updatedAt')
+      .addSelect('application.email', 'email')
+      .addSelect('applicant.firstName', 'firstName')
+      .addSelect('applicant.lastName', 'lastName')
+      .addSelect('application.proposedStartDate', 'proposedStartDate')
+      .addSelect('application.actualStartDate', 'actualStartDate')
+      .addSelect('application.endDate', 'endDate')
+      .addSelect('application.discipline', 'discipline')
+      .addSelect(
+        'application.otherDisciplineDescription',
+        'otherDisciplineDescription',
+      )
+      .addSelect('application.appStatus', 'appStatus')
+      .addSelect('application.mondayAvailability', 'mondayAvailability')
+      .addSelect('application.tuesdayAvailability', 'tuesdayAvailability')
+      .addSelect('application.wednesdayAvailability', 'wednesdayAvailability')
+      .addSelect('application.thursdayAvailability', 'thursdayAvailability')
+      .addSelect('application.fridayAvailability', 'fridayAvailability')
+      .addSelect('application.saturdayAvailability', 'saturdayAvailability')
+      .addSelect("array_to_string(application.interest, '; ')", 'interest')
+      .addSelect('application.license', 'license')
+      .addSelect('application.phone', 'phone')
+      .addSelect('application.applicantType', 'applicantType')
+      .addSelect('application.referred', 'referred')
+      .addSelect('application.referredEmail', 'referredEmail')
+      .addSelect('application.weeklyHours', 'weeklyHours')
+      .addSelect('application.pronouns', 'pronouns')
+      .addSelect('application.nonEnglishLangs', 'nonEnglishLangs')
+      .addSelect('application.desiredExperience', 'desiredExperience')
+      .addSelect(
+        'application.elaborateOtherDiscipline',
+        'elaborateOtherDiscipline',
+      )
+      .addSelect('application.resume', 'resume')
+      .addSelect('application.coverLetter', 'coverLetter')
+      .addSelect('application.confidentialityForm', 'confidentialityForm')
+      .addSelect('application.emergencyContactName', 'emergencyContactName')
+      .addSelect('application.emergencyContactPhone', 'emergencyContactPhone')
+      .addSelect(
+        'application.emergencyContactRelationship',
+        'emergencyContactRelationship',
+      )
+      .addSelect(
+        "array_to_string(application.heardAboutFrom, '; ')",
+        'heardAboutFrom',
+      )
+      .addSelect('learnerInfo.school', 'school')
+      .addSelect('learnerInfo.otherSchool', 'otherSchool')
+      .addSelect('learnerInfo.schoolDepartment', 'schoolDepartment')
+      .addSelect('learnerInfo.isSupervisorApplying', 'isSupervisorApplying')
+      .addSelect('learnerInfo.isLegalAdult', 'isLegalAdult')
+      .addSelect('learnerInfo.dateOfBirth', 'dateOfBirth')
+      .addSelect('learnerInfo.courseRequirements', 'courseRequirements')
+      .addSelect('learnerInfo.instructorInfo', 'instructorInfo')
+      .addSelect('learnerInfo.syllabus', 'syllabus')
+      .where('application.createdAt >= :startDateInclusive', {
+        startDateInclusive,
+      })
+      .andWhere('application.createdAt < :endDateExclusive', {
+        endDateExclusive,
+      })
+      .orderBy('application.appId', 'ASC')
+      .take(APPLICATION_EXPORT_BATCH_SIZE);
+
+    if (lastSeenAppId) {
+      queryBuilder.andWhere('application.appId > :lastSeenAppId', {
+        lastSeenAppId,
+      });
+    }
+
+    return queryBuilder;
+  }
+
+  private async fetchApplicationExportBatch(
+    startDateInclusive: Date,
+    endDateExclusive: Date,
+    lastSeenAppId?: number,
+  ): Promise<ApplicationExportRawRow[]> {
+    return this.buildApplicationExportQuery(
+      startDateInclusive,
+      endDateExclusive,
+      lastSeenAppId,
+    ).getRawMany<ApplicationExportRawRow>();
+  }
+
+  private serializeApplicationExportRow(row: ApplicationExportRawRow): string {
+    return APPLICATION_EXPORT_COLUMNS.map(([key]) => toCsvValue(row[key])).join(
+      ',',
+    );
+  }
+
+  private async *buildApplicationExportCsvChunks(
+    startDateInclusive: Date,
+    endDateExclusive: Date,
+  ): AsyncGenerator<string> {
+    yield `${ApplicationsService.APPLICATION_EXPORT_HEADERS}\n`;
+
+    let lastSeenAppId: number | undefined;
+
+    while (true) {
+      const batch = await this.fetchApplicationExportBatch(
+        startDateInclusive,
+        endDateExclusive,
+        lastSeenAppId,
+      );
+
+      if (!batch.length) {
+        return;
+      }
+
+      for (const row of batch) {
+        yield `${this.serializeApplicationExportRow(row)}\n`;
+      }
+
+      lastSeenAppId = Number(batch[batch.length - 1].appId);
+
+      if (batch.length < APPLICATION_EXPORT_BATCH_SIZE) {
+        return;
+      }
+    }
+  }
+
+  async exportCsvByCreatedAtRange(
+    startDate: string,
+    endDate: string,
+  ): Promise<{
+    fileName: string;
+    stream: Readable;
+  }> {
+    const startDateInclusive = parseDateOnly(startDate, 'startDate');
+    const endDateInclusive = parseDateOnly(endDate, 'endDate');
+
+    if (endDateInclusive < startDateInclusive) {
+      throw new BadRequestException('endDate must be on or after startDate');
+    }
+
+    const endDateExclusive = new Date(endDateInclusive);
+    endDateExclusive.setUTCDate(endDateExclusive.getUTCDate() + 1);
+
+    return {
+      fileName: `applications-export-${startDate}-to-${endDate}.csv`,
+      stream: Readable.from(
+        this.buildApplicationExportCsvChunks(
+          startDateInclusive,
+          endDateExclusive,
+        ),
+      ),
+    };
   }
 
   /**

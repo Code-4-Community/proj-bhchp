@@ -95,6 +95,37 @@ export class ApiClient {
     ) as Promise<Application[]>;
   }
 
+  public async downloadApplicationsCsv(
+    startDate: string,
+    endDate: string,
+  ): Promise<void> {
+    const response = await this.axiosInstance.get(
+      `/api/applications/export/csv?startDate=${encodeURIComponent(
+        startDate,
+      )}&endDate=${encodeURIComponent(endDate)}`,
+      {
+        responseType: 'blob',
+      },
+    );
+
+    const header = response.headers['content-disposition'];
+    const fileNameMatch = String(header ?? '').match(/filename="?([^";]+)"?/i);
+    const fileName = fileNameMatch?.[1] ?? 'applications-export.csv';
+    const blob =
+      response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], { type: 'text/csv;charset=utf-8' });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+  }
+
   public async getApplicants(): Promise<User[]> {
     return this.get('/api/users/standard') as Promise<User[]>;
   }

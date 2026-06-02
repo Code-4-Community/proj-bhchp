@@ -62,6 +62,13 @@ export default function NavBar({ logo, userType }: NavBarProps) {
               icon={<FaUserPlus />}
             />
           )}
+          {userType === UserType.ADMIN && (
+            <NavbarItem
+              href="/admin/export-data"
+              label="Export Data"
+              icon={<FaRegFile />}
+            />
+          )}
           {userType === UserType.STANDARD && (
             <NavbarItem
               href="/candidate/view-application"

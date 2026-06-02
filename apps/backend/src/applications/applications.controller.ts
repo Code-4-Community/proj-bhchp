@@ -10,6 +10,8 @@ import {
   Post,
   Query,
   Req,
+  Res,
+  StreamableFile,
   UseGuards,
   UseInterceptors,
   UseFilters,
@@ -36,6 +38,7 @@ import { ApplicationCreationErrorFilter } from './filters/application-creation-v
 import { User } from '../users/user.entity';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AppStatus } from './types';
+import { Response } from 'express';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about the app's applications.
@@ -142,6 +145,35 @@ export class ApplicationsController {
       .filter(Boolean);
 
     return await this.applicationsService.findByDisciplines(disciplines ?? []);
+  }
+
+  /**
+   * Exposes an endpoint to export application data as CSV filtered by an inclusive createdAt date range.
+   * @param startDate inclusive lower bound in YYYY-MM-DD format.
+   * @param endDate inclusive upper bound in YYYY-MM-DD format.
+   * @param response express response used to attach download headers.
+   * @returns CSV file stream for admin download.
+   */
+  @Get('export/csv')
+  @Roles(UserType.ADMIN)
+  async exportApplicationsCsv(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const { fileName, stream } =
+      await this.applicationsService.exportCsvByCreatedAtRange(
+        startDate,
+        endDate,
+      );
+
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${fileName}"`,
+    );
+
+    return new StreamableFile(stream);
   }
 
   /**
