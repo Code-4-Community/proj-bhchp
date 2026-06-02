@@ -231,6 +231,8 @@ const AdminViewApplication: React.FC = () => {
           discipline={discipline}
           email={application.email || 'N/A'}
           phone={application.phone || 'N/A'}
+          createdAt={application.createdAt}
+          updatedAt={application.updatedAt}
           over18={learnerInfo?.isLegalAdult}
           statusControl={
             <ApplicantStageControl

@@ -44,3 +44,5 @@ Thumbs.db
 !example.env
 .vscode
 .postman
+
+infrastructure/params/*.json

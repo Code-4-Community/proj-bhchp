@@ -29,6 +29,14 @@ const CandidateViewApplication: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const pronouns = application?.pronouns;
   const discipline = application?.discipline;
+  const formatDate = (iso?: string) => {
+    if (!iso) return 'N/A';
+    try {
+      return new Date(iso).toLocaleString();
+    } catch (e) {
+      return iso;
+    }
+  };
   const uploadedDocuments: DocumentDownloadItem[] = [
     {
       variant: 'resume',
@@ -210,6 +218,8 @@ const CandidateViewApplication: React.FC = () => {
           discipline={discipline}
           email={application.email || 'N/A'}
           phone={application.phone || 'N/A'}
+          createdAt={application.createdAt}
+          updatedAt={application.updatedAt}
           over18={learnerInfo?.isLegalAdult}
         />
         <QuestionFrame
