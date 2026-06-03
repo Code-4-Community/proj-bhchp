@@ -19,6 +19,23 @@ import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../util/email/email.service';
 
+jest.mock('../util/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+      region: 'us-east-2',
+      bucketName: 'bucket',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 describe('Applications CSV export integration', () => {
   let app: INestApplication;
 
