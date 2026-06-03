@@ -56,7 +56,9 @@ describe('AdminExportData', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Select both created-at dates before exporting.'),
+        screen.getByText(
+          'Failed to export. Please select both created-at dates before exporting.',
+        ),
       ).toBeTruthy();
     });
     expect(mockDownloadApplicationsCsv).not.toHaveBeenCalled();
