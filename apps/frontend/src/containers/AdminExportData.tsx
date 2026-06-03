@@ -3,6 +3,7 @@ import NavBar from '@components/NavBar/NavBar';
 import apiClient from '@api/apiClient';
 import { UserType } from '@api/types';
 import { useState } from 'react';
+import axios from 'axios';
 
 const AdminExportData: React.FC = () => {
   const [startDate, setStartDate] = useState('');
@@ -12,7 +13,14 @@ const AdminExportData: React.FC = () => {
 
   async function handleExport() {
     if (!startDate || !endDate) {
-      setError('Select both created-at dates before exporting.');
+      setError(
+        'Failed to export. Please select both created-at dates before exporting.',
+      );
+      return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      setError('Failed to export. Start date cannot be after end date.');
       return;
     }
 
@@ -21,8 +29,19 @@ const AdminExportData: React.FC = () => {
 
     try {
       await apiClient.downloadApplicationsCsv(startDate, endDate);
-    } catch {
-      setError('Failed to export applications.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const message =
+          err.response?.data?.message ??
+          err.response?.data?.error ??
+          'Failed to export applications.';
+
+        setError(message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to export applications.');
+      }
     } finally {
       setIsExporting(false);
     }
