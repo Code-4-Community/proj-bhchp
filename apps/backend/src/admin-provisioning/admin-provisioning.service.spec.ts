@@ -143,7 +143,7 @@ describe('AdminProvisioningService', () => {
   });
 
   describe('createAdminUserInCognito', () => {
-    it('should send an AdminCreateUser command with Cognito-managed invite email', async () => {
+    it('should send an AdminCreateUser command with invite email suppressed', async () => {
       mockCognitoIdentityProvider.send.mockResolvedValue({
         User: {
           Username: 'ada@example.com',
@@ -163,7 +163,7 @@ describe('AdminProvisioningService', () => {
         UserPoolId: 'test-user-pool-id',
         Username: 'ada@example.com',
         TemporaryPassword: 'TempPass123!',
-        DesiredDeliveryMediums: ['EMAIL'],
+        MessageAction: 'SUPPRESS',
         UserAttributes: [
           { Name: 'email', Value: 'ada@example.com' },
           { Name: 'email_verified', Value: 'true' },

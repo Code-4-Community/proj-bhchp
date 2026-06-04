@@ -4,7 +4,13 @@ import {
   CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { randomBytes } from 'crypto';
-import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ObjectLiteral, Repository } from 'typeorm';
 import { ProvisionAdminDto } from './dto/provision-admin.dto';
@@ -18,6 +24,7 @@ import { UserType } from '../users/types';
 import { User } from '../users/user.entity';
 import { COGNITO_IDENTITY_PROVIDER } from './cognito.provider';
 import envConfig from '../util/aws-exports';
+import { EmailService } from '../util/email/email.service';
 import { DisciplinesService } from '../disciplines/disciplines.service';
 
 /**
@@ -56,6 +63,7 @@ export class AdminProvisioningService {
     @InjectRepository(AdminInfo)
     private readonly adminInfoRepository: Repository<AdminInfo>,
     private readonly disciplinesService: DisciplinesService,
+    @Optional() private readonly emailService?: EmailService,
   ) {}
 
   /**
@@ -105,14 +113,13 @@ export class AdminProvisioningService {
     temporaryPassword: string,
   ): Promise<CognitoCreateResult> {
     this.logger.debug(`Creating Cognito admin user for ${email}`);
-
     const userPoolId = this.getCognitoUserPoolId();
 
     const command = new AdminCreateUserCommand({
       UserPoolId: userPoolId,
       Username: email,
       TemporaryPassword: temporaryPassword,
-      DesiredDeliveryMediums: ['EMAIL'],
+      MessageAction: 'SUPPRESS',
       UserAttributes: [
         { Name: 'email', Value: email },
         { Name: 'email_verified', Value: 'true' },
@@ -120,6 +127,11 @@ export class AdminProvisioningService {
     });
 
     const response = await this.cognitoIdentityProvider.send(command);
+    this.logger.log(
+      `Cognito AdminCreateUser response: username=${
+        response.User?.Username ?? email
+      }, status=${response.User?.UserStatus}`,
+    );
 
     return {
       cognitoUsername: response.User?.Username ?? email,
@@ -352,6 +364,9 @@ export class AdminProvisioningService {
         normalizedEmail,
         temporaryPassword,
       );
+      this.logger.log(
+        `Cognito create completed for ${normalizedEmail}: cognitoUsername=${cognitoResult.cognitoUsername}, userStatus=${cognitoResult.userStatus}`,
+      );
     } catch (error) {
       return {
         mode: 'live',
@@ -379,6 +394,62 @@ export class AdminProvisioningService {
       };
 
       const records = await this.createAdminDatabaseRecords(normalizedDto);
+      this.logger.log(`Database records created for ${normalizedEmail}`);
+      const responseNotes = [
+        'Cognito AdminCreateUser was called with invite delivery suppressed.',
+        'Database record creation completed through the service transaction boundary.',
+        'User and AdminInfo writes are transactional when the TypeORM manager is available.',
+      ];
+
+      try {
+        const frontendUrl = envConfig.PublicFrontendUrl;
+        if (!this.emailService) {
+          this.logger.warn('EmailService is not available for admin emails.');
+          responseNotes.push(
+            'Admin creation email was skipped (EmailService missing).',
+          );
+        } else if (!frontendUrl) {
+          this.logger.warn('PUBLIC_FRONTEND_URL is not configured.');
+          responseNotes.push(
+            'Admin creation email was skipped (PUBLIC_FRONTEND_URL missing).',
+          );
+        } else if (!process.env.AWS_SES_SENDER_EMAIL) {
+          this.logger.warn('AWS_SES_SENDER_EMAIL is not configured.');
+          responseNotes.push(
+            'Admin creation email was skipped (AWS_SES_SENDER_EMAIL missing).',
+          );
+        } else {
+          const loginUrl = frontendUrl.endsWith('/')
+            ? `${frontendUrl}login`
+            : `${frontendUrl}/login`;
+          const subject = 'Your BHCHP Application Tracker admin account';
+          const body = `
+            <p>Hello ${provisionAdminDto.firstName},</p>
+
+            <p>Welcome to the Boston Health Care for the Homeless Program Application Tracker></p>
+
+            <p>Your admin account has been created.</p>
+
+            <p><strong>Temporary password:</strong> ${temporaryPassword}</p>
+
+            <p><a href="${loginUrl}">Sign in to your account</a></p>
+
+            <p>Or copy and paste this link into your browser:</p>
+            <p><a href="${loginUrl}">${loginUrl}</a></p>
+
+            <p>If you did not request this account, you can ignore this email.</p>
+          `;
+          await this.emailService.queueEmail(normalizedEmail, subject, body);
+          this.logger.log(`Admin creation email queued for ${normalizedEmail}`);
+          responseNotes.push('Admin creation email was sent via SES.');
+        }
+      } catch (emailErr) {
+        this.logger.warn(
+          `Failed to send admin creation email to ${normalizedEmail}`,
+          emailErr instanceof Error ? emailErr.stack : undefined,
+        );
+        responseNotes.push('Admin creation email failed to send.');
+      }
 
       return {
         mode: 'live',
@@ -394,11 +465,7 @@ export class AdminProvisioningService {
           committed: true,
         },
         records,
-        notes: [
-          'Cognito AdminCreateUser was called with Cognito-managed invite delivery.',
-          'Database record creation completed through the service transaction boundary.',
-          'User and AdminInfo writes are transactional when the TypeORM manager is available.',
-        ],
+        notes: responseNotes,
       };
     } catch (databaseError) {
       try {
