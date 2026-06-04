@@ -15,6 +15,7 @@ import { UsersService } from '../users/users.service';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 import { DisciplinesService } from '../disciplines/disciplines.service';
+import { CandidateProvisioningService } from './candidate-provisioning.service';
 import { User } from '../users/user.entity';
 import { LearnerInfo } from '../learner-info/learner-info.entity';
 
@@ -224,6 +225,7 @@ export class ApplicationsService {
     private candidateInfoService: CandidateInfoService,
     private awsS3Service: AWSS3Service,
     private disciplinesService: DisciplinesService,
+    private candidateProvisioningService: CandidateProvisioningService,
   ) {}
 
   /**
@@ -679,31 +681,23 @@ export class ApplicationsService {
     createApplicationDto: CreateApplicationDto,
   ): Promise<Application> {
     this.validateApplicationDto(createApplicationDto);
+    const normalizedEmail = createApplicationDto.email.trim().toLowerCase();
+    const existingApplicationCount = await this.applicationRepository.count({
+      where: { email: normalizedEmail },
+    });
     const normalizedDiscipline = await this.validateDiscipline(
       createApplicationDto.discipline,
     );
     const application = this.applicationRepository.create({
       ...createApplicationDto,
+      email: normalizedEmail,
       discipline: normalizedDiscipline,
     });
     const saved = await this.applicationRepository.save(application);
 
-    const name = String(saved.email).split('@')[0];
-    const applicantName = name
-      .split('.')
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(' ');
-
-    const emailBody = `<p>Hello ${applicantName},</p>
-
-      <p>Thank you for submitting your application! You can now create an account here on the portal to track your status. Please use the same name and email as your application.</p>
-
-      <p>Thank you,<br/>BHCHP</p>`;
-
-    await this.emailService.queueEmail(
-      saved.email,
-      'Your Application Has Been Received',
-      emailBody,
+    await this.candidateProvisioningService.provisionSubmittedCandidate(
+      saved,
+      existingApplicationCount === 0,
     );
 
     return saved;
