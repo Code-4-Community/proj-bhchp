@@ -225,7 +225,7 @@ const Login: React.FC = () => {
             </Heading>
             <Text color="gray.600">
               {isNewPasswordRequired
-                ? 'Create a new password to finish signing in with your invited admin account.'
+                ? 'Create a new password to finish signing in with your new account.'
                 : 'Use your Cognito account to continue.'}
             </Text>
 
