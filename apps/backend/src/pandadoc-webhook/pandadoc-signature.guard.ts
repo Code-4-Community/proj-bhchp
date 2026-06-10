@@ -30,7 +30,18 @@ export class PandadocSignatureGuard implements CanActivate {
     this.webhookKey = configService.get<string>('PANDADOC_WEBHOOK_KEY');
   }
 
+  private maskSignature(signature: string | undefined): string {
+    if (!signature) return 'missing';
+    if (signature.length <= 8) return '***';
+    return `${signature.slice(0, 4)}...${signature.slice(-4)}`;
+  }
+
   canActivate(context: ExecutionContext): boolean {
+    const request = context.switchToHttp().getRequest<Request>();
+    const signature = request.headers[SIGNATURE_HEADER];
+    const provided = Array.isArray(signature) ? signature[0] : signature;
+    const sourceIp = request.ip ?? request.socket?.remoteAddress ?? 'unknown';
+
     if (!this.webhookKey) {
       if (!this.warnedAboutMissingKey) {
         this.logger.warn(
@@ -38,17 +49,34 @@ export class PandadocSignatureGuard implements CanActivate {
         );
         this.warnedAboutMissingKey = true;
       }
+      this.logger.debug(
+        `[PandaDoc] Signature verification bypassed sourceIp=${sourceIp} reason=missing-config`,
+      );
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request>();
-    const signature = request.headers[SIGNATURE_HEADER];
-    const provided = Array.isArray(signature) ? signature[0] : signature;
+    this.logger.debug(
+      `[PandaDoc] Verifying signature sourceIp=${sourceIp} headerPresent=${Boolean(
+        provided,
+      )}`,
+    );
 
     if (!provided || provided !== this.webhookKey) {
-      this.logger.warn('[PandaDoc] Invalid or missing webhook signature');
+      this.logger.warn(
+        `[PandaDoc] Invalid or missing webhook signature sourceIp=${sourceIp} providedLength=${
+          provided?.length ?? 0
+        } providedMask=${this.maskSignature(provided)} expectedLength=${
+          this.webhookKey.length
+        }`,
+      );
       throw new UnauthorizedException('Invalid webhook signature');
     }
+
+    this.logger.debug(
+      `[PandaDoc] Signature verified sourceIp=${sourceIp} signatureMask=${this.maskSignature(
+        provided,
+      )}`,
+    );
 
     return true;
   }

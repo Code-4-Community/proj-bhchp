@@ -21,6 +21,28 @@ export class PandadocWebhookService {
 
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
+  private maskEmail(email: string): string {
+    const [localPart, domain] = email.split('@');
+    if (!localPart || !domain) return 'invalid-email';
+    if (localPart.length <= 2) return `***@${domain}`;
+    return `${localPart.slice(0, 2)}***@${domain}`;
+  }
+
+  private maskPhone(phone: unknown): string {
+    if (typeof phone !== 'string' || !phone.trim()) return 'missing';
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 4) return '***';
+    return `***-***-${digits.slice(-4)}`;
+  }
+
+  private getPayloadString(
+    payload: Record<string, unknown>,
+    key: string,
+  ): string | undefined {
+    const value = payload[key];
+    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+  }
+
   /**
    * Formats a Date object or ISO-8601 string into a YYYY-MM-DD string.
    * Returns `undefined` when the input is null/undefined.
@@ -55,76 +77,168 @@ export class PandadocWebhookService {
   async processWebhook(
     payload: Record<string, unknown>,
   ): Promise<{ appId: number }> {
-    this.logger.log('[PandaDoc] Received webhook payload');
+    const startedAt = Date.now();
+    const payloadKeys = Object.keys(payload ?? {});
+    const eventType = this.getPayloadString(payload, 'event') ?? 'unknown';
+    const documentId =
+      this.getPayloadString(payload, 'document_id') ??
+      this.getPayloadString(payload, 'id') ??
+      'unknown';
 
-    const buckets = pandadocMapper(payload);
     this.logger.log(
-      `[PandaDoc] Mapped payload into buckets: application(${
-        Object.keys(buckets.application).length
-      } fields), candidateInfo(${
-        Object.keys(buckets.candidateInfo).length
-      } fields), learnerInfo(${
-        Object.keys(buckets.learnerInfo).length
-      } fields)`,
+      `[PandaDoc] Received webhook payload event=${eventType} documentId=${documentId} payloadFieldCount=${payloadKeys.length}`,
+    );
+    this.logger.debug(
+      `[PandaDoc] Incoming payload key sample: ${
+        payloadKeys.slice(0, 30).join(', ') || 'none'
+      }`,
     );
 
-    const applicationData = {
-      ...buckets.application,
-      appStatus: AppStatus.APP_SUBMITTED,
-      applicantType: buckets.learnerInfo['schoolDepartment']
+    try {
+      this.logger.debug(
+        '[PandaDoc] Mapping webhook payload into persistence buckets',
+      );
+      const buckets = pandadocMapper(payload);
+      this.logger.log(
+        `[PandaDoc] Mapped payload into buckets: application(${
+          Object.keys(buckets.application).length
+        } fields), candidateInfo(${
+          Object.keys(buckets.candidateInfo).length
+        } fields), learnerInfo(${
+          Object.keys(buckets.learnerInfo).length
+        } fields)`,
+      );
+
+      const applicantType = buckets.learnerInfo['schoolDepartment']
         ? ApplicantType.LEARNER
-        : ApplicantType.VOLUNTEER,
-      proposedStartDate: this.formatDate(
-        buckets.application['proposedStartDate'],
-      ),
-      endDate: this.formatDate(buckets.application['endDate']),
-    };
-    this.validatePhone(applicationData['phone']);
+        : ApplicantType.VOLUNTEER;
 
-    const learnerData = {
-      ...buckets.learnerInfo,
-      dateOfBirth: this.formatDate(buckets.learnerInfo['dateOfBirth']),
-    };
+      const applicationData = {
+        ...buckets.application,
+        appStatus: AppStatus.APP_SUBMITTED,
+        applicantType,
+        proposedStartDate: this.formatDate(
+          buckets.application['proposedStartDate'],
+        ),
+        endDate: this.formatDate(buckets.application['endDate']),
+      };
 
-    const email = String(buckets.candidateInfo['email'] ?? '');
-    if (!email.trim()) {
-      throw new BadRequestException('Webhook payload missing applicant email');
+      this.logger.debug(
+        `[PandaDoc] Prepared application record applicantType=${applicantType} phoneMask=${this.maskPhone(
+          applicationData['phone'],
+        )}`,
+      );
+      this.validatePhone(applicationData['phone']);
+
+      const learnerData = {
+        ...buckets.learnerInfo,
+        dateOfBirth: this.formatDate(buckets.learnerInfo['dateOfBirth']),
+      };
+
+      const email = String(buckets.candidateInfo['email'] ?? '');
+      const normalizedEmail = email.trim();
+      if (!normalizedEmail) {
+        this.logger.warn(
+          `[PandaDoc] Candidate email missing after mapping event=${eventType} documentId=${documentId}`,
+        );
+        throw new BadRequestException(
+          'Webhook payload missing applicant email',
+        );
+      }
+
+      this.logger.log(
+        `[PandaDoc] Creating application transaction emailMask=${this.maskEmail(
+          normalizedEmail,
+        )} applicantType=${applicantType}`,
+      );
+
+      const appId = await this.dataSource.transaction(
+        async (em: EntityManager) => {
+          this.logger.debug('[PandaDoc] Transaction started');
+
+          this.logger.debug('[PandaDoc] Persisting Application entity');
+          const application = em.create(Application, applicationData);
+          const saved = await em.save(application);
+          this.logger.debug(
+            `[PandaDoc] Application saved appId=${saved.appId}`,
+          );
+
+          this.logger.debug(
+            `[PandaDoc] Persisting CandidateInfo entity appId=${
+              saved.appId
+            } emailMask=${this.maskEmail(normalizedEmail)}`,
+          );
+          const candidate = em.create(CandidateInfo, {
+            appId: saved.appId,
+            email: normalizedEmail,
+          });
+          await em.save(candidate);
+          this.logger.debug(
+            `[PandaDoc] CandidateInfo saved appId=${saved.appId}`,
+          );
+
+          this.logger.debug(
+            `[PandaDoc] Persisting LearnerInfo entity appId=${
+              saved.appId
+            } learnerFieldCount=${Object.keys(learnerData).length}`,
+          );
+          const learner = em.create(LearnerInfo, {
+            ...learnerData,
+            appId: saved.appId,
+          });
+          await em.save(learner);
+          this.logger.debug(
+            `[PandaDoc] LearnerInfo saved appId=${saved.appId}`,
+          );
+
+          this.logger.debug(
+            `[PandaDoc] Transaction complete appId=${saved.appId}`,
+          );
+          return saved.appId;
+        },
+      );
+
+      this.logger.log(
+        `[PandaDoc] Webhook processing complete appId=${appId} durationMs=${
+          Date.now() - startedAt
+        }`,
+      );
+      return { appId };
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (error instanceof BadRequestException) {
+        this.logger.warn(
+          `[PandaDoc] Webhook rejected event=${eventType} documentId=${documentId} durationMs=${durationMs} reason=${message}`,
+        );
+      } else if (error instanceof Error) {
+        this.logger.error(
+          `[PandaDoc] Webhook processing failed event=${eventType} documentId=${documentId} durationMs=${durationMs} error=${message}`,
+          error.stack,
+        );
+      } else {
+        this.logger.error(
+          `[PandaDoc] Webhook processing failed event=${eventType} documentId=${documentId} durationMs=${durationMs} error=${message}`,
+        );
+      }
+
+      throw error;
     }
-
-    this.logger.log(`[PandaDoc] Creating application for email=${email}`);
-
-    const appId = await this.dataSource.transaction(
-      async (em: EntityManager) => {
-        const application = em.create(Application, applicationData);
-        const saved = await em.save(application);
-
-        const candidate = em.create(CandidateInfo, {
-          appId: saved.appId,
-          email: email.trim(),
-        });
-        await em.save(candidate);
-
-        const learner = em.create(LearnerInfo, {
-          ...learnerData,
-          appId: saved.appId,
-        });
-        await em.save(learner);
-
-        return saved.appId;
-      },
-    );
-
-    this.logger.log(
-      `[PandaDoc] Webhook processing complete for appId=${appId}`,
-    );
-    return { appId };
   }
 
   private validatePhone(phone: unknown): void {
     if (typeof phone !== 'string' || !PHONE_REGEX.test(phone)) {
+      this.logger.warn(
+        `[PandaDoc] Phone validation failed phoneMask=${this.maskPhone(phone)}`,
+      );
       throw new BadRequestException(
         'Phone number must be in ###-###-#### format',
       );
     }
+
+    this.logger.debug(
+      `[PandaDoc] Phone validation passed phoneMask=${this.maskPhone(phone)}`,
+    );
   }
 }
