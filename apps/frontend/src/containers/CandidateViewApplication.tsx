@@ -20,6 +20,10 @@ import RequirementsFrame from '../components/RequirementsFrame';
 import SchoolAffiliationFrame from '../components/SchoolAffiliationFrame';
 import ApplicationProfileHeader from '@components/ApplicationProfileHeader';
 import EmergencyContactFrame from '@components/EmergencyContactFrame';
+import StatusPill, {
+  StatusPillConfig,
+  StatusVariant,
+} from '@components/StatusPill';
 
 const CandidateViewApplication: React.FC = () => {
   const [application, setApplication] = useState<Application | null>(null);
@@ -221,6 +225,21 @@ const CandidateViewApplication: React.FC = () => {
           createdAt={application.createdAt}
           updatedAt={application.updatedAt}
           over18={learnerInfo?.isLegalAdult}
+          statusControl={
+            StatusPillConfig[
+              application.appStatus as unknown as StatusVariant
+            ] ? (
+              <StatusPill
+                variant={application.appStatus as unknown as StatusVariant}
+              >
+                {
+                  StatusPillConfig[
+                    application.appStatus as unknown as StatusVariant
+                  ].label
+                }
+              </StatusPill>
+            ) : undefined
+          }
         />
         <QuestionFrame
           frameProps={{
