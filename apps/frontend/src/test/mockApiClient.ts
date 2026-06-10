@@ -41,6 +41,7 @@ export function createMockApiClientModule(
       getHello: vi.fn().mockResolvedValue(overrides?.getHelloValue ?? 'Hello'),
       getApplications: vi.fn().mockResolvedValue([]),
       getApplication: vi.fn(),
+      getApplicationsByEmail: vi.fn().mockResolvedValue([]),
       getApplicants: vi.fn().mockResolvedValue([]),
       getLearnerInfo: vi.fn(),
       getCurrentUser: vi.fn().mockResolvedValue(null),
@@ -55,6 +56,8 @@ export function createMockApiClientModule(
       // New API methods used by `useApplications` and admin views
       getAdminInfoByEmail: vi.fn().mockResolvedValue(null),
       getApplicationsByDiscipline: vi.fn().mockResolvedValue([]),
+      getApplicationsByDisciplines: vi.fn().mockResolvedValue([]),
+      getDisciplines: vi.fn().mockResolvedValue([]),
       uploadMyConfidentialityForm: vi.fn(),
       provisionAdmin:
         overrides?.provisionAdmin ?? vi.fn().mockResolvedValue(undefined),

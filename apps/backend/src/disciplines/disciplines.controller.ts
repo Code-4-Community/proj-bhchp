@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Delete,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { DisciplinesService } from './disciplines.service';
@@ -34,19 +35,25 @@ export class DisciplinesController {
    */
   @Get()
   @Roles(UserType.ADMIN)
-  async getAll(): Promise<Discipline[]> {
+  async getAll(
+    @Query('includeInactive') includeInactive?: string,
+  ): Promise<Discipline[]> {
+    if (includeInactive === 'true') {
+      return this.disciplinesService.findAllIncludingInactive();
+    }
+
     return this.disciplinesService.findAll();
   }
 
   /**
-   * Exposes an endpoint to return a discipline by email
-   * @param email the email of the discipline to return
-   * @returns the discipline with the corresponding email
+   * Exposes an endpoint to return a discipline by id
+   * @param id the id of the discipline to return
+   * @returns the discipline with the corresponding id
    */
-  @Get(':email')
+  @Get(':id')
   @Roles(UserType.ADMIN)
-  async getOne(@Param('email') email: string): Promise<Discipline> {
-    return this.disciplinesService.findOne(Number(email));
+  async getOne(@Param('id', ParseIntPipe) id: number): Promise<Discipline> {
+    return this.disciplinesService.findOne(id);
   }
 
   /**
@@ -63,51 +70,15 @@ export class DisciplinesController {
   }
 
   /**
-   * Deletes a discipline by email
-   * @param email the email of the discipline to delete
+   * Deletes a discipline by id
+   * @param id the id of the discipline to delete
    * @returns the deleted discipline
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
+   * @throws {NotFoundException} if a discipline of the specified id doesn't exist in the repository.
    * @throws {Error} if the repository throws an error.
    */
-  @Delete(':email')
+  @Delete(':id')
   @Roles(UserType.ADMIN)
-  async remove(
-    @Param('email', ParseIntPipe) email: number,
-  ): Promise<Discipline> {
-    return this.disciplinesService.remove(email);
-  }
-
-  /**
-   * Adds an admin email to a discipline
-   * @param email the discipline id
-   * @param adminemail the admin email to add
-   * @returns the updated discipline
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
-   * @throws {Error} if the repository throws an error.
-   */
-  @Post(':email/admins/:adminEmail')
-  @Roles(UserType.ADMIN)
-  async addAdmin(
-    @Param('email', ParseIntPipe) email: number,
-    @Param('adminEmail') adminEmail: string,
-  ): Promise<Discipline> {
-    return this.disciplinesService.addAdmin(email, adminEmail);
-  }
-
-  /**
-   * Removes an admin email from a discipline
-   * @param email the discipline id
-   * @param adminemail the admin email to remove
-   * @returns the updated discipline
-   * @throws {NotFoundException} if a discipline of the specified email doesn't exist in the repository.
-   * @throws {Error} if the repository throws an error.
-   */
-  @Delete(':email/admins/:adminEmail')
-  @Roles(UserType.ADMIN)
-  async removeAdmin(
-    @Param('email', ParseIntPipe) email: number,
-    @Param('admiEemail') adminEmail: string,
-  ): Promise<Discipline> {
-    return this.disciplinesService.removeAdmin(email, adminEmail);
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<Discipline> {
+    return this.disciplinesService.remove(id);
   }
 }

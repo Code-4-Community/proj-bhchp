@@ -5,6 +5,7 @@ import { AdminInfo } from './admin-info.entity';
 import { CreateAdminInfoDto } from './dto/create-admin.dto';
 import { UpdateAdminInfoEmailDto } from './dto/update-admin-email.dto';
 import { UsersService } from '../users/users.service';
+import { DisciplinesService } from '../disciplines/disciplines.service';
 
 export type DisciplineAdminMap = Record<
   string,
@@ -23,23 +24,34 @@ export class AdminInfoService {
     @InjectRepository(AdminInfo)
     private readonly adminRepository: Repository<AdminInfo>,
     private readonly usersService: UsersService,
+    private readonly disciplinesService: DisciplinesService,
   ) {}
 
+  /**
+   * Returns a map of discipline key to the oldest admin assigned to that discipline.
+   * @returns discipline -> admin name map for landing-page display.
+   * @throws {Error} anything that the repository or user service throws.
+   */
   async getOldestDisciplineAdminMap(): Promise<DisciplineAdminMap> {
-    const oldestAdmins = await this.adminRepository
-      .createQueryBuilder('admin')
-      .distinctOn(['admin.discipline'])
-      .orderBy('admin.discipline', 'ASC')
-      .addOrderBy('admin.createdAt', 'ASC')
-      .addOrderBy('admin.email', 'ASC')
-      .getMany();
+    const admins = await this.adminRepository.find({
+      order: { createdAt: 'ASC', email: 'ASC' },
+    });
+
+    const oldestByDiscipline = new Map<string, string>();
+    for (const admin of admins) {
+      for (const discipline of admin.disciplines ?? []) {
+        if (!oldestByDiscipline.has(discipline)) {
+          oldestByDiscipline.set(discipline, admin.email);
+        }
+      }
+    }
 
     const mappedEntries = await Promise.all(
-      oldestAdmins.map(async (admin) => {
-        const user = await this.usersService.findOne(admin.email);
-        const firstName = user?.firstName ?? admin.email;
+      [...oldestByDiscipline.entries()].map(async ([discipline, email]) => {
+        const user = await this.usersService.findOne(email);
+        const firstName = user?.firstName ?? email;
         const lastName = user?.lastName ?? '';
-        return [admin.discipline, { firstName, lastName }] as const;
+        return [discipline, { firstName, lastName }] as const;
       }),
     );
 
@@ -53,11 +65,29 @@ export class AdminInfoService {
    * @throws {Error} anything that the repository throws.
    */
   async create(createAdminInfoDto: CreateAdminInfoDto): Promise<AdminInfo> {
-    const admin = this.adminRepository.create({
-      email: createAdminInfoDto.email,
-      discipline: createAdminInfoDto.discipline,
-    });
-    return await this.adminRepository.save(admin);
+    const email = createAdminInfoDto.email.trim().toLowerCase();
+    const disciplines = [
+      ...new Set(
+        createAdminInfoDto.disciplines
+          .map((discipline) => discipline.trim().toLowerCase())
+          .filter((discipline) => discipline.length > 0),
+      ),
+    ];
+
+    await this.disciplinesService.ensureActiveDisciplineKeys(disciplines);
+
+    const saved = await this.adminRepository.manager.transaction(
+      async (transactionManager) => {
+        const transactionalAdminRepo =
+          transactionManager.getRepository(AdminInfo);
+
+        const admin = transactionalAdminRepo.create({ email, disciplines });
+        const savedAdmin = await transactionalAdminRepo.save(admin);
+
+        return savedAdmin;
+      },
+    );
+    return saved;
   }
 
   /**
@@ -66,7 +96,7 @@ export class AdminInfoService {
    * @throws {Error} anything that the repository throws.
    */
   async findAll(): Promise<AdminInfo[]> {
-    return await this.adminRepository.find();
+    return this.adminRepository.find();
   }
 
   /**
@@ -92,7 +122,11 @@ export class AdminInfoService {
    * @throws {Error} anything that the repository throws.
    */
   async findByEmail(email: string): Promise<AdminInfo | null> {
-    return await this.adminRepository.findOne({ where: { email } });
+    const admin = await this.adminRepository.findOne({ where: { email } });
+    if (!admin) {
+      return null;
+    }
+    return admin;
   }
 
   /**
@@ -106,9 +140,69 @@ export class AdminInfoService {
     email: string,
     updateEmailDto: UpdateAdminInfoEmailDto,
   ): Promise<AdminInfo> {
-    const admin = await this.findOne(email);
-    admin.email = updateEmailDto.email;
-    return await this.adminRepository.save(admin);
+    const newEmail = updateEmailDto.email.trim().toLowerCase();
+
+    await this.adminRepository.manager.transaction(
+      async (transactionManager) => {
+        const transactionalAdminRepo =
+          transactionManager.getRepository(AdminInfo);
+
+        const admin = await transactionalAdminRepo.findOne({
+          where: { email },
+        });
+        if (!admin) {
+          throw new NotFoundException(
+            `AdminInfo with email ${email} not found`,
+          );
+        }
+
+        admin.email = newEmail;
+        await transactionalAdminRepo.save(admin);
+      },
+    );
+
+    return this.findOne(newEmail);
+  }
+
+  /**
+   * Replaces an admin's discipline assignments.
+   * @param email the admin email to update.
+   * @param disciplines the full list of disciplines that should be assigned.
+   * @returns the updated admin object.
+   * @throws {NotFoundException} if an admin with the desired email does not exist.
+   * @throws {BadRequestException} if any provided discipline is invalid or inactive.
+   * @throws {Error} anything that the repository throws.
+   */
+  async updateDisciplines(
+    email: string,
+    disciplines: string[],
+  ): Promise<AdminInfo> {
+    const normalizedDisciplines = disciplines
+      .map((discipline) => discipline.trim().toLowerCase())
+      .filter((discipline) => discipline.length > 0);
+    const uniqueDisciplines = [...new Set(normalizedDisciplines)];
+    await this.disciplinesService.ensureActiveDisciplineKeys(uniqueDisciplines);
+
+    await this.adminRepository.manager.transaction(
+      async (transactionManager) => {
+        const transactionalAdminRepo =
+          transactionManager.getRepository(AdminInfo);
+
+        const admin = await transactionalAdminRepo.findOne({
+          where: { email },
+        });
+        if (!admin) {
+          throw new NotFoundException(
+            `AdminInfo with email ${email} not found`,
+          );
+        }
+
+        admin.disciplines = uniqueDisciplines;
+        await transactionalAdminRepo.save(admin);
+      },
+    );
+
+    return this.findOne(email);
   }
 
   /**
@@ -117,7 +211,21 @@ export class AdminInfoService {
    * @throws {Error} anything that the repository throws.
    */
   async remove(email: string): Promise<void> {
-    const admin = await this.findOne(email);
-    await this.adminRepository.remove(admin);
+    await this.adminRepository.manager.transaction(
+      async (transactionManager) => {
+        const transactionalAdminRepo =
+          transactionManager.getRepository(AdminInfo);
+
+        const admin = await transactionalAdminRepo.findOne({
+          where: { email },
+        });
+        if (!admin) {
+          throw new NotFoundException(
+            `AdminInfo with email ${email} not found`,
+          );
+        }
+        await transactionalAdminRepo.remove(admin);
+      },
+    );
   }
 }

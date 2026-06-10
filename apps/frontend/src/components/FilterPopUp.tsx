@@ -24,16 +24,6 @@ import {
   type ApplicationFilters,
 } from '@utils/applicationFilters';
 
-export const DISCIPLINE_VALUES = [
-  'MD/Medical Student/Pre-Med',
-  'Medical NP/PA',
-  'Psychiatry or Psychiatric NP/PA',
-  'Public Health',
-  'RN',
-  'Social Work',
-  'Other',
-] as const;
-
 export const STATUS_OPTIONS = Object.entries(StatusPillConfig).map(
   ([value, config]) => ({
     value: value as StatusVariant,
@@ -44,19 +34,21 @@ export const STATUS_OPTIONS = Object.entries(StatusPillConfig).map(
 interface FilterPopUpProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  filters: ApplicationFilters;
-  onFiltersChange: (next: ApplicationFilters) => void;
-  onResetFilters: () => void;
-  disciplineAdminOptions: string[];
+  filters?: ApplicationFilters;
+  onFiltersChange?: (next: ApplicationFilters) => void;
+  onResetFilters?: () => void;
+  disciplineAdminOptions?: string[];
+  disciplineOptions?: string[];
 }
 
 const FilterPopUp = ({
   open,
   onOpenChange,
-  filters,
-  onFiltersChange,
-  onResetFilters,
-  disciplineAdminOptions,
+  filters = EMPTY_APPLICATION_FILTERS,
+  onFiltersChange = () => undefined,
+  onResetFilters = () => undefined,
+  disciplineAdminOptions = [],
+  disciplineOptions = [],
 }: FilterPopUpProps) => {
   const capitalize = (s: string): string => {
     return s
@@ -68,6 +60,8 @@ const FilterPopUp = ({
   const [openSections, setOpenSections] = useState<string[]>([
     'Proposed Start Date',
     'Actual Start Date',
+    'Created At Date',
+    'Updated At Date',
     'Discipline',
     'Discipline Admin Name',
     'Status',
@@ -86,6 +80,8 @@ const FilterPopUp = ({
   const filterCategories = [
     'Proposed Start Date',
     'Actual Start Date',
+    'Created At Date',
+    'Updated At Date',
     'Discipline',
     'Discipline Admin Name',
     'Status',
@@ -112,6 +108,14 @@ const FilterPopUp = ({
       return filters.disciplineAdminNames.length;
     }
 
+    if (category === 'Created At Date') {
+      return normalizeDateToDay(filters.createdAt) ? 1 : 0;
+    }
+
+    if (category === 'Updated At Date') {
+      return normalizeDateToDay(filters.updatedAt) ? 1 : 0;
+    }
+
     return 0;
   };
 
@@ -119,13 +123,13 @@ const FilterPopUp = ({
 
   const visibleDisciplines = useMemo(() => {
     if (!normalizedSearch) {
-      return [...DISCIPLINE_VALUES];
+      return [...disciplineOptions];
     }
 
-    return DISCIPLINE_VALUES.filter((discipline) =>
+    return disciplineOptions.filter((discipline) =>
       discipline.toLowerCase().includes(normalizedSearch),
     );
-  }, [normalizedSearch]);
+  }, [disciplineOptions, normalizedSearch]);
 
   const visibleStatuses = useMemo(() => {
     if (!normalizedSearch) {
@@ -154,6 +158,14 @@ const FilterPopUp = ({
       return filters.proposedStartDateDirection ?? 'after';
     }
 
+    if (category === 'Created At Date') {
+      return filters.createdAtDirection ?? 'after';
+    }
+
+    if (category === 'Updated At Date') {
+      return filters.updatedAtDirection ?? 'after';
+    }
+
     return filters.actualStartDateDirection ?? 'after';
   }
 
@@ -164,6 +176,22 @@ const FilterPopUp = ({
       onFiltersChange({
         ...filters,
         proposedStartDateDirection: direction,
+      });
+      return;
+    }
+
+    if (category === 'Created At Date') {
+      onFiltersChange({
+        ...filters,
+        createdAtDirection: direction,
+      });
+      return;
+    }
+
+    if (category === 'Updated At Date') {
+      onFiltersChange({
+        ...filters,
+        updatedAtDirection: direction,
       });
       return;
     }
@@ -329,7 +357,9 @@ const FilterPopUp = ({
                           borderColor="gray.100"
                         >
                           {category === 'Proposed Start Date' ||
-                          category === 'Actual Start Date' ? (
+                          category === 'Actual Start Date' ||
+                          category === 'Created At Date' ||
+                          category === 'Updated At Date' ? (
                             <Stack gap="3">
                               <Box>
                                 <Flex align="center" gap="2">
@@ -374,7 +404,11 @@ const FilterPopUp = ({
                                 value={
                                   category === 'Proposed Start Date'
                                     ? filters.proposedStartDate ?? ''
-                                    : filters.actualStartDate ?? ''
+                                    : category === 'Actual Start Date'
+                                    ? filters.actualStartDate ?? ''
+                                    : category === 'Created At Date'
+                                    ? filters.createdAt ?? ''
+                                    : filters.updatedAt ?? ''
                                 }
                                 onChange={(e) =>
                                   category === 'Proposed Start Date'
@@ -382,9 +416,19 @@ const FilterPopUp = ({
                                         ...filters,
                                         proposedStartDate: e.target.value,
                                       })
-                                    : onFiltersChange({
+                                    : category === 'Actual Start Date'
+                                    ? onFiltersChange({
                                         ...filters,
                                         actualStartDate: e.target.value,
+                                      })
+                                    : category === 'Created At Date'
+                                    ? onFiltersChange({
+                                        ...filters,
+                                        createdAt: e.target.value,
+                                      })
+                                    : onFiltersChange({
+                                        ...filters,
+                                        updatedAt: e.target.value,
                                       })
                                 }
                                 _focus={{
@@ -397,7 +441,7 @@ const FilterPopUp = ({
                             <Stack gap="3">
                               <Fieldset.Root>
                                 <CheckboxGroup
-                                  name="DISCIPLINE_VALUES"
+                                  name="disciplines"
                                   value={filters.disciplines}
                                   onValueChange={(value) =>
                                     onFiltersChange({
@@ -539,13 +583,6 @@ const FilterPopUp = ({
       </Portal>
     </Popover.Root>
   );
-};
-
-FilterPopUp.defaultProps = {
-  filters: EMPTY_APPLICATION_FILTERS,
-  disciplineAdminOptions: [],
-  onFiltersChange: () => undefined,
-  onResetFilters: () => undefined,
 };
 
 export default FilterPopUp;

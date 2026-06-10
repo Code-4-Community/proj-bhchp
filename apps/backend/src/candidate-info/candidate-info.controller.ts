@@ -10,6 +10,7 @@ import {
   UseGuards,
   Logger,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CandidateInfoService } from './candidate-info.service';
 import { CandidateInfo } from './candidate-info.entity';
@@ -76,12 +77,38 @@ export class CandidateInfoController {
     @Param('email') email: string,
     @Req() req: { user?: { email?: string; userType?: string } },
   ): Promise<CandidateInfo> {
+    const decodedEmail = decodeURIComponent(email);
+    const requesterEmail = req.user?.email;
+    const requesterType = req.user?.userType;
+    const isStandardUser = requesterType === UserType.STANDARD;
+
     this.logger.log(
-      `GET /CandidateInfo/email requestedEmail=${email} requesterEmail=${
-        req.user?.email ?? 'unknown'
-      } requesterType=${req.user?.userType ?? 'unknown'}`,
+      `GET /CandidateInfo/email requestedEmail=${decodedEmail} requesterEmail=${
+        requesterEmail ?? 'unknown'
+      } requesterType=${requesterType ?? 'unknown'}`,
     );
-    return this.CandidateInfoService.findOne(email);
+
+    if (isStandardUser && requesterEmail !== decodedEmail) {
+      throw new ForbiddenException(
+        'Standard users can only access their own candidate info.',
+      );
+    }
+
+    const candidateInfo = await this.CandidateInfoService.findOne(decodedEmail);
+
+    if (!isStandardUser) {
+      return candidateInfo;
+    }
+
+    if (candidateInfo.appIds.length <= 1) {
+      return candidateInfo;
+    }
+
+    const latestAppId = Math.max(...candidateInfo.appIds);
+    return {
+      ...candidateInfo,
+      appIds: Number.isFinite(latestAppId) ? [latestAppId] : [],
+    };
   }
 
   /**

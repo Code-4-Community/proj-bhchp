@@ -10,6 +10,8 @@ import {
   Post,
   Query,
   Req,
+  Res,
+  StreamableFile,
   UseGuards,
   UseInterceptors,
   UseFilters,
@@ -36,6 +38,7 @@ import { ApplicationCreationErrorFilter } from './filters/application-creation-v
 import { User } from '../users/user.entity';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AppStatus } from './types';
+import { Response } from 'express';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about the app's applications.
@@ -113,7 +116,7 @@ export class ApplicationsController {
    * @param req The request object from the caller (frontend). Currently not used.
    * @returns A promise of the list of applications with the specified discipline.
    *          Returns an empty array if no applications match the discipline.
-   * @throws {BadRequestException} if the discipline is not a valid DISCIPLINE_VALUES enum value.
+   * @throws {BadRequestException} if the discipline key does not exist in the active discipline catalog.
    * @throws {Error} which is unchanged from what repository throws.
    */
   @Get('by-discipline')
@@ -122,6 +125,69 @@ export class ApplicationsController {
     @Query('discipline') discipline: string,
   ): Promise<Application[]> {
     return await this.applicationsService.findByDiscipline(discipline);
+  }
+
+  /**
+   * Exposes an endpoint to return all applications for a comma-separated discipline list.
+   * @param disciplinesCsv comma-separated discipline keys.
+   * @returns a promise of the list of applications in any provided discipline.
+   * @throws {BadRequestException} if no disciplines are provided or any are invalid.
+   * @throws {Error} which is unchanged from what repository throws.
+   */
+  @Get('by-disciplines')
+  @Roles(UserType.ADMIN)
+  async getApplicationsByDisciplines(
+    @Query('disciplines') disciplinesCsv: string,
+  ): Promise<Application[]> {
+    const disciplines = disciplinesCsv
+      ?.split(',')
+      .map((discipline) => discipline.trim())
+      .filter(Boolean);
+
+    return await this.applicationsService.findByDisciplines(disciplines ?? []);
+  }
+
+  /**
+   * Exposes an endpoint to export application data as CSV filtered by an inclusive createdAt date range.
+   * @param startDate inclusive lower bound in YYYY-MM-DD format.
+   * @param endDate inclusive upper bound in YYYY-MM-DD format.
+   * @param response express response used to attach download headers.
+   * @returns CSV file stream for admin download.
+   */
+  @Get('export/csv')
+  @Roles(UserType.ADMIN)
+  async exportApplicationsCsv(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const { fileName, stream } =
+      await this.applicationsService.exportCsvByCreatedAtRange(
+        startDate,
+        endDate,
+      );
+
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${fileName}"`,
+    );
+
+    return new StreamableFile(stream);
+  }
+
+  /**
+   * Exposes an endpoint to return all applications for a specific email, newest first.
+   * @param email The email to filter applications by.
+   * @returns A promise of the applications with the specified email ordered by descending appId.
+   */
+  @Get('by-email/:email')
+  @Roles(UserType.ADMIN)
+  async getApplicationsByEmail(
+    @Param('email') email: string,
+  ): Promise<Application[]> {
+    const decodedEmail = decodeURIComponent(email);
+    return this.applicationsService.findByEmail(decodedEmail);
   }
 
   /**
@@ -199,7 +265,7 @@ export class ApplicationsController {
   /**
    * Exposes an endpoint to update the application's discipline.
    * @param appId The id of the application to modify.
-   * @param updateDisciplineDto Object containing the desired new discipline (must be a valid DISCIPLINE_VALUES enum value).
+   * @param updateDisciplineDto Object containing the desired new discipline key.
    * @param req The request object from the caller (frontend). Currently not used.
    * @returns The updated application object.
    * @throws {NotFoundException} with message 'Application with ID <id> not found'
@@ -297,12 +363,22 @@ export class ApplicationsController {
     );
   }
 
+  /**
+   * Exposes an endpoint to get a signed URL for the confidentiality-form template.
+   * @returns object containing the template URL.
+   */
   @Get('/forms/confidentiality/template')
   @Roles(UserType.STANDARD, UserType.ADMIN)
   async getConfidentialityTemplateUrl(): Promise<{ templateUrl: string }> {
     return this.applicationsService.getConfidentialityTemplateUrl();
   }
 
+  /**
+   * Exposes an endpoint to fetch the current user's confidentiality form metadata.
+   * @param req request context containing the authenticated user.
+   * @returns file metadata if present, otherwise null placeholders.
+   * @throws {NotFoundException} if no user matching the JWT is found.
+   */
   @Get('/me/forms/confidentiality')
   @Roles(UserType.STANDARD)
   async getCurrentUserConfidentialityForm(
@@ -323,6 +399,14 @@ export class ApplicationsController {
     return form;
   }
 
+  /**
+   * Exposes an endpoint to upload the current user's confidentiality form.
+   * @param req request context containing the authenticated user.
+   * @param file uploaded PDF payload.
+   * @returns uploaded file metadata and resulting application status.
+   * @throws {NotFoundException} if no user matching the JWT is found.
+   * @throws {BadRequestException} if file validation fails.
+   */
   @Post('/me/forms/confidentiality')
   @Roles(UserType.STANDARD)
   @UseInterceptors(
@@ -392,13 +476,13 @@ export class ApplicationsController {
     }
 
     try {
-      const candidateInfo = await this.candidateInfoService.findOne(
+      const latestAppId = await this.candidateInfoService.findLatestAppId(
         req.user.email,
       );
       this.logger.log(
-        `GET /applications/me candidate_info found email=${req.user.email} appId=${candidateInfo.appId}`,
+        `GET /applications/me candidate_info found email=${req.user.email} appId=${latestAppId}`,
       );
-      return this.applicationsService.findById(candidateInfo.appId);
+      return this.applicationsService.findById(latestAppId);
     } catch (error) {
       this.logger.error(
         `GET /applications/me failed for email=${req.user.email}`,

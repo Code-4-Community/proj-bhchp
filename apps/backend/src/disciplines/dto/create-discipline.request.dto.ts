@@ -1,11 +1,24 @@
-import { DISCIPLINE_VALUES } from '../disciplines.constants';
-import { IsEnum, IsNotEmpty, IsArray } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 
 export class CreateDisciplineRequestDto {
-  @IsEnum(DISCIPLINE_VALUES)
+  @IsString()
   @IsNotEmpty()
-  name: DISCIPLINE_VALUES;
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'key must be a lowercase slug (a-z, 0-9, hyphen) with no spaces',
+  })
+  key: string;
 
-  @IsArray()
-  admin_emails: string[];
+  @IsString()
+  @IsNotEmpty()
+  label: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }

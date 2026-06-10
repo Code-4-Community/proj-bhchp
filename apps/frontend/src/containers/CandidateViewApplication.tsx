@@ -1,6 +1,6 @@
 import NavBar from '../components/NavBar/NavBar';
 import apiClient from '../api/apiClient';
-import { Box, Heading, Spinner, Text } from '@chakra-ui/react';
+import { Box, Flex, Heading, Spinner, Text } from '@chakra-ui/react';
 import AvailabilityTable from '../components/AvailabilityTable';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
@@ -29,6 +29,14 @@ const CandidateViewApplication: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const pronouns = application?.pronouns;
   const discipline = application?.discipline;
+  const formatDate = (iso?: string) => {
+    if (!iso) return 'N/A';
+    try {
+      return new Date(iso).toLocaleString();
+    } catch (e) {
+      return iso;
+    }
+  };
   const uploadedDocuments: DocumentDownloadItem[] = [
     {
       variant: 'resume',
@@ -95,14 +103,21 @@ const CandidateViewApplication: React.FC = () => {
           return;
         }
 
+        const latestAppId = Math.max(...candidateInfo.appIds);
+
+        if (!Number.isFinite(latestAppId)) {
+          setError("Unable to get user's application id");
+          return;
+        }
+
         if (cancelled) return;
         console.debug('CandidateViewApplication: candidate info loaded', {
-          appId: candidateInfo.appId,
+          appId: latestAppId,
           email: candidateInfo.email,
         });
 
         console.debug('CandidateViewApplication: requesting application', {
-          appId: candidateInfo.appId,
+          appId: latestAppId,
         });
 
         const app = await apiClient.getCurrentApplication();
@@ -124,9 +139,9 @@ const CandidateViewApplication: React.FC = () => {
         if (app.applicantType === ApplicantType.LEARNER) {
           try {
             console.debug('CandidateViewApplication: requesting learner info', {
-              appId: candidateInfo.appId,
+              appId: app.appId,
             });
-            const info = await apiClient.getLearnerInfo(candidateInfo.appId);
+            const info = await apiClient.getLearnerInfo(app.appId);
             if (!cancelled) {
               setLearnerInfo(info);
               console.debug('CandidateViewApplication: learner info loaded', {
@@ -163,28 +178,28 @@ const CandidateViewApplication: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-row">
+      <Flex direction="row">
         <NavBar logo="BHCHP" userType={UserType.STANDARD} />
         <Box p="10" flex="1" display="flex" justifyContent="center" mt="20">
           <Spinner size="xl" />
         </Box>
-      </div>
+      </Flex>
     );
   }
 
   if (error || application === null) {
     return (
-      <div className="flex flex-row">
+      <Flex direction="row">
         <NavBar logo="BHCHP" userType={UserType.STANDARD} />
         <Box p="10" flex="1">
           <Text color="red.500">{error ?? 'Application data not found'}</Text>
         </Box>
-      </div>
+      </Flex>
     );
   }
 
   return (
-    <div className="flex flex-row">
+    <Flex direction="row">
       <NavBar logo="BHCHP" userType={UserType.STANDARD} />
       <Box
         id="main-content"
@@ -203,6 +218,8 @@ const CandidateViewApplication: React.FC = () => {
           discipline={discipline}
           email={application.email || 'N/A'}
           phone={application.phone || 'N/A'}
+          createdAt={application.createdAt}
+          updatedAt={application.updatedAt}
           over18={learnerInfo?.isLegalAdult}
         />
         <QuestionFrame
@@ -212,6 +229,7 @@ const CandidateViewApplication: React.FC = () => {
               ? [application.nonEnglishLangs]
               : [],
           }}
+          bgColor="gray.50"
         />
         {application.applicantType === ApplicantType.LEARNER &&
         learnerInfo !== null ? (
@@ -223,6 +241,7 @@ const CandidateViewApplication: React.FC = () => {
                 learnerInfo.isSupervisorApplying ? 'Supervisor' : 'Myself',
               ],
             }}
+            bgColor="white"
           />
         ) : (
           <QuestionFrame
@@ -231,6 +250,7 @@ const CandidateViewApplication: React.FC = () => {
                 'Are you applying for yourself or are you a supervisor/instructor?',
               answers: ['Myself'],
             }}
+            bgColor="white"
           />
         )}
         <SchoolAffiliationFrame
@@ -246,13 +266,9 @@ const CandidateViewApplication: React.FC = () => {
               ? application.interest.join(', ')
               : application.interest ?? ''
           }
-          proposedStartDate={application.proposedStartDate.toString()}
-          actualStartDate={
-            application.actualStartDate
-              ? application.actualStartDate.toString()
-              : '-'
-          }
-          endDate={application.endDate ? application.endDate.toString() : '-'}
+          proposedStartDate={application.proposedStartDate}
+          actualStartDate={application.actualStartDate ?? ''}
+          endDate={application.endDate ?? ''}
           totalTimeRequested={application.weeklyHours + ' hours per week'}
         />
 
@@ -271,7 +287,7 @@ const CandidateViewApplication: React.FC = () => {
           />
         </Box>
 
-        <Box borderWidth="1px" borderRadius="lg" p={6} bg="white">
+        <Box borderWidth="1px" borderRadius="lg" p={6} bg="gray.50">
           <Heading as="h2" size="md" mb={4}>
             Uploaded Material
           </Heading>
@@ -292,6 +308,7 @@ const CandidateViewApplication: React.FC = () => {
             question: 'How did you hear about us?',
             answers: application.heardAboutFrom,
           }}
+          bgColor="white"
         />
         <EmergencyContactFrame
           name={application.emergencyContactName}
@@ -299,7 +316,7 @@ const CandidateViewApplication: React.FC = () => {
           relationship={application.emergencyContactRelationship}
         />
       </Box>
-    </div>
+    </Flex>
   );
 };
 

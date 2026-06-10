@@ -8,7 +8,7 @@ export class Init1754254886189 implements MigrationInterface {
       `('MD/Medical Student/Pre-Med', 'Medical NP/PA', ` +
       `'Psychiatry or Psychiatric NP/PA', 'Public Health', 'RN', 'Social Work', 'Other')`;
 
-    // DISCIPLINE_VALUES - used by application, admins, discipline
+    // Legacy discipline enum values used by application, admins, and discipline
     await queryRunner.query(
       `CREATE TYPE "public"."application_discipline_enum" AS ENUM${disciplineEnum}`,
     );

@@ -1,8 +1,8 @@
 import apiClient from '@api/apiClient';
 import type { DisciplineAdminMap } from '@api/types';
 
-const CACHE_KEY = 'bhchp.disciplineAdminMap.v1';
-const SCHEMA_VERSION = 1;
+const CACHE_KEY = 'bhchp.disciplineAdminMap.v2';
+const SCHEMA_VERSION = 2;
 const DEFAULT_TTL_MS = 28 * 24 * 60 * 60 * 1000;
 
 type PersistedCache = {

@@ -26,6 +26,7 @@ jobs:
           echo "AWS_SECRET_ACCESS_KEY=dummy" >> .env
           echo "AWS_ACCESS_KEY_ID=dummy" >> .env
           echo "AWS_REGION=us-east-2" >> .env
+          echo "PUBLIC_FRONTEND_URL=http://localhost:5173" >> .env
 
       - name: Install Dependencies
         run: yarn install

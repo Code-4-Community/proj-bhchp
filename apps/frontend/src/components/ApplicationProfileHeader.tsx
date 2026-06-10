@@ -1,4 +1,4 @@
-import { Box, Float, Text, Flex } from '@chakra-ui/react';
+import { Box, Flex, Text } from '@chakra-ui/react';
 import React from 'react';
 import type { ReactNode } from 'react';
 
@@ -11,6 +11,8 @@ interface ApplicationProfileHeaderProps {
   phone?: string;
   over18?: boolean;
   statusControl?: ReactNode;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
@@ -22,12 +24,26 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
   phone,
   over18,
   statusControl,
+  createdAt,
+  updatedAt,
 }) => {
+  const formatDate = (iso?: string) => {
+    if (!iso) return 'N/A';
+    try {
+      return new Date(iso).toLocaleDateString();
+    } catch (e) {
+      return iso;
+    }
+  };
   return (
-    <Box className="space-y-4">
+    <Box display="flex" flexDirection="column" gap="4">
       <Box
         position="relative"
-        className="text-white p-6 flex items-center gap-6 "
+        color="white"
+        p="6"
+        display="flex"
+        alignItems="center"
+        gap="6"
         pt="20"
         pl="5"
         mt="-10"
@@ -40,14 +56,22 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
           bottom="-48px"
           left="35px"
           zIndex="2"
-          className="w-24 h-24 rounded-full flex items-center justify-center flex-shrink-0"
+          w="96px"
+          h="96px"
+          borderRadius="full"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          flexShrink={0}
+          color="white"
           bg="#013594"
           borderWidth="5px"
           borderColor="white"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="w-14 h-14 text-white"
+            width="56"
+            height="56"
             viewBox="0 0 24 24"
             fill="currentColor"
           >
@@ -60,12 +84,36 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
       </Box>
 
       <Box
-        className="bg-white p-6 border border-gray-200 rounded-b-md space-y-2 text-sm"
+        bg="white"
+        borderWidth="1px"
+        borderColor="gray.200"
+        borderBottomRadius="md"
+        display="flex"
+        flexDirection="column"
+        gap="2"
+        fontSize="sm"
         p="6"
         pl="110px"
       >
         <Flex align="center" gap="6">
           <Box flex="1">
+            <div>
+              <Text as="span" fontWeight="semibold">
+                Submitted:
+              </Text>{' '}
+              <Text as="span" fontSize="sm" color="gray.600">
+                {formatDate(createdAt)}
+              </Text>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <Text as="span" fontWeight="semibold">
+                Last Updated:
+              </Text>{' '}
+              <Text as="span" fontSize="sm" color="gray.600">
+                {formatDate(updatedAt)}
+              </Text>
+            </div>
+
             <div>
               <Text as="span" fontWeight="semibold">
                 Pronouns:
@@ -95,11 +143,14 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
                 Over 18?
               </Text>{' '}
               <Text
-                className={`inline-block px-3 py-1 text-sm rounded-full font-semibold text-white ${
-                  over18 === false ? 'bg-red-500' : 'bg-green-500'
-                }`}
-                pl="3"
-                pr="3"
+                display="inline-block"
+                px="3"
+                py="1"
+                fontSize="sm"
+                borderRadius="full"
+                fontWeight="semibold"
+                color="white"
+                bg={over18 === false ? 'red.500' : 'green.500'}
               >
                 {over18 === false ? 'No' : 'Yes'}
               </Text>

@@ -82,4 +82,7 @@ const CognitoAuthConfig = {
   clientSecret: process.env.COGNITO_CLIENT_SECRET,
 };
 
-export default { CognitoAuthConfig, AWSConfig };
+const PublicFrontendUrl =
+  process.env.PUBLIC_FRONTEND_URL || process.env.VITE_PUBLIC_FRONTEND_URL || '';
+
+export default { CognitoAuthConfig, AWSConfig, PublicFrontendUrl };

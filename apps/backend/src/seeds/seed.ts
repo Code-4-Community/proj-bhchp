@@ -1,7 +1,6 @@
 import { DeepPartial, Repository } from 'typeorm';
 import dataSource from '../data-source';
 import { Discipline } from '../disciplines/disciplines.entity';
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { Application } from '../applications/application.entity';
 import {
   AppStatus,
@@ -17,29 +16,70 @@ import { AdminInfo } from '../admin-info/admin-info.entity';
 import { User } from '../users/user.entity';
 import { UserType } from '../users/types';
 
+const DISCIPLINE_KEYS = {
+  mdMedicalStudentPreMed: 'md-medical-student-pre-med',
+  medicalNpPa: 'medical-np-pa',
+  psychiatryOrPsychiatricNpPa: 'psychiatry-or-psychiatric-np-pa',
+  publicHealth: 'public-health',
+  rn: 'rn',
+  socialWork: 'social-work',
+  other: 'other',
+} as const;
+
+const DISCIPLINE_SEED: DeepPartial<Discipline>[] = [
+  {
+    key: DISCIPLINE_KEYS.mdMedicalStudentPreMed,
+    label: 'MD/Medical Student/Pre-Med',
+  },
+  {
+    key: DISCIPLINE_KEYS.medicalNpPa,
+    label: 'Medical NP/PA',
+  },
+  {
+    key: DISCIPLINE_KEYS.psychiatryOrPsychiatricNpPa,
+    label: 'Psychiatry or Psychiatric NP/PA',
+  },
+  {
+    key: DISCIPLINE_KEYS.publicHealth,
+    label: 'Public Health',
+  },
+  {
+    key: DISCIPLINE_KEYS.rn,
+    label: 'RN',
+  },
+  {
+    key: DISCIPLINE_KEYS.socialWork,
+    label: 'Social Work',
+  },
+  {
+    key: DISCIPLINE_KEYS.other,
+    label: 'Other',
+  },
+];
+
 const ADMIN_INFO_SEED = [
   {
     email: 'superadmin@c4cneu.com',
-    discipline: DISCIPLINE_VALUES.RN,
+    disciplines: [DISCIPLINE_KEYS.rn],
   },
   {
     email: 'publichealthadmin@c4cneu.com',
-    discipline: DISCIPLINE_VALUES.PublicHealth,
+    disciplines: [DISCIPLINE_KEYS.publicHealth],
   },
   {
     email: 'socialworkadmin@c4cneu.com',
-    discipline: DISCIPLINE_VALUES.SocialWork,
+    disciplines: [DISCIPLINE_KEYS.socialWork],
   },
 ];
 
 const EXTRA_DISCIPLINES = [
-  DISCIPLINE_VALUES.RN,
-  DISCIPLINE_VALUES.SocialWork,
-  DISCIPLINE_VALUES.PublicHealth,
-  DISCIPLINE_VALUES.Medical_NP_PA,
-  DISCIPLINE_VALUES.Psychiatry_or_Psychiatric_NP_PA,
-  DISCIPLINE_VALUES.MD_MedicalStudent_PreMed,
-  DISCIPLINE_VALUES.Other,
+  DISCIPLINE_KEYS.rn,
+  DISCIPLINE_KEYS.socialWork,
+  DISCIPLINE_KEYS.publicHealth,
+  DISCIPLINE_KEYS.medicalNpPa,
+  DISCIPLINE_KEYS.psychiatryOrPsychiatricNpPa,
+  DISCIPLINE_KEYS.mdMedicalStudentPreMed,
+  DISCIPLINE_KEYS.other,
 ];
 
 const EXTRA_STATUSES = [
@@ -106,28 +146,28 @@ const EXTRA_CANDIDATE_PROFILES = Array.from({ length: 20 }, (_, index) => {
 
 const CANDIDATE_INFO_SEED: CandidateInfo[] = [
   {
-    appId: 1,
     email: 'janedoe@gmail.com',
+    appIds: [1, 27, 28],
   },
   {
-    appId: 2,
+    email: 'johndoe@c4cneu.com',
+    appIds: [2],
+  },
+  {
     email: 'standard@c4cneu.com',
+    appIds: [3, 26],
   },
   {
-    appId: 3,
-    email: 'sam@example.com',
-  },
-  {
-    appId: 4,
     email: 'rejected.learner@example.com',
+    appIds: [4],
   },
   {
-    appId: 5,
     email: 'approved.learner@example.com',
+    appIds: [5],
   },
   ...EXTRA_CANDIDATE_PROFILES.map(({ appId, email }) => ({
-    appId,
     email,
+    appIds: [appId],
   })),
 ];
 
@@ -157,13 +197,13 @@ const USER_SEED: User[] = [
     userType: UserType.STANDARD,
   },
   {
-    email: 'standard@c4cneu.com',
+    email: 'johndoe@c4cneu.com',
     firstName: 'john',
     lastName: 'doe',
     userType: UserType.STANDARD,
   },
   {
-    email: 'sam@example.com',
+    email: 'standard@c4cneu.com',
     firstName: 'sam',
     lastName: 'nie',
     userType: UserType.STANDARD,
@@ -188,7 +228,7 @@ const USER_SEED: User[] = [
   })),
 ];
 
-const APPLICATION_SEED: Application[] = [
+const APPLICATION_SEED: Partial<Application>[] = [
   {
     appId: 1,
     appStatus: AppStatus.APP_SUBMITTED,
@@ -206,7 +246,7 @@ const APPLICATION_SEED: Application[] = [
     applicantType: ApplicantType.LEARNER,
     phone: '123-456-7890',
     email: 'janedoe@gmail.com',
-    discipline: DISCIPLINE_VALUES.Psychiatry_or_Psychiatric_NP_PA,
+    discipline: DISCIPLINE_KEYS.psychiatryOrPsychiatricNpPa,
     referred: false,
     weeklyHours: 20,
     pronouns: 'she/her',
@@ -234,8 +274,8 @@ const APPLICATION_SEED: Application[] = [
     license: 'n/a',
     applicantType: ApplicantType.VOLUNTEER,
     phone: '123-456-7890',
-    email: 'standard@c4cneu.com',
-    discipline: DISCIPLINE_VALUES.RN,
+    email: 'johndoe@c4cneu.com',
+    discipline: DISCIPLINE_KEYS.rn,
     referred: false,
     weeklyHours: 20,
     pronouns: 'he/him',
@@ -263,8 +303,8 @@ const APPLICATION_SEED: Application[] = [
     license: 'n/a',
     applicantType: ApplicantType.VOLUNTEER,
     phone: '123-456-7890',
-    email: 'sam@example.com',
-    discipline: DISCIPLINE_VALUES.SocialWork,
+    email: 'standard@c4cneu.com',
+    discipline: DISCIPLINE_KEYS.socialWork,
     referred: false,
     weeklyHours: 20,
     pronouns: 'they/them',
@@ -293,7 +333,7 @@ const APPLICATION_SEED: Application[] = [
     applicantType: ApplicantType.LEARNER,
     phone: '555-555-5555',
     email: 'rejected.learner@example.com',
-    discipline: DISCIPLINE_VALUES.PublicHealth,
+    discipline: DISCIPLINE_KEYS.publicHealth,
     referred: false,
     weeklyHours: 10,
     pronouns: 'they/them',
@@ -322,7 +362,7 @@ const APPLICATION_SEED: Application[] = [
     applicantType: ApplicantType.LEARNER,
     phone: '555-555-1212',
     email: 'approved.learner@example.com',
-    discipline: DISCIPLINE_VALUES.RN,
+    discipline: DISCIPLINE_KEYS.rn,
     referred: true,
     weeklyHours: 15,
     pronouns: 'she/her',
@@ -366,6 +406,96 @@ const APPLICATION_SEED: Application[] = [
     endDate: profile.endDate,
     heardAboutFrom: [profile.heardAboutFrom],
   })),
+  {
+    appId: 26,
+    appStatus: AppStatus.IN_REVIEW,
+    mondayAvailability: 'mornings only',
+    tuesdayAvailability: 'afternoons only',
+    wednesdayAvailability: 'available all day',
+    thursdayAvailability: 'after 5pm',
+    fridayAvailability: 'evenings only',
+    saturdayAvailability: 'weekend mornings',
+    interest: [InterestArea.CASE_MANAGEMENT],
+    license: 'n/a',
+    applicantType: ApplicantType.VOLUNTEER,
+    phone: '123-456-7890',
+    email: 'standard@c4cneu.com',
+    discipline: DISCIPLINE_KEYS.socialWork,
+    referred: false,
+    weeklyHours: 24,
+    pronouns: 'they/them',
+    nonEnglishLangs: 'spoken chinese only',
+    desiredExperience: DesiredExperience.PUBLIC_HEALTH_PROJECT,
+    resume: 'sam_history_resume_2_6_2026.pdf',
+    coverLetter: 'sam_history_coverLetter_2_6_2026.pdf',
+    emergencyContactName: 'sam senior',
+    emergencyContactPhone: '111-111-1111',
+    emergencyContactRelationship: 'Mother',
+    proposedStartDate: new Date('2026-02-01'),
+    endDate: new Date('2026-08-31'),
+    heardAboutFrom: [HeardAboutFrom.ONLINE_SEARCH, HeardAboutFrom.SCHOOL],
+  },
+  {
+    appId: 27,
+    appStatus: AppStatus.ACCEPTED,
+    mondayAvailability: 'early mornings',
+    tuesdayAvailability: 'afternoons only',
+    wednesdayAvailability: 'available all day',
+    thursdayAvailability: 'after 4pm',
+    fridayAvailability: 'limited evenings',
+    saturdayAvailability: 'weekend afternoons',
+    interest: [
+      InterestArea.MEDICAL_RESPITE_INPATIENT,
+      InterestArea.WOMENS_HEALTH,
+    ],
+    license: 'nursing license',
+    applicantType: ApplicantType.LEARNER,
+    phone: '123-456-7890',
+    email: 'janedoe@gmail.com',
+    discipline: DISCIPLINE_KEYS.psychiatryOrPsychiatricNpPa,
+    referred: false,
+    weeklyHours: 18,
+    pronouns: 'she/her',
+    nonEnglishLangs: 'spoken chinese only',
+    desiredExperience: DesiredExperience.PRACTICUM,
+    resume: 'janedoe_history_resume_2_6_2026.pdf',
+    coverLetter: 'janedoe_history_coverLetter_2_6_2026.pdf',
+    emergencyContactName: 'Bob Doe',
+    emergencyContactPhone: '111-111-1111',
+    emergencyContactRelationship: 'Mother',
+    proposedStartDate: new Date('2026-03-01'),
+    endDate: new Date('2026-09-30'),
+    heardAboutFrom: [HeardAboutFrom.SCHOOL, HeardAboutFrom.BHCHP_WEBSITE],
+  },
+  {
+    appId: 28,
+    appStatus: AppStatus.ACTIVE,
+    mondayAvailability: 'early mornings',
+    tuesdayAvailability: 'afternoons only',
+    wednesdayAvailability: 'available all day',
+    thursdayAvailability: 'after 4pm',
+    fridayAvailability: 'limited evenings',
+    saturdayAvailability: 'weekend afternoons',
+    interest: [InterestArea.WOMENS_HEALTH, InterestArea.PRIMARY_CARE],
+    license: 'nursing license',
+    applicantType: ApplicantType.LEARNER,
+    phone: '123-456-7890',
+    email: 'janedoe@gmail.com',
+    discipline: DISCIPLINE_KEYS.psychiatryOrPsychiatricNpPa,
+    referred: true,
+    weeklyHours: 22,
+    pronouns: 'she/her',
+    nonEnglishLangs: 'spoken chinese only',
+    desiredExperience: DesiredExperience.VOLUNTEER_INTERN,
+    resume: 'janedoe_latest_resume_2_6_2026.pdf',
+    coverLetter: 'janedoe_latest_coverLetter_2_6_2026.pdf',
+    emergencyContactName: 'Bob Doe',
+    emergencyContactPhone: '111-111-1111',
+    emergencyContactRelationship: 'Mother',
+    proposedStartDate: new Date('2026-05-01'),
+    endDate: new Date('2026-12-15'),
+    heardAboutFrom: [HeardAboutFrom.SCHOOL, HeardAboutFrom.FRIEND_FAMILY],
+  },
 ];
 
 const LEARNER_INFO_SEED: LearnerInfo[] = [
@@ -395,6 +525,24 @@ const LEARNER_INFO_SEED: LearnerInfo[] = [
     courseRequirements: 'Advanced clinical placement',
     instructorInfo: 'Dr. Taylor Reed, taylor.reed@example.com',
     syllabus: 'approved_learner_syllabus.pdf',
+  },
+  {
+    appId: 27,
+    school: School.BOSTON_UNIVERSITY,
+    syllabus: 'janedoe_history_syllabus.pdf',
+    isSupervisorApplying: false,
+    isLegalAdult: true,
+    courseRequirements: 'Advanced practicum placement',
+    instructorInfo: 'Dr. Morgan Lee, morgan.lee@example.com',
+  },
+  {
+    appId: 28,
+    school: School.NORTHEASTERN,
+    syllabus: 'janedoe_latest_syllabus.pdf',
+    isSupervisorApplying: false,
+    isLegalAdult: true,
+    courseRequirements: 'Longitudinal clinical placement',
+    instructorInfo: 'Dr. Jamie Patel, jamie.patel@example.com',
   },
   ...EXTRA_CANDIDATE_PROFILES.filter(
     (profile) => profile.applicantType === ApplicantType.LEARNER,
@@ -427,12 +575,7 @@ async function seed() {
 
     // Create disciplines
     console.log('📚 Creating disciplines...');
-    await dataSource.getRepository(Discipline).save(
-      Object.values(DISCIPLINE_VALUES).map((name) => ({
-        name,
-        admin_emails: [],
-      })),
-    );
+    await dataSource.getRepository(Discipline).save(DISCIPLINE_SEED);
     console.log('✅ Disciplines created');
 
     // Create user test data

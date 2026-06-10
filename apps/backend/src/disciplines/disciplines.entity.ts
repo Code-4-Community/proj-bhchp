@@ -1,5 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { DISCIPLINE_VALUES } from './disciplines.constants';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 /**
  * Represents the desired columns for the database table
@@ -12,27 +17,20 @@ import { DISCIPLINE_VALUES } from './disciplines.constants';
 @Entity('discipline')
 export class Discipline {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
-  /**
-   * Predefined discipline values present in the table.
-   *
-   * e.g.: Volunteers, Nursing, Public Health, MD, PA, NP,
-   * Research, Social work, Psychiatry, Pharmacy, IT.
-   */
-  @Column({
-    type: 'enum',
-    enum: DISCIPLINE_VALUES,
-    nullable: false,
-  })
-  name: DISCIPLINE_VALUES;
+  @Column({ type: 'varchar', unique: true, nullable: false })
+  key!: string;
 
-  /**
-   * emails of admins in charge of reviewing the discipline,
-   * in no particular order.
-   *
-   * E.g. [nie.sa@northeastern.edu, nie.sa2@northeastern.edu]
-   */
-  @Column({ type: 'varchar', array: true, default: [] })
-  admin_emails: string[];
+  @Column({ type: 'varchar', unique: true, nullable: false })
+  label!: string;
+
+  @Column({ type: 'boolean', default: true })
+  isActive!: boolean;
+
+  @CreateDateColumn({ type: 'timestamp' })
+  createdAt?: Date;
+
+  @UpdateDateColumn({ type: 'timestamp' })
+  updatedAt?: Date;
 }

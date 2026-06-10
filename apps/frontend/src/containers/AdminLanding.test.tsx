@@ -116,6 +116,8 @@ describe('AdminLanding', () => {
           desiredExperience: 'Shadowing',
           applicantType: 'Learner',
           status: 'App Submitted',
+          createdAt: '2026-01-15T00:00:00.000Z',
+          updatedAt: '2026-01-16T00:00:00.000Z',
         },
       ],
       loading: false,

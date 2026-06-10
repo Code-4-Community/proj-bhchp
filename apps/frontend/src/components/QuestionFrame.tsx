@@ -5,11 +5,12 @@ interface QuestionFrameProps {
   answers: string[];
 }
 
-export const QuestionFrame: React.FC<{ frameProps: QuestionFrameProps }> = ({
-  frameProps,
-}) => {
+export const QuestionFrame: React.FC<{
+  frameProps: QuestionFrameProps;
+  bgColor?: string;
+}> = ({ frameProps, bgColor = 'white' }) => {
   return (
-    <Box borderWidth="1px" borderRadius="lg" p={6} bg="white">
+    <Box borderWidth="1px" borderRadius="lg" p={6} bg={bgColor ?? 'white'}>
       <Flex gap={4} alignItems="center" flexWrap="wrap">
         <Heading as="h2" size="md" flexShrink={0}>
           {frameProps.question}

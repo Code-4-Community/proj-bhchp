@@ -1,7 +1,10 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { DISCIPLINE_VALUES } from '../../disciplines/disciplines.constants';
-
-// TODO: Add class validators
+import {
+  ArrayMinSize,
+  IsArray,
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+} from 'class-validator';
 
 /**
  * Defines the expected shape of data for creating a new admin.
@@ -35,11 +38,12 @@ export class CreateAdminInfoDto {
   email: string;
 
   /**
-   * The discipline of the admin to create.
+   * The disciplines of the admin to create.
    *
-   * Example: DISCIPLINE_VALUES.Nursing.
+   * ["Nursing"].
    */
-  @IsEnum(DISCIPLINE_VALUES)
-  @IsNotEmpty()
-  discipline: DISCIPLINE_VALUES;
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  disciplines: string[];
 }

@@ -5,13 +5,20 @@ import { useApplications } from './useApplications';
 import {
   AppStatus,
   ApplicantType,
-  DISCIPLINE_VALUES,
   DesiredExperience,
   UserType,
   type Application,
   type User,
 } from '@api/types';
-import { getDisciplineAdminMapCached } from '@utils/disciplineAdminCache';
+import {
+  getDisciplineAdminMapCached,
+  prefetchDisciplineAdminMap,
+} from '@utils/disciplineAdminCache';
+
+const disciplineKeys = {
+  rn: 'rn',
+  socialWork: 'social-work',
+} as const;
 
 const mockApplications: Application[] = [
   {
@@ -19,7 +26,7 @@ const mockApplications: Application[] = [
     email: 'jane@example.com',
     proposedStartDate: '2024-01-15',
     actualStartDate: '2024-02-01',
-    discipline: DISCIPLINE_VALUES.RN,
+    discipline: disciplineKeys.rn,
     appStatus: AppStatus.APP_SUBMITTED,
     interest: [],
     license: 'n/a',
@@ -45,7 +52,7 @@ const mockApplications: Application[] = [
     appId: 2,
     email: 'noname@example.com',
     proposedStartDate: '2024-03-01',
-    discipline: DISCIPLINE_VALUES.SocialWork,
+    discipline: disciplineKeys.socialWork,
     appStatus: AppStatus.IN_REVIEW,
     interest: [],
     license: 'LCSW',
@@ -87,7 +94,7 @@ const mockCurrentAdmin = {
 
 const mockAdminInfo = {
   email: 'admin@example.com',
-  discipline: DISCIPLINE_VALUES.RN,
+  disciplines: [disciplineKeys.rn],
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -97,30 +104,37 @@ vi.mock('@api/apiClient', () => {
     default: {
       getCurrentUser: vi.fn(),
       getAdminInfoByEmail: vi.fn(),
-      getApplicationsByDiscipline: vi.fn(),
+      getApplicationsByDisciplines: vi.fn(),
       getApplicants: vi.fn(),
+      getDisciplines: vi.fn(),
     },
   };
 });
 
 vi.mock('@utils/disciplineAdminCache', () => ({
   getDisciplineAdminMapCached: vi.fn(),
+  prefetchDisciplineAdminMap: vi.fn(),
 }));
 
 describe('useApplications', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prefetchDisciplineAdminMap).mockResolvedValue(undefined);
     vi.mocked(getDisciplineAdminMapCached).mockResolvedValue({
-      [DISCIPLINE_VALUES.RN]: { firstName: 'Alex', lastName: 'Kim' },
-      [DISCIPLINE_VALUES.SocialWork]: { firstName: 'Jo', lastName: 'Rivera' },
+      [disciplineKeys.rn]: { firstName: 'Alex', lastName: 'Kim' },
+      [disciplineKeys.socialWork]: { firstName: 'Jo', lastName: 'Rivera' },
     });
     vi.mocked(apiClient.getCurrentUser).mockResolvedValue(mockCurrentAdmin);
     vi.mocked(apiClient.getAdminInfoByEmail).mockResolvedValue(mockAdminInfo);
     vi.mocked(apiClient.getApplicants).mockResolvedValue(mockApplicants);
+    vi.mocked(apiClient.getDisciplines).mockResolvedValue([
+      { key: disciplineKeys.rn, label: 'RN', isActive: true },
+      { key: disciplineKeys.socialWork, label: 'Social Work', isActive: true },
+    ]);
   });
 
   it('should start in a loading state', () => {
-    vi.mocked(apiClient.getApplicationsByDiscipline).mockReturnValue(
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockReturnValue(
       new Promise(() => {}),
     );
 
@@ -132,7 +146,7 @@ describe('useApplications', () => {
   });
 
   it('should fetch applications and users then merge names', async () => {
-    vi.mocked(apiClient.getApplicationsByDiscipline).mockResolvedValue(
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue(
       mockApplications,
     );
 
@@ -149,7 +163,7 @@ describe('useApplications', () => {
     expect(first.email).toBe('jane@example.com');
     expect(first.proposedStartDate).toBe('2024-01-15');
     expect(first.actualStartDate).toBe('2024-02-01');
-    expect(first.discipline).toBe(DISCIPLINE_VALUES.RN);
+    expect(first.discipline).toBe('RN');
     expect(first.disciplineAdminName).toBe('Alex Kim');
     expect(first.status).toBe(AppStatus.APP_SUBMITTED);
     expect(first.applicantType).toBe(ApplicantType.LEARNER);
@@ -159,11 +173,12 @@ describe('useApplications', () => {
     expect(second.name).toBe('noname@example.com');
     expect(second.proposedStartDate).toBe('2024-03-01');
     expect(second.actualStartDate).toBe('');
+    expect(second.discipline).toBe('Social Work');
     expect(second.disciplineAdminName).toBe('Jo Rivera');
   });
 
   it('should fall back to email when user not found', async () => {
-    vi.mocked(apiClient.getApplicationsByDiscipline).mockResolvedValue(
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue(
       mockApplications,
     );
     vi.mocked(apiClient.getApplicants).mockResolvedValue([]);
@@ -177,7 +192,7 @@ describe('useApplications', () => {
   });
 
   it('should set error state when API call fails', async () => {
-    vi.mocked(apiClient.getApplicationsByDiscipline).mockRejectedValue(
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockRejectedValue(
       new Error('Network error'),
     );
 
@@ -190,7 +205,7 @@ describe('useApplications', () => {
   });
 
   it('should handle empty response', async () => {
-    vi.mocked(apiClient.getApplicationsByDiscipline).mockResolvedValue([]);
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue([]);
 
     const { result } = renderHook(() => useApplications());
 
@@ -201,7 +216,7 @@ describe('useApplications', () => {
   });
 
   it('should resolve discipline and call scoped endpoints exactly once', async () => {
-    vi.mocked(apiClient.getApplicationsByDiscipline).mockResolvedValue([]);
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue([]);
 
     renderHook(() => useApplications());
 
@@ -210,8 +225,8 @@ describe('useApplications', () => {
       expect(apiClient.getAdminInfoByEmail).toHaveBeenCalledWith(
         mockCurrentAdmin.email,
       );
-      expect(apiClient.getApplicationsByDiscipline).toHaveBeenCalledWith(
-        mockAdminInfo.discipline,
+      expect(apiClient.getApplicationsByDisciplines).toHaveBeenCalledWith(
+        mockAdminInfo.disciplines,
       );
       expect(apiClient.getApplicants).toHaveBeenCalledTimes(1);
     });

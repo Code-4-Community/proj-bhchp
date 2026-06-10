@@ -3,19 +3,23 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
+  CheckboxGroup,
+  Fieldset,
   Flex,
   Heading,
   HStack,
   Input,
   Popover,
-  chakra,
   Text,
+  Stack,
+  For,
 } from '@chakra-ui/react';
 import { FaUserPlus } from 'react-icons/fa6';
 import { useNavigate } from 'react-router-dom';
 import NavBar from '@components/NavBar/NavBar';
 import ConfirmationPopoverContent from '@components/ConfirmationPopoverContent';
-import { DISCIPLINE_VALUES, UserType } from '@api/types';
+import { DisciplineCatalogItem, UserType } from '@api/types';
 import apiClient from '@api/apiClient';
 
 const CreateNewAdmin: React.FC = () => {
@@ -24,7 +28,10 @@ const CreateNewAdmin: React.FC = () => {
   const [confirmEmail, setConfirmEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [discipline, setDiscipline] = useState('');
+  const [disciplines, setDisciplines] = useState<string[]>([]);
+  const [disciplineCatalog, setDisciplineCatalog] = useState<
+    DisciplineCatalogItem[]
+  >([]);
   const [isConfirmPopoverOpen, setIsConfirmPopoverOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -37,9 +44,9 @@ const CreateNewAdmin: React.FC = () => {
       email.trim().toLowerCase() === confirmEmail.trim().toLowerCase() &&
       firstName.trim().length > 0 &&
       lastName.trim().length > 0 &&
-      discipline.trim().length > 0
+      disciplines.length > 0
     );
-  }, [email, confirmEmail, firstName, lastName, discipline]);
+  }, [email, confirmEmail, firstName, lastName, disciplines]);
 
   const onCancel = () => {
     navigate('/admin/landing');
@@ -50,8 +57,29 @@ const CreateNewAdmin: React.FC = () => {
     setConfirmEmail('');
     setFirstName('');
     setLastName('');
-    setDiscipline('');
+    setDisciplines([]);
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    apiClient
+      .getDisciplines()
+      .then((items) => {
+        if (mounted) {
+          setDisciplineCatalog(items.filter((item) => item.isActive));
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setDisciplineCatalog([]);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const onConfirm = async () => {
     if (!canConfirm || isSubmitting) {
@@ -66,14 +94,14 @@ const CreateNewAdmin: React.FC = () => {
         email,
         firstName,
         lastName,
-        discipline,
+        disciplines,
       });
 
       const response = await apiClient.provisionAdmin({
         email: email.trim().toLowerCase(),
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        discipline: discipline as DISCIPLINE_VALUES,
+        disciplines,
       });
 
       if (response.status !== 'SUCCESS') {
@@ -112,7 +140,7 @@ const CreateNewAdmin: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-row h-screen overflow-hidden">
+    <Flex direction="row" h="100vh" overflow="hidden">
       <NavBar logo="BHCHP" userType={UserType.ADMIN} />
 
       <Box id="main-content" p="20" flex="1" overflowY="auto" bg="#F3F3F3">
@@ -263,35 +291,45 @@ const CreateNewAdmin: React.FC = () => {
 
               <Box>
                 <Text fontWeight="700" fontSize="14px" color="#5E5E5E" mb="2">
-                  DISCIPLINE
+                  DISCIPLINES
                 </Text>
-                <chakra.select
-                  value={discipline}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                    setDiscipline(e.target.value);
-                    setSubmitError(null);
-                  }}
-                  w="100%"
-                  h="40px"
+                <Box
                   borderWidth="1px"
                   borderStyle="solid"
                   borderColor="#676767"
                   borderRadius="6px"
                   bg="white"
                   px="3"
-                  fontSize="16px"
-                  color={discipline ? '#000000' : '#777777'}
-                  _focus={{ boxShadow: 'outline', borderColor: '#4C72C9' }}
-                  _hover={{ borderColor: '#4C72C9' }}
-                  appearance="none"
+                  py="3"
                 >
-                  <option value="">Select discipline</option>
-                  {Object.values(DISCIPLINE_VALUES).map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </chakra.select>
+                  <Text fontSize="12px" color="#5E5E5E" mb="2">
+                    Select one or more disciplines
+                  </Text>
+                  <Fieldset.Root>
+                    <CheckboxGroup
+                      name="new_admin_disciplines"
+                      value={disciplines}
+                      onValueChange={(value) => {
+                        setDisciplines(value);
+                        setSubmitError(null);
+                      }}
+                    >
+                      <Fieldset.Content>
+                        <Stack maxH="180px" overflowY="auto" gap="2">
+                          <For each={disciplineCatalog}>
+                            {(value) => (
+                              <Checkbox.Root key={value.key} value={value.key}>
+                                <Checkbox.HiddenInput />
+                                <Checkbox.Control />
+                                <Checkbox.Label>{value.label}</Checkbox.Label>
+                              </Checkbox.Root>
+                            )}
+                          </For>
+                        </Stack>
+                      </Fieldset.Content>
+                    </CheckboxGroup>
+                  </Fieldset.Root>
+                </Box>
               </Box>
             </Flex>
           </Box>
@@ -350,7 +388,7 @@ const CreateNewAdmin: React.FC = () => {
           </Flex>
         </Box>
       </Box>
-    </div>
+    </Flex>
   );
 };
 

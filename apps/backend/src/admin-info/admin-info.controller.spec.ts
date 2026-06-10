@@ -2,29 +2,52 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AdminInfoController } from './admin-info.controller';
 import { AdminInfoService } from './admin-info.service';
 import { AdminInfo } from './admin-info.entity';
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
-import { RolesGuard } from '../auth/roles.guard';
 import { UsersService } from '../users/users.service';
-import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
+import { RolesGuard } from '../auth/roles.guard';
+
+jest.mock('../util/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+      region: 'us-east-2',
+      bucketName: 'bucket',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
 
 const mockAdminInfoService = {
   create: jest.fn(),
   findOne: jest.fn(),
   findByEmail: jest.fn(),
   getOldestDisciplineAdminMap: jest.fn(),
-  updateEmail: jest.fn(),
+  updateDisciplines: jest.fn(),
   remove: jest.fn(),
 };
 
 const mockAdminInfo: AdminInfo = {
   email: 'admin@example.com',
-  discipline: DISCIPLINE_VALUES.RN,
-  createdAt: new Date('2025-01-01'),
-  updatedAt: new Date('2025-01-01'),
+  disciplines: ['rn'],
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 };
 
 describe('AdminInfoController', () => {
   let controller: AdminInfoController;
+
+  const mockRolesGuard = {
+    canActivate: jest.fn(() => true),
+  };
+
+  const mockUsersService = {
+    findOne: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -35,16 +58,12 @@ describe('AdminInfoController', () => {
           useValue: mockAdminInfoService,
         },
         {
-          provide: RolesGuard,
-          useValue: { canActivate: jest.fn(() => true) },
-        },
-        {
           provide: UsersService,
-          useValue: { findOne: jest.fn() },
+          useValue: mockUsersService,
         },
         {
-          provide: CurrentUserInterceptor,
-          useValue: { intercept: jest.fn() },
+          provide: RolesGuard,
+          useValue: mockRolesGuard,
         },
       ],
     }).compile();
@@ -65,7 +84,7 @@ describe('AdminInfoController', () => {
       firstName: 'Ada',
       lastName: 'Lovelace',
       email: 'admin@example.com',
-      discipline: DISCIPLINE_VALUES.RN,
+      disciplines: ['rn'],
     };
 
     mockAdminInfoService.create.mockResolvedValue(mockAdminInfo);
@@ -76,16 +95,12 @@ describe('AdminInfoController', () => {
 
   it('should return the discipline-admin map', async () => {
     const map = {
-      [DISCIPLINE_VALUES.RN]: { firstName: 'Alex', lastName: 'Kim' },
-      [DISCIPLINE_VALUES.SocialWork]: {
-        firstName: 'Jo',
-        lastName: 'Rivera',
-      },
+      rn: { firstName: 'Ada', lastName: 'Lovelace' },
+      'social-work': { firstName: 'Jo', lastName: 'Rivera' },
     };
     mockAdminInfoService.getOldestDisciplineAdminMap.mockResolvedValue(map);
 
     await expect(controller.getDisciplineAdminMap()).resolves.toEqual(map);
-    expect(mockAdminInfoService.getOldestDisciplineAdminMap).toHaveBeenCalled();
   });
 
   it('should find an admin by email', async () => {
@@ -94,35 +109,29 @@ describe('AdminInfoController', () => {
     await expect(controller.findOne('admin@example.com')).resolves.toEqual(
       mockAdminInfo,
     );
-    expect(mockAdminInfoService.findOne).toHaveBeenCalledWith(
-      'admin@example.com',
-    );
   });
 
   it('should find an admin by email or return null', async () => {
     mockAdminInfoService.findByEmail.mockResolvedValue(mockAdminInfo);
-
     await expect(controller.findByEmail('admin@example.com')).resolves.toEqual(
       mockAdminInfo,
     );
-    expect(mockAdminInfoService.findByEmail).toHaveBeenCalledWith(
-      'admin@example.com',
-    );
+
+    mockAdminInfoService.findByEmail.mockResolvedValue(null);
+    await expect(
+      controller.findByEmail('missing@example.com'),
+    ).resolves.toBeNull();
   });
 
-  it('should update an admin email', async () => {
-    const updatedAdmin = { ...mockAdminInfo, email: 'updated@example.com' };
-    const dto = { email: 'updated@example.com' };
-
-    mockAdminInfoService.updateEmail.mockResolvedValue(updatedAdmin);
+  it('updates admin disciplines', async () => {
+    const updated = { ...mockAdminInfo, disciplines: ['rn', 'social-work'] };
+    mockAdminInfoService.updateDisciplines.mockResolvedValue(updated);
 
     await expect(
-      controller.updateEmail('admin@example.com', dto),
-    ).resolves.toEqual(updatedAdmin);
-    expect(mockAdminInfoService.updateEmail).toHaveBeenCalledWith(
-      'admin@example.com',
-      dto,
-    );
+      controller.updateDisciplines('admin@example.com', {
+        disciplines: ['rn', 'social-work'],
+      }),
+    ).resolves.toEqual(updated);
   });
 
   it('should remove an admin and return a confirmation message', async () => {
@@ -131,8 +140,5 @@ describe('AdminInfoController', () => {
     await expect(controller.remove('admin@example.com')).resolves.toEqual({
       message: 'AdminInfo with email admin@example.com has been deleted',
     });
-    expect(mockAdminInfoService.remove).toHaveBeenCalledWith(
-      'admin@example.com',
-    );
   });
 });

@@ -1,11 +1,10 @@
 import {
+  Column,
   Entity,
   PrimaryColumn,
-  Column,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 
 /**
  * Represents the desired columns for the database table
@@ -19,13 +18,15 @@ export class AdminInfo {
    * Example: 'jane.doe@northeastern.edu'.
    */
   @PrimaryColumn()
-  email: string;
+  email!: string;
 
   /**
-   * Discipline of the admin.
+   * The disciplines of the admin.
+   *
+   * Example: ["Nursing"]
    */
-  @Column({ type: 'enum', enum: DISCIPLINE_VALUES })
-  discipline: DISCIPLINE_VALUES;
+  @Column({ type: 'text', array: true, default: [] })
+  disciplines?: string[];
 
   /**
    * When the admin was created stored in YYYY-MM-DD format.
@@ -33,7 +34,7 @@ export class AdminInfo {
    * Example: new Date('2025-01-30').
    */
   @CreateDateColumn({ type: 'timestamp' })
-  createdAt: Date;
+  createdAt!: Date;
 
   /**
    * When the admin was last updated stored in YYYY-MM-DD format.
@@ -41,5 +42,5 @@ export class AdminInfo {
    * Example: new Date('2025-01-30').
    */
   @UpdateDateColumn({ type: 'timestamp' })
-  updatedAt: Date;
+  updatedAt!: Date;
 }

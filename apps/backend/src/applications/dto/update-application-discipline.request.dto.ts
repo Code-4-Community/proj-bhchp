@@ -1,5 +1,4 @@
-import { IsDefined, IsEnum } from 'class-validator';
-import { DISCIPLINE_VALUES } from '../../disciplines/disciplines.constants';
+import { IsDefined, IsNotEmpty, IsString } from 'class-validator';
 
 /**
  * Defines the expected shape of data for updating an application's discipline.
@@ -10,13 +9,10 @@ export class UpdateApplicationDisciplineDto {
   /**
    * Application's new discipline.
    *
-   * Example: DISCIPLINE_VALUES.Nursing.
+   * Example: `public-health`.
    */
-  @IsEnum(DISCIPLINE_VALUES, {
-    message: `Discipline must be one of: ${Object.values(
-      DISCIPLINE_VALUES,
-    ).join(', ')}`,
-  })
+  @IsString()
+  @IsNotEmpty()
   @IsDefined()
-  discipline: DISCIPLINE_VALUES;
+  discipline: string;
 }

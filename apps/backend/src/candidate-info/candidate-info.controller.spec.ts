@@ -35,8 +35,8 @@ const mockUsersService = {
 };
 
 const defaultCandidateInfo: CandidateInfo = {
-  appId: 1,
   email: 'john@example.com',
+  appIds: [1],
 };
 
 describe('CandidateInfoController', () => {
@@ -62,6 +62,10 @@ describe('CandidateInfoController', () => {
     }).compile();
 
     controller = module.get<CandidateInfoController>(CandidateInfoController);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -112,8 +116,8 @@ describe('CandidateInfoController', () => {
       const CandidateInfo: CandidateInfo[] = [
         defaultCandidateInfo,
         {
-          appId: 2,
           email: 'janedoe@gmail.com',
+          appIds: [2, 5],
         },
       ];
       jest
@@ -164,6 +168,53 @@ describe('CandidateInfoController', () => {
       );
     });
 
+    it('should reject standard users requesting other emails', async () => {
+      await expect(
+        controller.getCandidateInfoByEmail('someoneelse@example.com', {
+          user: { email: 'john@example.com', userType: 'STANDARD' },
+        }),
+      ).rejects.toThrow(
+        'Standard users can only access their own candidate info.',
+      );
+      expect(mockCandidateInfoService.findOne).not.toHaveBeenCalled();
+    });
+
+    it('should return only the latest appId for standard users', async () => {
+      const candidateInfo: CandidateInfo = {
+        email: 'john@example.com',
+        appIds: [1, 3, 2],
+      };
+
+      jest
+        .spyOn(mockCandidateInfoService, 'findOne')
+        .mockResolvedValue(candidateInfo);
+
+      const result = await controller.getCandidateInfoByEmail(
+        'john@example.com',
+        { user: { email: 'john@example.com', userType: 'STANDARD' } },
+      );
+
+      expect(result).toEqual({ email: 'john@example.com', appIds: [3] });
+    });
+
+    it('should return all appIds for admin users', async () => {
+      const candidateInfo: CandidateInfo = {
+        email: 'john@example.com',
+        appIds: [1, 3, 2],
+      };
+
+      jest
+        .spyOn(mockCandidateInfoService, 'findOne')
+        .mockResolvedValue(candidateInfo);
+
+      const result = await controller.getCandidateInfoByEmail(
+        'john@example.com',
+        { user: { email: 'admin@example.com', userType: 'ADMIN' } },
+      );
+
+      expect(result).toEqual(candidateInfo);
+    });
+
     it('should throw an error if CandidateInfo is not found', async () => {
       const errorMessage =
         'CandidateInfo with email notfound@example.com not found';
@@ -173,7 +224,7 @@ describe('CandidateInfoController', () => {
 
       await expect(
         controller.getCandidateInfoByEmail('notfound@example.com', {
-          user: { email: 'john@example.com', userType: 'STANDARD' },
+          user: { email: 'notfound@example.com', userType: 'STANDARD' },
         }),
       ).rejects.toThrow(errorMessage);
     });
@@ -194,7 +245,7 @@ describe('CandidateInfoController', () => {
   });
 
   describe('deleteCandidateInfo', () => {
-    it('should delete an CandidateInfo by email', async () => {
+    it('should delete CandidateInfo by email', async () => {
       jest
         .spyOn(mockCandidateInfoService, 'delete')
         .mockResolvedValue(defaultCandidateInfo);

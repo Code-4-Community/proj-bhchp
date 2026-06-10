@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Readable } from 'stream';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
@@ -11,11 +12,11 @@ import {
   ApplicantType,
   DesiredExperience,
 } from './types';
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { EmailService } from '../util/email/email.service';
 import { UsersService } from '../users/users.service';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
+import { DisciplinesService } from '../disciplines/disciplines.service';
 
 jest.mock('../util/aws-exports', () => ({
   __esModule: true,
@@ -34,6 +35,11 @@ jest.mock('../util/aws-exports', () => ({
   },
 }));
 
+const disciplineKeys = {
+  rn: 'rn',
+  publicHealth: 'public-health',
+};
+
 const dummyApplication: Application = {
   appId: 1,
   appStatus: AppStatus.APP_SUBMITTED,
@@ -48,8 +54,10 @@ const dummyApplication: Application = {
   applicantType: ApplicantType.LEARNER,
   phone: '123-456-7890',
   email: 'test@example.com',
-  discipline: DISCIPLINE_VALUES.RN,
+  discipline: disciplineKeys.rn,
   proposedStartDate: new Date('2024-01-01'),
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
   referred: false,
   weeklyHours: 20,
   pronouns: 'they/them',
@@ -79,7 +87,7 @@ const dummyCreateApplicationDto: CreateApplicationDto = {
   email: 'test@example.com',
   proposedStartDate: '2024-01-01',
   endDate: '2024-06-30',
-  discipline: DISCIPLINE_VALUES.RN,
+  discipline: disciplineKeys.rn,
   referred: false,
   weeklyHours: 20,
   pronouns: 'they/them',
@@ -92,6 +100,17 @@ const dummyCreateApplicationDto: CreateApplicationDto = {
   emergencyContactRelationship: 'Mother',
   heardAboutFrom: [],
 };
+
+async function streamToString(stream: Readable): Promise<string> {
+  let value = '';
+
+  for await (const chunk of stream) {
+    value += chunk.toString();
+  }
+
+  return value;
+}
+
 describe('ApplicationsService', () => {
   let service: ApplicationsService;
   let repository: Repository<Application>;
@@ -104,6 +123,7 @@ describe('ApplicationsService', () => {
     create: jest.fn(),
     delete: jest.fn(),
     remove: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   const mockEmailService = {
@@ -115,7 +135,18 @@ describe('ApplicationsService', () => {
   };
 
   const mockCandidateInfoService = {
+    findLatestAppId: jest.fn(),
+  };
+
+  const mockDisciplinesService = {
+    findAll: jest.fn(),
+    findAllIncludingInactive: jest.fn(),
     findOne: jest.fn(),
+    getActiveDisciplineKeys: jest.fn(),
+    ensureActiveDisciplineKey: jest.fn(),
+    ensureActiveDisciplineKeys: jest.fn(),
+    create: jest.fn(),
+    remove: jest.fn(),
   };
 
   const mockS3Service = {
@@ -144,6 +175,10 @@ describe('ApplicationsService', () => {
         {
           provide: CandidateInfoService,
           useValue: mockCandidateInfoService,
+        },
+        {
+          provide: DisciplinesService,
+          useValue: mockDisciplinesService,
         },
         {
           provide: AWSS3Service,
@@ -194,6 +229,42 @@ describe('ApplicationsService', () => {
 
       await expect(service.findAll()).rejects.toThrow(
         `There was a problem retrieving the info`,
+      );
+    });
+  });
+
+  describe('findByEmail', () => {
+    it('should return applications for an email ordered by descending appId', async () => {
+      const applicationHistory: Application[] = [
+        { ...dummyApplication, appId: 3 },
+        dummyApplication,
+      ];
+
+      mockRepository.find.mockResolvedValue(applicationHistory);
+
+      await expect(service.findByEmail('test@example.com')).resolves.toEqual(
+        applicationHistory,
+      );
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should trim email before returning applications by email', async () => {
+      mockRepository.find.mockResolvedValue([dummyApplication]);
+
+      await service.findByEmail('  test@example.com  ');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should throw when applications email is missing', async () => {
+      await expect(service.findByEmail('')).rejects.toThrow(
+        'Application email is required',
       );
     });
   });
@@ -268,6 +339,100 @@ describe('ApplicationsService', () => {
     });
   });
 
+  describe('exportCsvByCreatedAtRange', () => {
+    it('should stream CSV rows including joined user and learner fields', async () => {
+      const mockQueryBuilder = {
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              appId: 7,
+              createdAt: '2026-01-03T12:00:00.000Z',
+              updatedAt: '2026-01-05T09:30:00.000Z',
+              email: 'jane@example.com',
+              firstName: 'Jane',
+              lastName: 'Doe',
+              proposedStartDate: '2026-02-01',
+              actualStartDate: '2026-02-15',
+              endDate: '2026-06-01',
+              discipline: 'rn',
+              otherDisciplineDescription: null,
+              appStatus: 'Accepted',
+              mondayAvailability: 'All day',
+              tuesdayAvailability: 'AM only',
+              wednesdayAvailability: 'PM only',
+              thursdayAvailability: 'None',
+              fridayAvailability: 'Flexible',
+              saturdayAvailability: 'None',
+              interest: 'Primary Care; Dental',
+              license: 'RN, MA',
+              phone: '123-456-7890',
+              applicantType: 'Learner',
+              referred: true,
+              referredEmail: 'faculty@example.com',
+              weeklyHours: 12,
+              pronouns: 'she/her',
+              nonEnglishLangs: 'Spanish',
+              desiredExperience: 'Shadowing',
+              elaborateOtherDiscipline: null,
+              resume: 'resume.pdf',
+              coverLetter: 'cover.pdf',
+              confidentialityForm: 'confidentiality.pdf',
+              emergencyContactName: 'John Doe',
+              emergencyContactPhone: '111-222-3333',
+              emergencyContactRelationship: 'Brother',
+              heardAboutFrom: 'School; BHCHP Website',
+              school: 'Boston University',
+              otherSchool: null,
+              schoolDepartment: 'Nursing',
+              isSupervisorApplying: false,
+              isLegalAdult: true,
+              dateOfBirth: '2000-04-01',
+              courseRequirements: '120 hours',
+              instructorInfo: 'Prof. Smith',
+              syllabus: 'syllabus.pdf',
+            },
+          ])
+          .mockResolvedValueOnce([]),
+      };
+
+      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+
+      const result = await service.exportCsvByCreatedAtRange(
+        '2026-01-01',
+        '2026-01-31',
+      );
+      const csv = await streamToString(result.stream);
+
+      expect(result.fileName).toBe(
+        'applications-export-2026-01-01-to-2026-01-31.csv',
+      );
+      expect(mockRepository.createQueryBuilder).toHaveBeenCalledWith(
+        'application',
+      );
+      expect(csv).toContain('Application ID,Created At,Updated At,Email');
+      expect(csv).toContain('jane@example.com,Jane,Doe,2026-02-01');
+      expect(csv).toContain('"RN, MA"');
+      expect(csv).toContain('Yes');
+      expect(csv).toContain('Boston University');
+    });
+
+    it('should reject invalid date ranges', async () => {
+      await expect(
+        service.exportCsvByCreatedAtRange('2026-02-01', '2026-01-31'),
+      ).rejects.toThrow(
+        new BadRequestException('endDate must be on or after startDate'),
+      );
+    });
+  });
+
   describe('findById', () => {
     it('should return a single application', async () => {
       mockRepository.findOne.mockResolvedValue(dummyApplication);
@@ -307,8 +472,10 @@ describe('ApplicationsService', () => {
         applicantType: ApplicantType.LEARNER,
         phone: '123-456-7890',
         email: 'test@example.com',
-        discipline: DISCIPLINE_VALUES.RN,
+        discipline: disciplineKeys.rn,
         proposedStartDate: new Date('2024-01-01'),
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         weeklyHours: 20,
         pronouns: 'they/them',
         nonEnglishLangs: 'none',
@@ -349,6 +516,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -382,6 +551,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -403,6 +574,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -423,6 +596,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -443,6 +618,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -463,6 +640,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -478,6 +657,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -503,6 +684,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -718,12 +901,12 @@ describe('ApplicationsService', () => {
   });
 
   describe('updateActualStartDate', () => {
-    const updatedproposedStartDate = new Date('2024-02-01');
+    const updatedActualStartDate = new Date('2024-02-01');
 
     it('should update application start date', async () => {
       const updatedApplication: Application = {
         ...dummyApplication,
-        proposedStartDate: updatedproposedStartDate,
+        actualStartDate: updatedActualStartDate,
       };
 
       mockRepository.findOne.mockResolvedValue(dummyApplication);
@@ -731,14 +914,14 @@ describe('ApplicationsService', () => {
 
       const result = await service.updateActualStartDate(
         1,
-        updatedproposedStartDate,
+        updatedActualStartDate,
       );
 
       expect(result).toEqual(updatedApplication);
       expect(repository.findOne).toHaveBeenCalledWith({ where: { appId: 1 } });
       expect(repository.save).toHaveBeenCalledWith({
         ...dummyApplication,
-        proposedStartDate: updatedproposedStartDate,
+        actualStartDate: updatedActualStartDate,
       });
     });
 
@@ -746,7 +929,7 @@ describe('ApplicationsService', () => {
       mockRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.updateActualStartDate(999, updatedproposedStartDate),
+        service.updateActualStartDate(999, updatedActualStartDate),
       ).rejects.toThrow('Application with ID 999 not found');
     });
 
@@ -758,7 +941,7 @@ describe('ApplicationsService', () => {
       mockRepository.findOne.mockResolvedValue(existingWithEarlierEndDate);
 
       await expect(
-        service.updateActualStartDate(1, updatedproposedStartDate),
+        service.updateActualStartDate(1, updatedActualStartDate),
       ).rejects.toThrow('Start date must be before end date');
     });
 
@@ -770,7 +953,7 @@ describe('ApplicationsService', () => {
 
     it('should throw error if application id is missing', async () => {
       await expect(
-        service.updateActualStartDate(0, updatedproposedStartDate),
+        service.updateActualStartDate(0, updatedActualStartDate),
       ).rejects.toThrow('Application ID is required');
     });
 
@@ -786,7 +969,7 @@ describe('ApplicationsService', () => {
       );
 
       await expect(
-        service.updateActualStartDate(999, updatedproposedStartDate),
+        service.updateActualStartDate(999, updatedActualStartDate),
       ).rejects.toThrow('There was a problem retrieving the info');
     });
 
@@ -797,7 +980,7 @@ describe('ApplicationsService', () => {
       );
 
       await expect(
-        service.updateActualStartDate(1, updatedproposedStartDate),
+        service.updateActualStartDate(1, updatedActualStartDate),
       ).rejects.toThrow('There was a problem saving the info');
     });
   });
@@ -936,10 +1119,12 @@ describe('ApplicationsService', () => {
           interest: [InterestArea.WOMENS_HEALTH],
           license: '',
           proposedStartDate: new Date('2025-11-12'),
+          createdAt: new Date('2025-11-12'),
+          updatedAt: new Date('2025-11-12'),
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
           email: 'test@example.com',
-          discipline: DISCIPLINE_VALUES.RN,
+          discipline: disciplineKeys.rn,
           referred: false,
           weeklyHours: 20,
           pronouns: 'they/them',
@@ -963,11 +1148,13 @@ describe('ApplicationsService', () => {
           saturdayAvailability: 'no availability',
           interest: [InterestArea.WOMENS_HEALTH],
           proposedStartDate: new Date('2025-11-12'),
+          createdAt: new Date('2025-11-12'),
+          updatedAt: new Date('2025-11-12'),
           license: '',
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
           email: 'test@example.com',
-          discipline: DISCIPLINE_VALUES.RN,
+          discipline: disciplineKeys.rn,
           referred: false,
           weeklyHours: 20,
           pronouns: 'they/them',
@@ -984,10 +1171,10 @@ describe('ApplicationsService', () => {
 
       mockRepository.find.mockResolvedValue(mockApplications);
 
-      const result = await service.findByDiscipline(DISCIPLINE_VALUES.RN);
+      const result = await service.findByDiscipline(disciplineKeys.rn);
 
       expect(repository.find).toHaveBeenCalledWith({
-        where: { discipline: DISCIPLINE_VALUES.RN },
+        where: { discipline: disciplineKeys.rn },
       });
       expect(result).toEqual(mockApplications);
     });
@@ -995,16 +1182,19 @@ describe('ApplicationsService', () => {
     it('should return an empty array when no applications match the discipline', async () => {
       mockRepository.find.mockResolvedValue([]);
 
-      const result = await service.findByDiscipline(DISCIPLINE_VALUES.RN);
+      const result = await service.findByDiscipline(disciplineKeys.rn);
 
       expect(repository.find).toHaveBeenCalledWith({
-        where: { discipline: DISCIPLINE_VALUES.RN },
+        where: { discipline: disciplineKeys.rn },
       });
       expect(result).toEqual([]);
     });
 
     it('should throw BadRequestException for invalid discipline', async () => {
       const invalidDiscipline = 'InvalidDiscipline';
+      mockDisciplinesService.ensureActiveDisciplineKey.mockRejectedValueOnce(
+        new Error('Invalid discipline: InvalidDiscipline'),
+      );
 
       await expect(service.findByDiscipline(invalidDiscipline)).rejects.toThrow(
         expect.objectContaining({
@@ -1017,39 +1207,18 @@ describe('ApplicationsService', () => {
       expect(repository.find).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException with list of valid disciplines', async () => {
-      const invalidDiscipline = 'InvalidDiscipline';
-
-      try {
-        await service.findByDiscipline(invalidDiscipline);
-        fail('Expected BadRequestException to be thrown');
-      } catch (error) {
-        expect(error.message).toContain('Invalid discipline');
-        expect(error.message).toContain('Valid disciplines are:');
-        expect(error.message).toContain('MD/Medical Student/Pre-Med');
-        expect(error.message).toContain('Medical NP/PA');
-        expect(error.message).toContain('Psychiatry or Psychiatric NP/PA');
-        expect(error.message).toContain('Public Health');
-        expect(error.message).toContain('RN');
-        expect(error.message).toContain('Social Work');
-        expect(error.message).toContain('Other');
-      }
-
-      expect(repository.find).not.toHaveBeenCalled();
-    });
-
     it('should pass along any repo errors without information loss', async () => {
       mockRepository.find.mockRejectedValue(
         new Error('There was a problem retrieving the info'),
       );
 
-      await expect(
-        service.findByDiscipline(DISCIPLINE_VALUES.RN),
-      ).rejects.toThrow(`There was a problem retrieving the info`);
+      await expect(service.findByDiscipline(disciplineKeys.rn)).rejects.toThrow(
+        `There was a problem retrieving the info`,
+      );
     });
 
     it('should work with all valid discipline values', async () => {
-      const allDisciplines = Object.values(DISCIPLINE_VALUES);
+      const allDisciplines: string[] = Object.values(disciplineKeys);
 
       for (const discipline of allDisciplines) {
         mockRepository.find.mockResolvedValue([]);
@@ -1231,10 +1400,7 @@ describe('ApplicationsService', () => {
   describe('private helpers', () => {
     describe('confidentiality form status access', () => {
       beforeEach(() => {
-        mockCandidateInfoService.findOne.mockResolvedValue({
-          appId: 1,
-          email: dummyApplication.email,
-        });
+        mockCandidateInfoService.findLatestAppId.mockResolvedValue(1);
       });
 
       it('allows upload for accepted applicants', async () => {
@@ -1340,26 +1506,6 @@ describe('ApplicationsService', () => {
           phone: 'bad-phone',
         }),
       ).toThrow('Phone number must be in ###-###-#### format');
-    });
-
-    it('should validate private discipline helper', () => {
-      expect(() =>
-        (
-          service as unknown as {
-            validateDiscipline: (discipline: string) => void;
-          }
-        ).validateDiscipline(DISCIPLINE_VALUES.RN),
-      ).not.toThrow();
-    });
-
-    it('should throw for invalid private discipline helper input', () => {
-      expect(() =>
-        (
-          service as unknown as {
-            validateDiscipline: (discipline: string) => void;
-          }
-        ).validateDiscipline('Invalid'),
-      ).toThrow('Invalid discipline: Invalid');
     });
 
     it('should build and escape the submission error email body', () => {

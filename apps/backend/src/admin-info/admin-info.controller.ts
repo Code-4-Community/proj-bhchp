@@ -10,15 +10,15 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminInfoService } from './admin-info.service';
-import { AdminInfo } from './admin-info.entity';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { CreateAdminInfoDto } from './dto/create-admin.dto';
-import { UpdateAdminInfoEmailDto } from './dto/update-admin-email.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { UserType } from '../users/types';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { DisciplineAdminMap } from './admin-info.service';
+import { AdminInfo } from './admin-info.entity';
+import { UpdateAdminDisciplinesDto } from './dto/update-admin-disciplines.dto';
 
 /**
  * Controller to expose callable HTTP endpoints to interface
@@ -78,18 +78,23 @@ export class AdminInfoController {
   }
 
   /**
-   * Exposes an endpoint to update an admin's email.
-   * @param email the email of the admin to update (current primary key).
-   * @param updateEmailDto object containing the new email.
+   * Exposes an endpoint to replace an admin's discipline assignments.
+   * @param email the email of the admin to update.
+   * @param updateDisciplinesDto object containing the desired discipline keys.
    * @returns the updated admin object.
+   * @throws {NotFoundException} if an admin with the desired email does not exist.
+   * @throws {BadRequestException} if one or more disciplines are invalid or inactive.
    * @throws {Error} anything that the repository throws.
    */
-  @Patch('email/:email')
-  async updateEmail(
+  @Patch('email/:email/disciplines')
+  async updateDisciplines(
     @Param('email') email: string,
-    @Body() updateEmailDto: UpdateAdminInfoEmailDto,
+    @Body() updateDisciplinesDto: UpdateAdminDisciplinesDto,
   ): Promise<AdminInfo> {
-    return await this.adminsService.updateEmail(email, updateEmailDto);
+    return await this.adminsService.updateDisciplines(
+      email,
+      updateDisciplinesDto.disciplines,
+    );
   }
 
   /**

@@ -1,4 +1,3 @@
-import { DISCIPLINE_VALUES } from '../disciplines/disciplines.constants';
 import { UserType } from '../users/types';
 
 export type CognitoCreateResult = {
@@ -15,7 +14,7 @@ export type DatabaseCreateResult = {
   };
   adminInfo: {
     email: string;
-    discipline: DISCIPLINE_VALUES;
+    disciplines: string[];
     createdAt: string;
     updatedAt: string;
   };
