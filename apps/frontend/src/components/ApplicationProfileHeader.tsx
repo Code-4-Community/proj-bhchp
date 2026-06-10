@@ -46,6 +46,7 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
         gap="6"
         pt="20"
         pl="5"
+        pb="3"
         mt="-10"
         ml="-10"
         mr="-20"
