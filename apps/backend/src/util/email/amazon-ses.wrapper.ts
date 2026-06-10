@@ -59,7 +59,9 @@ export class AmazonSESWrapper {
     attachments?: EmailAttachment[],
   ) {
     const mailOptions: Mail.Options = {
-      from: process.env.AWS_SES_SENDER_EMAIL,
+      from:
+        process.env.BHCHP_AWS_SES_SENDER_EMAIL ||
+        process.env.AWS_SES_SENDER_EMAIL,
       to: recipientEmails,
       subject: subject,
       html: bodyHtml,
@@ -77,7 +79,9 @@ export class AmazonSESWrapper {
 
     const params: SendRawEmailCommandInput = {
       Destinations: recipientEmails,
-      Source: process.env.AWS_SES_SENDER_EMAIL,
+      Source:
+        process.env.BHCHP_AWS_SES_SENDER_EMAIL ||
+        process.env.AWS_SES_SENDER_EMAIL,
       RawMessage: { Data: messageData },
     };
 

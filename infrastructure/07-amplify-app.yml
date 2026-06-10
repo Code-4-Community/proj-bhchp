@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Amplify app for proj-bhchp frontend (production branch)
+
+Parameters:
+  AppName:
+    Type: String
+  RepositoryUrl:
+    Type: String
+  OAuthToken:
+    Type: String
+    NoEcho: true
+    Description: GitHub OAuth token with repo access
+  BranchName:
+    Type: String
+  ViteApiBaseUrl:
+    Type: String
+  ViteAwsRegion:
+    Type: String
+  ViteCognitoAppClientId:
+    Type: String
+  ViteCognitoRegion:
+    Type: String
+  ViteCognitoUserPoolId:
+    Type: String
+  ViteS3BucketAddr:
+    Type: String
+
+Resources:
+  AmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Ref AppName
+      Repository: !Ref RepositoryUrl
+      OauthToken: !Ref OAuthToken
+      Platform: WEB
+      BuildSpec: |
+        version: 1
+        frontend:
+            phases:
+                preBuild:
+                    commands:
+                        - 'yarn install'
+                build:
+                    commands:
+                        - 'yarn build:frontend'
+            artifacts:
+                baseDirectory: dist/apps/frontend
+                files:
+                    - '**/*'
+            cache:
+                paths:
+                    - 'node_modules/**/*'
+      EnvironmentVariables:
+        - Name: VITE_API_BASE_URL
+          Value: !Ref ViteApiBaseUrl
+        - Name: VITE_AWS_REGION
+          Value: !Ref ViteAwsRegion
+        - Name: VITE_COGNITO_APP_CLIENT_ID
+          Value: !Ref ViteCognitoAppClientId
+        - Name: VITE_COGNITO_REGION
+          Value: !Ref ViteCognitoRegion
+        - Name: VITE_COGNITO_USER_POOL_ID
+          Value: !Ref ViteCognitoUserPoolId
+        - Name: VITE_S3_BUCKET_ADDR
+          Value: !Ref ViteS3BucketAddr
+      CustomRules:
+        - Source: "/<*>"
+          Target: "/index.html"
+          Status: "404"
+
+  AmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt AmplifyApp.AppId
+      BranchName: !Ref BranchName
+      Stage: PRODUCTION
+      EnableAutoBuild: true
+      EnvironmentVariables:
+        - Name: VITE_API_BASE_URL
+          Value: !Ref ViteApiBaseUrl
+        - Name: VITE_AWS_REGION
+          Value: !Ref ViteAwsRegion
+        - Name: VITE_COGNITO_APP_CLIENT_ID
+          Value: !Ref ViteCognitoAppClientId
+        - Name: VITE_COGNITO_REGION
+          Value: !Ref ViteCognitoRegion
+        - Name: VITE_COGNITO_USER_POOL_ID
+          Value: !Ref ViteCognitoUserPoolId
+        - Name: VITE_S3_BUCKET_ADDR
+          Value: !Ref ViteS3BucketAddr
+
+Outputs:
+  AmplifyAppId:
+    Value: !GetAtt AmplifyApp.AppId
+  AmplifyDefaultDomain:
+    Value: !GetAtt AmplifyApp.DefaultDomain
+  AmplifyBranchUrl:
+    Value: !Sub "https://${BranchName}.${AmplifyApp.AppId}.${AmplifyApp.DefaultDomain}"

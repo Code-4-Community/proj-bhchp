@@ -1,0 +1,8 @@
+[
+  { "ParameterKey": "VpcId", "ParameterValue": "" },
+  { "ParameterKey": "SubnetIds", "ParameterValue": "" },
+  { "ParameterKey": "DBPassword", "ParameterValue": "" },
+  { "ParameterKey": "ECSSecurityGroupId", "ParameterValue": "sg-ecs" },
+  { "ParameterKey": "AllowedCidr", "ParameterValue": "" },
+  { "ParameterKey": "PubliclyAccessible", "ParameterValue": "false" }
+]

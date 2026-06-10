@@ -46,3 +46,4 @@ Thumbs.db
 .postman
 
 infrastructure/params/*.json
+.jest-tmp/

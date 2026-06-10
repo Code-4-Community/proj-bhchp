@@ -1,0 +1,6 @@
+[
+  { "ParameterKey": "HostedZoneId", "ParameterValue": "" },
+  { "ParameterKey": "DomainName", "ParameterValue": "" },
+  { "ParameterKey": "LoadBalancerDnsName", "ParameterValue": "" },
+  { "ParameterKey": "LoadBalancerHostedZoneId", "ParameterValue": "" }
+]

@@ -1,0 +1,27 @@
+# dependencies
+node_modules
+
+# build outputs
+/dist
+/apps/*/dist
+
+# test/coverage
+/coverage
+
+# local env files (keep example.env)
+.env
+.env.*
+!.env.example
+!example.env
+
+# logs
+*.log
+
+# VCS / editor
+.git
+.gitignore
+.vscode
+
+# OS
+.DS_Store
+Thumbs.db
