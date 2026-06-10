@@ -11,6 +11,8 @@ interface ApplicationProfileHeaderProps {
   phone?: string;
   over18?: boolean;
   statusControl?: ReactNode;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
@@ -22,7 +24,17 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
   phone,
   over18,
   statusControl,
+  createdAt,
+  updatedAt,
 }) => {
+  const formatDate = (iso?: string) => {
+    if (!iso) return 'N/A';
+    try {
+      return new Date(iso).toLocaleDateString();
+    } catch (e) {
+      return iso;
+    }
+  };
   return (
     <Box display="flex" flexDirection="column" gap="4">
       <Box
@@ -85,6 +97,23 @@ const ApplicationProfileHeader: React.FC<ApplicationProfileHeaderProps> = ({
       >
         <Flex align="center" gap="6">
           <Box flex="1">
+            <div>
+              <Text as="span" fontWeight="semibold">
+                Submitted:
+              </Text>{' '}
+              <Text as="span" fontSize="sm" color="gray.600">
+                {formatDate(createdAt)}
+              </Text>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <Text as="span" fontWeight="semibold">
+                Last Updated:
+              </Text>{' '}
+              <Text as="span" fontSize="sm" color="gray.600">
+                {formatDate(updatedAt)}
+              </Text>
+            </div>
+
             <div>
               <Text as="span" fontWeight="semibold">
                 Pronouns:

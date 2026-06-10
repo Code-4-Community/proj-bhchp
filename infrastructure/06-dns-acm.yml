@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Optional DNS + ACM helper for the backend ALB
+
+Parameters:
+  HostedZoneId:
+    Type: String
+    Description: Route53 hosted zone ID (e.g. Z123...)
+  DomainName:
+    Type: String
+    Description: Domain name to point at the ALB (e.g. api.example.com)
+  LoadBalancerDnsName:
+    Type: String
+    Description: ALB DNS name (from the ECS stack output)
+    Default: ""
+  LoadBalancerHostedZoneId:
+    Type: String
+    Description: ALB hosted zone ID (from the ECS stack output)
+    Default: ""
+
+Conditions:
+  HasAlbTarget:
+    Fn::And:
+      - Fn::Not:
+          - Fn::Equals:
+              - !Ref LoadBalancerDnsName
+              - ""
+      - Fn::Not:
+          - Fn::Equals:
+              - !Ref LoadBalancerHostedZoneId
+              - ""
+
+Resources:
+  TlsCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: HasAlbTarget
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !Ref LoadBalancerDnsName
+        HostedZoneId: !Ref LoadBalancerHostedZoneId
+
+Outputs:
+  AcmCertificateArn:
+    Value: !Ref TlsCertificate
+  DomainName:
+    Value: !Ref DomainName

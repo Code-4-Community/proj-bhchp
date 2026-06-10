@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ArrayContains, Repository } from 'typeorm';
 import { CandidateInfo } from './candidate-info.entity';
 
 /**
@@ -37,12 +37,34 @@ export class CandidateInfoService {
       throw new BadRequestException('candidate email is required');
     }
 
-    const candidate: CandidateInfo = this.repo.create({
-      appId,
-      email: email.trim(),
-    });
+    const normalizedEmail = email.trim();
 
-    return await this.repo.save(candidate);
+    return this.repo.manager.transaction(async (manager) => {
+      await manager.query(
+        'SELECT pg_advisory_xact_lock(hashtext($1)::bigint)',
+        [normalizedEmail],
+      );
+
+      const repo = manager.getRepository(CandidateInfo);
+      const existing = await repo.findOne({
+        where: { email: normalizedEmail },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (existing) {
+        if (!existing.appIds.includes(appId)) {
+          existing.appIds = [...existing.appIds, appId].sort((a, b) => a - b);
+        }
+        return repo.save(existing);
+      }
+
+      const candidate: CandidateInfo = repo.create({
+        email: normalizedEmail,
+        appIds: [appId],
+      });
+
+      return repo.save(candidate);
+    });
   }
 
   /**
@@ -70,10 +92,31 @@ export class CandidateInfoService {
     }
 
     this.logger.log(
-      `Found candidate_info for email=${normalizedEmail} appId=${candidate.appId}`,
+      `Found candidate_info for email=${normalizedEmail} appIds=${candidate.appIds.join(
+        ',',
+      )}`,
     );
 
     return candidate;
+  }
+
+  /**
+   * Returns the latest app id for a candidate email using the highest appId in appIds.
+   * @param email The email of the desired candidate.
+   * @returns The latest app id for that candidate.
+   * @throws {NotFoundException} if the candidate has no applications.
+   */
+  async findLatestAppId(email: string): Promise<number> {
+    const candidate = await this.findOne(email);
+    const latestAppId = Math.max(...candidate.appIds);
+
+    if (!Number.isFinite(latestAppId)) {
+      throw new NotFoundException(
+        `candidate with email ${email} has no applications`,
+      );
+    }
+
+    return latestAppId;
   }
 
   /**
@@ -90,14 +133,7 @@ export class CandidateInfoService {
       throw new BadRequestException('Valid app ID is required');
     }
 
-    const candidates = await this.repo.find({ where: { appId } });
-
-    // If we want to error out instead of returning an empty array:
-    // if (candidates.length === 0) {
-    //   throw new NotFoundException(`No candidates found for app ID ${appId}`);
-    // }
-
-    return candidates;
+    return this.repo.find({ where: { appIds: ArrayContains([appId]) } });
   }
 
   /**

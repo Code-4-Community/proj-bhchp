@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ArgumentsHost, BadRequestException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  StreamableFile,
+} from '@nestjs/common';
 import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
@@ -17,6 +21,7 @@ import { ApplicationCreationErrorFilter } from './filters/application-creation-v
 import { NotFoundException } from '@nestjs/common';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { UserType } from '../users/types';
+import { Readable } from 'stream';
 
 jest.mock('../util/aws-exports', () => ({
   __esModule: true,
@@ -46,6 +51,7 @@ const mockApplicationsService: Partial<ApplicationsService> = {
   countRejected: jest.fn(),
   countApprovedOrActive: jest.fn(),
   findById: jest.fn(),
+  findByEmail: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
   updateStatus: jest.fn(),
@@ -57,6 +63,7 @@ const mockApplicationsService: Partial<ApplicationsService> = {
   getConfidentialityTemplateUrl: jest.fn(),
   getConfidentialityForm: jest.fn(),
   uploadConfidentialityForm: jest.fn(),
+  exportCsvByCreatedAtRange: jest.fn(),
 };
 
 const mockRolesGuard = {
@@ -68,7 +75,7 @@ const mockUsersService = {
 };
 
 const mockCandidateInfoService = {
-  findOne: jest.fn(),
+  findLatestAppId: jest.fn(),
   findByApplicationId: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
@@ -108,6 +115,8 @@ const mockApplication: Application = {
   heardAboutFrom: [],
   proposedStartDate: new Date('2024-01-01'),
   endDate: new Date('2024-06-30'),
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
 };
 
 function createMockHttpHost(body: Record<string, unknown> | undefined) {
@@ -259,6 +268,37 @@ describe('ApplicationsController', () => {
           'An unexpected error occurred while processing your application.',
         statusCode: 500,
       });
+    });
+  });
+
+  describe('exportApplicationsCsv', () => {
+    it('should set download headers and return a streamable file', async () => {
+      const setHeader = jest.fn();
+      mockApplicationsService.exportCsvByCreatedAtRange = jest
+        .fn()
+        .mockResolvedValue({
+          fileName: 'applications-export-2026-01-01-to-2026-01-31.csv',
+          stream: Readable.from(['header\nrow\n']),
+        });
+
+      const result = await controller.exportApplicationsCsv(
+        '2026-01-01',
+        '2026-01-31',
+        { setHeader } as never,
+      );
+
+      expect(
+        mockApplicationsService.exportCsvByCreatedAtRange,
+      ).toHaveBeenCalledWith('2026-01-01', '2026-01-31');
+      expect(setHeader).toHaveBeenCalledWith(
+        'Content-Type',
+        'text/csv; charset=utf-8',
+      );
+      expect(setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="applications-export-2026-01-01-to-2026-01-31.csv"',
+      );
+      expect(result).toBeInstanceOf(StreamableFile);
     });
   });
 
@@ -476,6 +516,26 @@ describe('ApplicationsController', () => {
           user: { email: 'admin@example.com', userType: UserType.ADMIN },
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getApplicationsByEmail', () => {
+    it('should return applications for a specific email newest first', async () => {
+      const mockApplications = [
+        { ...mockApplication, appId: 3 },
+        mockApplication,
+      ];
+
+      jest
+        .spyOn(mockApplicationsService, 'findByEmail')
+        .mockResolvedValue(mockApplications);
+
+      await expect(
+        controller.getApplicationsByEmail('test%40example.com'),
+      ).resolves.toEqual(mockApplications);
+      expect(mockApplicationsService.findByEmail).toHaveBeenCalledWith(
+        'test@example.com',
+      );
     });
   });
 
@@ -963,10 +1023,7 @@ describe('ApplicationsController', () => {
     });
 
     it('should return the current user application when candidate info exists', async () => {
-      mockCandidateInfoService.findOne.mockResolvedValue({
-        email: 'test@example.com',
-        appId: 1,
-      });
+      mockCandidateInfoService.findLatestAppId.mockResolvedValue(1);
       jest
         .spyOn(mockApplicationsService, 'findById')
         .mockResolvedValue(mockApplication);
@@ -981,14 +1038,14 @@ describe('ApplicationsController', () => {
           },
         }),
       ).resolves.toEqual(mockApplication);
-      expect(mockCandidateInfoService.findOne).toHaveBeenCalledWith(
+      expect(mockCandidateInfoService.findLatestAppId).toHaveBeenCalledWith(
         'test@example.com',
       );
       expect(mockApplicationsService.findById).toHaveBeenCalledWith(1);
     });
 
     it('should pass through candidate lookup errors', async () => {
-      mockCandidateInfoService.findOne.mockRejectedValue(
+      mockCandidateInfoService.findLatestAppId.mockRejectedValue(
         new NotFoundException(
           'candidate with email test@example.com not found',
         ),

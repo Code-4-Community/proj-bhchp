@@ -14,21 +14,21 @@ export const amazonSESClientFactory: Provider<SESClient> = {
   provide: AMAZON_SES_CLIENT,
   useFactory: () => {
     assert(
-      process.env.AWS_ACCESS_KEY_ID !== undefined,
-      'AWS_ACCESS_KEY_ID is not defined',
+      process.env.BHCHP_AWS_REGION !== undefined ||
+        process.env.AWS_REGION !== undefined ||
+        process.env.COGNITO_REGION !== undefined ||
+        process.env.VITE_COGNITO_REGION !== undefined,
+      'AWS region is not defined',
     );
-    assert(
-      process.env.AWS_SECRET_ACCESS_KEY !== undefined,
-      'AWS_SECRET_ACCESS_KEY is not defined',
-    );
-    assert(process.env.AWS_REGION !== undefined, 'AWS_REGION is not defined');
+
+    const region =
+      process.env.BHCHP_AWS_REGION ||
+      process.env.AWS_REGION ||
+      process.env.COGNITO_REGION ||
+      process.env.VITE_COGNITO_REGION;
 
     return new SESClient({
-      region: process.env.AWS_REGION,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
+      region,
     });
   },
 };

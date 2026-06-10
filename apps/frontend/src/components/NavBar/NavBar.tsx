@@ -7,6 +7,7 @@ import {
   FaRegFile,
   FaRightFromBracket,
   FaUserPlus,
+  FaGear,
 } from 'react-icons/fa6';
 import { UserType } from '@api/types';
 import { signOutUser } from '../../auth/cognito';
@@ -61,6 +62,13 @@ export default function NavBar({ logo, userType }: NavBarProps) {
               icon={<FaUserPlus />}
             />
           )}
+          {userType === UserType.ADMIN && (
+            <NavbarItem
+              href="/admin/export-data"
+              label="Export Data"
+              icon={<FaRegFile />}
+            />
+          )}
           {userType === UserType.STANDARD && (
             <NavbarItem
               href="/candidate/view-application"
@@ -78,11 +86,20 @@ export default function NavBar({ logo, userType }: NavBarProps) {
         </Flex>
       </Box>
 
-      <NavbarItem
-        onClick={handleLogout}
-        label="Log Out"
-        icon={<FaRightFromBracket />}
-      />
+      <Box width="100%">
+        {userType === UserType.ADMIN && (
+          <NavbarItem
+            href="/admin/settings"
+            label="Settings"
+            icon={<FaGear />}
+          />
+        )}
+        <NavbarItem
+          onClick={handleLogout}
+          label="Log Out"
+          icon={<FaRightFromBracket />}
+        />
+      </Box>
     </Box>
   );
 }

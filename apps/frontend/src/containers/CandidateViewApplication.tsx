@@ -29,6 +29,14 @@ const CandidateViewApplication: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const pronouns = application?.pronouns;
   const discipline = application?.discipline;
+  const formatDate = (iso?: string) => {
+    if (!iso) return 'N/A';
+    try {
+      return new Date(iso).toLocaleString();
+    } catch (e) {
+      return iso;
+    }
+  };
   const uploadedDocuments: DocumentDownloadItem[] = [
     {
       variant: 'resume',
@@ -95,14 +103,21 @@ const CandidateViewApplication: React.FC = () => {
           return;
         }
 
+        const latestAppId = Math.max(...candidateInfo.appIds);
+
+        if (!Number.isFinite(latestAppId)) {
+          setError("Unable to get user's application id");
+          return;
+        }
+
         if (cancelled) return;
         console.debug('CandidateViewApplication: candidate info loaded', {
-          appId: candidateInfo.appId,
+          appId: latestAppId,
           email: candidateInfo.email,
         });
 
         console.debug('CandidateViewApplication: requesting application', {
-          appId: candidateInfo.appId,
+          appId: latestAppId,
         });
 
         const app = await apiClient.getCurrentApplication();
@@ -124,9 +139,9 @@ const CandidateViewApplication: React.FC = () => {
         if (app.applicantType === ApplicantType.LEARNER) {
           try {
             console.debug('CandidateViewApplication: requesting learner info', {
-              appId: candidateInfo.appId,
+              appId: app.appId,
             });
-            const info = await apiClient.getLearnerInfo(candidateInfo.appId);
+            const info = await apiClient.getLearnerInfo(app.appId);
             if (!cancelled) {
               setLearnerInfo(info);
               console.debug('CandidateViewApplication: learner info loaded', {
@@ -203,6 +218,8 @@ const CandidateViewApplication: React.FC = () => {
           discipline={discipline}
           email={application.email || 'N/A'}
           phone={application.phone || 'N/A'}
+          createdAt={application.createdAt}
+          updatedAt={application.updatedAt}
           over18={learnerInfo?.isLegalAdult}
         />
         <QuestionFrame

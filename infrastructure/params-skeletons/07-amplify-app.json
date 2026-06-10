@@ -1,0 +1,12 @@
+[
+  { "ParameterKey": "AppName", "ParameterValue": "proj-bhchp" },
+  { "ParameterKey": "RepositoryUrl", "ParameterValue": "https://github.com/Code-4-Community/proj-bhchp" },
+  { "ParameterKey": "OAuthToken", "ParameterValue": "" },
+  { "ParameterKey": "BranchName", "ParameterValue": "production" },
+  { "ParameterKey": "ViteApiBaseUrl", "ParameterValue": "" },
+  { "ParameterKey": "ViteAwsRegion", "ParameterValue": "us-east-2" },
+  { "ParameterKey": "ViteCognitoAppClientId", "ParameterValue": "" },
+  { "ParameterKey": "ViteCognitoRegion", "ParameterValue": "us-east-2" },
+  { "ParameterKey": "ViteCognitoUserPoolId", "ParameterValue": "" },
+  { "ParameterKey": "ViteS3BucketAddr", "ParameterValue": "" }
+]

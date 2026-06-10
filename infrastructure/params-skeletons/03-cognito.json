@@ -1,0 +1,6 @@
+[
+  { "ParameterKey": "CognitoRegion", "ParameterValue": "us-east-2" },
+  { "ParameterKey": "UserPoolName", "ParameterValue": "bhchp-user-pool-2" },
+  { "ParameterKey": "FrontendClientName", "ParameterValue": "bhchp-frontend-no-secret-2" },
+  { "ParameterKey": "FrontendRefreshTokenValidityDays", "ParameterValue": "30" }
+]

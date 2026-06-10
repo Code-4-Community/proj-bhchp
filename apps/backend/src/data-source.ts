@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import fs from 'fs';
 import { AdminInfo } from './admin-info/admin-info.entity';
 import { User } from './users/user.entity';
 import { PluralNamingStrategy } from './strategies/plural-naming.strategy';
@@ -10,6 +11,9 @@ import { CandidateInfo } from './candidate-info/candidate-info.entity';
 
 dotenv.config();
 
+const sslCaPath = process.env.NX_DB_SSL_CA_PATH;
+const sslCa = sslCaPath ? fs.readFileSync(sslCaPath, 'utf8') : undefined;
+
 const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.NX_DB_HOST,
@@ -17,6 +21,12 @@ const AppDataSource = new DataSource({
   username: process.env.NX_DB_USERNAME,
   password: process.env.NX_DB_PASSWORD,
   database: process.env.NX_DB_DATABASE,
+  ssl: sslCa
+    ? {
+        rejectUnauthorized: true,
+        ca: sslCa,
+      }
+    : undefined,
   entities: [
     Application,
     CandidateInfo,

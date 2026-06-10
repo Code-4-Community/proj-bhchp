@@ -1,0 +1,313 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cheapest practical ECS Fargate service for the backend
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC for the ECS service
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets for the ECS service
+  AssignPublicIp:
+    Type: String
+    AllowedValues: ["ENABLED", "DISABLED"]
+    Default: "ENABLED"
+  AllowedCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR allowed to reach the service port
+  HostedZoneId:
+    Type: String
+    Description: Route53 hosted zone ID for the domain
+  DomainName:
+    Type: String
+    Description: Domain name for the ALB (e.g. api.example.com)
+  HealthCheckPath:
+    Type: String
+    Default: /api/health
+    Description: HTTP path used by the ALB target group health check
+
+  ClusterName:
+    Type: String
+    Default: bhchp-ecs
+  ServiceName:
+    Type: String
+    Default: bhchp-backend
+
+  ContainerImage:
+    Type: String
+    Description: ECR or public image URI
+  ContainerPort:
+    Type: Number
+    Default: 3000
+
+  Cpu:
+    Type: String
+    Default: "256"
+  Memory:
+    Type: String
+    Default: "512"
+
+  DbHost:
+    Type: String
+  DbPort:
+    Type: String
+    Default: "5432"
+  DbName:
+    Type: String
+  DbUsername:
+    Type: String
+  DbPassword:
+    Type: String
+    NoEcho: true
+
+  BhchpAwsBucketName:
+    Type: String
+  BhchpAwsSesSenderEmail:
+    Type: String
+  BhchpAwsSesIdentityArn:
+    Type: String
+    Description: Verified SES identity ARN allowed for SendRawEmail
+  CognitoRegion:
+    Type: String
+  CognitoUserPoolId:
+    Type: String
+  CognitoAppClientId:
+    Type: String
+  ViteCognitoAppClientId:
+    Type: String
+
+Resources:
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ServiceName}"
+      RetentionInDays: 7
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub "${ServiceName}-aws-access"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3Uploads
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${BhchpAwsBucketName}/*"
+              - Sid: SesRawEmail
+                Effect: Allow
+                Action:
+                  - ses:SendRawEmail
+                Resource: !Ref BhchpAwsSesIdentityArn
+              - Sid: CognitoAdminProvisioning
+                Effect: Allow
+                Action:
+                  - cognito-idp:AdminCreateUser
+                  - cognito-idp:AdminDeleteUser
+                Resource: !Sub "arn:aws:cognito-idp:${CognitoRegion}:${AWS::AccountId}:userpool/${CognitoUserPoolId}"
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow inbound to the service
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow inbound HTTP to the ALB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref AllowedCidr
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllowedCidr
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${ServiceName}-alb"
+      Scheme: internet-facing
+      Subnets: !Ref SubnetIds
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DomainName
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+
+  TlsCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !Ref HostedZoneId
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${ServiceName}-tg"
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !Ref VpcId
+      HealthCheckPath: !Ref HealthCheckPath
+      Matcher:
+        HttpCode: 200-399
+
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: "443"
+            StatusCode: HTTP_301
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref TlsCertificate
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref ServiceName
+      Cpu: !Ref Cpu
+      Memory: !Ref Memory
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: app
+          Image: !Ref ContainerImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: tcp
+          Environment:
+            - Name: NX_DB_HOST
+              Value: !Ref DbHost
+            - Name: NX_DB_PORT
+              Value: !Ref DbPort
+            - Name: NX_DB_DATABASE
+              Value: !Ref DbName
+            - Name: NX_DB_USERNAME
+              Value: !Ref DbUsername
+            - Name: NX_DB_PASSWORD
+              Value: !Ref DbPassword
+            - Name: NX_DB_SSL_CA_PATH
+              Value: /app/global-bundle.pem
+            - Name: BHCHP_AWS_BUCKET_NAME
+              Value: !Ref BhchpAwsBucketName
+            - Name: BHCHP_AWS_REGION
+              Value: !Ref "AWS::Region"
+            - Name: BHCHP_AWS_SES_SENDER_EMAIL
+              Value: !Ref BhchpAwsSesSenderEmail
+            - Name: COGNITO_REGION
+              Value: !Ref CognitoRegion
+            - Name: COGNITO_USER_POOL_ID
+              Value: !Ref CognitoUserPoolId
+            - Name: COGNITO_APP_CLIENT_ID
+              Value: !Ref CognitoAppClientId
+            - Name: VITE_COGNITO_APP_CLIENT_ID
+              Value: !Ref ViteCognitoAppClientId
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: ecs
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - LogGroup
+      - HttpListener
+      - HttpsListener
+    Properties:
+      ServiceName: !Ref ServiceName
+      Cluster: !Ref Cluster
+      LaunchType: FARGATE
+      DesiredCount: 1
+      TaskDefinition: !Ref TaskDefinition
+      LoadBalancers:
+        - ContainerName: app
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
+          AssignPublicIp: !Ref AssignPublicIp
+
+Outputs:
+  ClusterName:
+    Value: !Ref Cluster
+  ServiceName:
+    Value: !Ref Service
+  ServiceSecurityGroupId:
+    Value: !Ref ServiceSecurityGroup
+  LoadBalancerDnsName:
+    Value: !GetAtt LoadBalancer.DNSName
+  PublicApiDomain:
+    Value: !Ref DomainName

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ChakraProvider, defaultSystem } from '@chakra-ui/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import Login from './login';
@@ -21,7 +21,7 @@ const {
 }));
 
 const { prefetchDisciplineAdminMapMock } = vi.hoisted(() => ({
-  prefetchDisciplineAdminMapMock: vi.fn(),
+  prefetchDisciplineAdminMapMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../auth/cognito', () => ({
@@ -41,9 +41,15 @@ vi.mock('@utils/disciplineAdminCache', () => ({
 
 function renderLogin() {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/login']}>
       <ChakraProvider value={defaultSystem}>
-        <Login />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/password-reset"
+            element={<div>Password Reset Page</div>}
+          />
+        </Routes>
       </ChakraProvider>
     </MemoryRouter>,
   );
@@ -146,5 +152,32 @@ describe('Login', () => {
     ).toBeTruthy();
     expect(fetchAndStoreCurrentSessionUserTypeMock).not.toHaveBeenCalled();
     expect(confirmSignInWithNewPasswordMock).not.toHaveBeenCalled();
+  });
+
+  it('links users to the password reset page when they click forgot password', async () => {
+    renderLogin();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Forgot password?' }));
+
+    expect(await screen.findByText('Password Reset Page')).toBeTruthy();
+  });
+
+  it('routes to password reset when Cognito requires a reset password flow', async () => {
+    signInWithEmailPasswordMock.mockResolvedValue({
+      kind: 'RESET_PASSWORD_REQUIRED',
+    });
+
+    renderLogin();
+
+    fireEvent.change(screen.getByPlaceholderText('Email'), {
+      target: { value: 'ada@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Password'), {
+      target: { value: 'TempPass123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+
+    expect(await screen.findByText('Password Reset Page')).toBeTruthy();
+    expect(fetchAndStoreCurrentSessionUserTypeMock).not.toHaveBeenCalled();
   });
 });

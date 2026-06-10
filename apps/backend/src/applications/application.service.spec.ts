@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Readable } from 'stream';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
@@ -55,6 +56,8 @@ const dummyApplication: Application = {
   email: 'test@example.com',
   discipline: disciplineKeys.rn,
   proposedStartDate: new Date('2024-01-01'),
+  createdAt: new Date('2024-01-01'),
+  updatedAt: new Date('2024-01-01'),
   referred: false,
   weeklyHours: 20,
   pronouns: 'they/them',
@@ -97,6 +100,17 @@ const dummyCreateApplicationDto: CreateApplicationDto = {
   emergencyContactRelationship: 'Mother',
   heardAboutFrom: [],
 };
+
+async function streamToString(stream: Readable): Promise<string> {
+  let value = '';
+
+  for await (const chunk of stream) {
+    value += chunk.toString();
+  }
+
+  return value;
+}
+
 describe('ApplicationsService', () => {
   let service: ApplicationsService;
   let repository: Repository<Application>;
@@ -109,6 +123,7 @@ describe('ApplicationsService', () => {
     create: jest.fn(),
     delete: jest.fn(),
     remove: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   const mockEmailService = {
@@ -120,7 +135,7 @@ describe('ApplicationsService', () => {
   };
 
   const mockCandidateInfoService = {
-    findOne: jest.fn(),
+    findLatestAppId: jest.fn(),
   };
 
   const mockDisciplinesService = {
@@ -218,6 +233,42 @@ describe('ApplicationsService', () => {
     });
   });
 
+  describe('findByEmail', () => {
+    it('should return applications for an email ordered by descending appId', async () => {
+      const applicationHistory: Application[] = [
+        { ...dummyApplication, appId: 3 },
+        dummyApplication,
+      ];
+
+      mockRepository.find.mockResolvedValue(applicationHistory);
+
+      await expect(service.findByEmail('test@example.com')).resolves.toEqual(
+        applicationHistory,
+      );
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should trim email before returning applications by email', async () => {
+      mockRepository.find.mockResolvedValue([dummyApplication]);
+
+      await service.findByEmail('  test@example.com  ');
+
+      expect(repository.find).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+        order: { appId: 'DESC' },
+      });
+    });
+
+    it('should throw when applications email is missing', async () => {
+      await expect(service.findByEmail('')).rejects.toThrow(
+        'Application email is required',
+      );
+    });
+  });
+
   describe('count endpoints', () => {
     it('should return total applications count', async () => {
       mockRepository.count.mockResolvedValue(298);
@@ -288,6 +339,100 @@ describe('ApplicationsService', () => {
     });
   });
 
+  describe('exportCsvByCreatedAtRange', () => {
+    it('should stream CSV rows including joined user and learner fields', async () => {
+      const mockQueryBuilder = {
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getRawMany: jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              appId: 7,
+              createdAt: '2026-01-03T12:00:00.000Z',
+              updatedAt: '2026-01-05T09:30:00.000Z',
+              email: 'jane@example.com',
+              firstName: 'Jane',
+              lastName: 'Doe',
+              proposedStartDate: '2026-02-01',
+              actualStartDate: '2026-02-15',
+              endDate: '2026-06-01',
+              discipline: 'rn',
+              otherDisciplineDescription: null,
+              appStatus: 'Accepted',
+              mondayAvailability: 'All day',
+              tuesdayAvailability: 'AM only',
+              wednesdayAvailability: 'PM only',
+              thursdayAvailability: 'None',
+              fridayAvailability: 'Flexible',
+              saturdayAvailability: 'None',
+              interest: 'Primary Care; Dental',
+              license: 'RN, MA',
+              phone: '123-456-7890',
+              applicantType: 'Learner',
+              referred: true,
+              referredEmail: 'faculty@example.com',
+              weeklyHours: 12,
+              pronouns: 'she/her',
+              nonEnglishLangs: 'Spanish',
+              desiredExperience: 'Shadowing',
+              elaborateOtherDiscipline: null,
+              resume: 'resume.pdf',
+              coverLetter: 'cover.pdf',
+              confidentialityForm: 'confidentiality.pdf',
+              emergencyContactName: 'John Doe',
+              emergencyContactPhone: '111-222-3333',
+              emergencyContactRelationship: 'Brother',
+              heardAboutFrom: 'School; BHCHP Website',
+              school: 'Boston University',
+              otherSchool: null,
+              schoolDepartment: 'Nursing',
+              isSupervisorApplying: false,
+              isLegalAdult: true,
+              dateOfBirth: '2000-04-01',
+              courseRequirements: '120 hours',
+              instructorInfo: 'Prof. Smith',
+              syllabus: 'syllabus.pdf',
+            },
+          ])
+          .mockResolvedValueOnce([]),
+      };
+
+      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+
+      const result = await service.exportCsvByCreatedAtRange(
+        '2026-01-01',
+        '2026-01-31',
+      );
+      const csv = await streamToString(result.stream);
+
+      expect(result.fileName).toBe(
+        'applications-export-2026-01-01-to-2026-01-31.csv',
+      );
+      expect(mockRepository.createQueryBuilder).toHaveBeenCalledWith(
+        'application',
+      );
+      expect(csv).toContain('Application ID,Created At,Updated At,Email');
+      expect(csv).toContain('jane@example.com,Jane,Doe,2026-02-01');
+      expect(csv).toContain('"RN, MA"');
+      expect(csv).toContain('Yes');
+      expect(csv).toContain('Boston University');
+    });
+
+    it('should reject invalid date ranges', async () => {
+      await expect(
+        service.exportCsvByCreatedAtRange('2026-02-01', '2026-01-31'),
+      ).rejects.toThrow(
+        new BadRequestException('endDate must be on or after startDate'),
+      );
+    });
+  });
+
   describe('findById', () => {
     it('should return a single application', async () => {
       mockRepository.findOne.mockResolvedValue(dummyApplication);
@@ -329,6 +474,8 @@ describe('ApplicationsService', () => {
         email: 'test@example.com',
         discipline: disciplineKeys.rn,
         proposedStartDate: new Date('2024-01-01'),
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         weeklyHours: 20,
         pronouns: 'they/them',
         nonEnglishLangs: 'none',
@@ -369,6 +516,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -402,6 +551,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -423,6 +574,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -443,6 +596,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -463,6 +618,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -483,6 +640,8 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
       };
 
       mockRepository.save.mockResolvedValue(savedApplication);
@@ -498,6 +657,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -523,6 +684,8 @@ describe('ApplicationsService', () => {
         endDate: new Date('2024-06-30'),
         resume: 'janedoe_resume_2_6_2026.pdf',
         coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
         actualStartDate: undefined,
       };
 
@@ -956,6 +1119,8 @@ describe('ApplicationsService', () => {
           interest: [InterestArea.WOMENS_HEALTH],
           license: '',
           proposedStartDate: new Date('2025-11-12'),
+          createdAt: new Date('2025-11-12'),
+          updatedAt: new Date('2025-11-12'),
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
           email: 'test@example.com',
@@ -983,6 +1148,8 @@ describe('ApplicationsService', () => {
           saturdayAvailability: 'no availability',
           interest: [InterestArea.WOMENS_HEALTH],
           proposedStartDate: new Date('2025-11-12'),
+          createdAt: new Date('2025-11-12'),
+          updatedAt: new Date('2025-11-12'),
           license: '',
           applicantType: ApplicantType.LEARNER,
           phone: '123-456-7890',
@@ -1233,10 +1400,7 @@ describe('ApplicationsService', () => {
   describe('private helpers', () => {
     describe('confidentiality form status access', () => {
       beforeEach(() => {
-        mockCandidateInfoService.findOne.mockResolvedValue({
-          appId: 1,
-          email: dummyApplication.email,
-        });
+        mockCandidateInfoService.findLatestAppId.mockResolvedValue(1);
       });
 
       it('allows upload for accepted applicants', async () => {

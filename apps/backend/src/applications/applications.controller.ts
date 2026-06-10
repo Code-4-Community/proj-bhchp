@@ -10,6 +10,8 @@ import {
   Post,
   Query,
   Req,
+  Res,
+  StreamableFile,
   UseGuards,
   UseInterceptors,
   UseFilters,
@@ -36,6 +38,7 @@ import { ApplicationCreationErrorFilter } from './filters/application-creation-v
 import { User } from '../users/user.entity';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AppStatus } from './types';
+import { Response } from 'express';
 
 /**
  * Controller to expose HTTP endpoints to interface, extract, and change information about the app's applications.
@@ -142,6 +145,49 @@ export class ApplicationsController {
       .filter(Boolean);
 
     return await this.applicationsService.findByDisciplines(disciplines ?? []);
+  }
+
+  /**
+   * Exposes an endpoint to export application data as CSV filtered by an inclusive createdAt date range.
+   * @param startDate inclusive lower bound in YYYY-MM-DD format.
+   * @param endDate inclusive upper bound in YYYY-MM-DD format.
+   * @param response express response used to attach download headers.
+   * @returns CSV file stream for admin download.
+   */
+  @Get('export/csv')
+  @Roles(UserType.ADMIN)
+  async exportApplicationsCsv(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const { fileName, stream } =
+      await this.applicationsService.exportCsvByCreatedAtRange(
+        startDate,
+        endDate,
+      );
+
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${fileName}"`,
+    );
+
+    return new StreamableFile(stream);
+  }
+
+  /**
+   * Exposes an endpoint to return all applications for a specific email, newest first.
+   * @param email The email to filter applications by.
+   * @returns A promise of the applications with the specified email ordered by descending appId.
+   */
+  @Get('by-email/:email')
+  @Roles(UserType.ADMIN)
+  async getApplicationsByEmail(
+    @Param('email') email: string,
+  ): Promise<Application[]> {
+    const decodedEmail = decodeURIComponent(email);
+    return this.applicationsService.findByEmail(decodedEmail);
   }
 
   /**
@@ -430,13 +476,13 @@ export class ApplicationsController {
     }
 
     try {
-      const candidateInfo = await this.candidateInfoService.findOne(
+      const latestAppId = await this.candidateInfoService.findLatestAppId(
         req.user.email,
       );
       this.logger.log(
-        `GET /applications/me candidate_info found email=${req.user.email} appId=${candidateInfo.appId}`,
+        `GET /applications/me candidate_info found email=${req.user.email} appId=${latestAppId}`,
       );
-      return this.applicationsService.findById(candidateInfo.appId);
+      return this.applicationsService.findById(latestAppId);
     } catch (error) {
       this.logger.error(
         `GET /applications/me failed for email=${req.user.email}`,

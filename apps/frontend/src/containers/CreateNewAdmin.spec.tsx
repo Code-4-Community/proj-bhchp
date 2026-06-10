@@ -52,11 +52,7 @@ async function fillValidForm() {
   fireEvent.change(screen.getByPlaceholderText('Doe'), {
     target: { value: 'Lovelace' },
   });
-  const option = (await screen.findByRole('option', {
-    name: 'RN',
-  })) as HTMLOptionElement;
-  option.selected = true;
-  fireEvent.change(screen.getByRole('listbox'));
+  fireEvent.click(await screen.findByLabelText('RN'));
 }
 
 function buildSuccessResponse(): ProvisionAdminResponse {

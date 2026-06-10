@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECR repository for bhchp-backend with lifecycle policy
+
+Parameters:
+  Name:
+    Type: String
+    Default: bhchp-bucket
+
+Resources:
+  BhchpBackendRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      BucketName: !Ref Name
+      RepositoryName: bhchp-backend
+      ImageTagMutability: MUTABLE
+      ImageScanningConfiguration:
+        ScanOnPush: false
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep only last 3 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 3
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+Outputs:
+  RepositoryUri:
+    Value: !GetAtt BhchpBackendRepository.RepositoryUri
+  RepositoryName:
+    Value: !Ref BhchpBackendRepository

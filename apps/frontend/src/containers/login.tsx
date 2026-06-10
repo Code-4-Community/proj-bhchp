@@ -4,11 +4,12 @@ import {
   Button,
   Heading,
   Input,
+  Link,
   Stack,
   Text,
 } from '@chakra-ui/react';
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 
 import {
   confirmSignInWithNewPassword,
@@ -28,13 +29,22 @@ import { prefetchDisciplineAdminMap } from '@utils/disciplineAdminCache';
  */
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState =
+    (location.state as { email?: string; passwordResetSuccess?: boolean }) ??
+    {};
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(locationState.email ?? '');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(
+    locationState.passwordResetSuccess
+      ? 'Your password was reset. Sign in with your new password.'
+      : null,
+  );
   const [isNewPasswordRequired, setIsNewPasswordRequired] = useState(false);
 
   const landingForUserType = useCallback((userType: UserType): string => {
@@ -93,6 +103,7 @@ const Login: React.FC = () => {
 
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       console.debug('[ui] Login: attempting signIn', { email });
@@ -106,6 +117,15 @@ const Login: React.FC = () => {
           '[ui] Login: Cognito requires a new password before routing',
         );
         setIsNewPasswordRequired(true);
+        setLoading(false);
+        return;
+      }
+
+      if (signInResult.kind === 'RESET_PASSWORD_REQUIRED') {
+        navigate('/password-reset', {
+          replace: true,
+          state: { email: email.trim() },
+        });
         setLoading(false);
         return;
       }
@@ -166,6 +186,7 @@ const Login: React.FC = () => {
 
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       await confirmSignInWithNewPassword(newPassword);
@@ -217,6 +238,15 @@ const Login: React.FC = () => {
               </Alert.Root>
             ) : null}
 
+            {successMessage ? (
+              <Alert.Root status="success">
+                <Alert.Indicator />
+                <Alert.Content>
+                  <Alert.Description>{successMessage}</Alert.Description>
+                </Alert.Content>
+              </Alert.Root>
+            ) : null}
+
             {!isNewPasswordRequired ? (
               <>
                 <Input
@@ -242,6 +272,21 @@ const Login: React.FC = () => {
                 <Button type="submit" loading={loading} colorPalette="blue">
                   Sign In
                 </Button>
+
+                {loading ? (
+                  <Text alignSelf="flex-start" color="gray.400">
+                    Forgot password?
+                  </Text>
+                ) : (
+                  <Link asChild alignSelf="flex-start" color="blue.600">
+                    <RouterLink
+                      to="/password-reset"
+                      state={{ email: email.trim() || undefined }}
+                    >
+                      Forgot password?
+                    </RouterLink>
+                  </Link>
+                )}
               </>
             ) : (
               <>

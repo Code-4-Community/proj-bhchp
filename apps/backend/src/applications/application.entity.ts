@@ -1,4 +1,10 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 import {
   AppStatus,
@@ -275,4 +281,20 @@ export class Application {
    */
   @Column({ type: 'enum', enum: HeardAboutFrom, array: true, default: [] })
   heardAboutFrom!: HeardAboutFrom[];
+
+  /**
+   * When the application was created stored in YYYY-MM-DD format.
+   *
+   * Example: new Date('2025-01-30').
+   */
+  @CreateDateColumn({ type: 'timestamp' })
+  createdAt!: Date;
+
+  /**
+   * When the application was last updated stored in YYYY-MM-DD format.
+   *
+   * Example: new Date('2025-01-30').
+   */
+  @UpdateDateColumn({ type: 'timestamp' })
+  updatedAt!: Date;
 }

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   SESClient,
   SendRawEmailCommand,
@@ -33,6 +33,7 @@ export interface EmailAttachment {
 @Injectable()
 export class AmazonSESWrapper {
   private client: SESClient;
+  private readonly logger = new Logger(AmazonSESWrapper.name);
 
   /**
    * @param client injected from `amazon-ses-client.factory.ts`
@@ -58,7 +59,9 @@ export class AmazonSESWrapper {
     attachments?: EmailAttachment[],
   ) {
     const mailOptions: Mail.Options = {
-      from: process.env.AWS_SES_SENDER_EMAIL,
+      from:
+        process.env.BHCHP_AWS_SES_SENDER_EMAIL ||
+        process.env.AWS_SES_SENDER_EMAIL,
       to: recipientEmails,
       subject: subject,
       html: bodyHtml,
@@ -76,10 +79,34 @@ export class AmazonSESWrapper {
 
     const params: SendRawEmailCommandInput = {
       Destinations: recipientEmails,
-      Source: process.env.AWS_SES_SENDER_EMAIL,
+      Source:
+        process.env.BHCHP_AWS_SES_SENDER_EMAIL ||
+        process.env.AWS_SES_SENDER_EMAIL,
       RawMessage: { Data: messageData },
     };
 
-    return await this.client.send(new SendRawEmailCommand(params));
+    // Log minimal diagnostics before sending
+    try {
+      this.logger.debug(
+        `SES send: from=${
+          process.env.AWS_SES_SENDER_EMAIL
+        }, to=${recipientEmails.join(',')}, subject=${subject}, attachments=${
+          attachments?.length ?? 0
+        }`,
+      );
+    } catch (e) {
+      // ignore logging errors
+    }
+
+    try {
+      const response = await this.client.send(new SendRawEmailCommand(params));
+      return response;
+    } catch (error) {
+      this.logger.error(
+        'SES send failed',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
+    }
   }
 }

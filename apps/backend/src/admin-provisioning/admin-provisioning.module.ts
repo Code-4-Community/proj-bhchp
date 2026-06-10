@@ -8,6 +8,7 @@ import { AdminProvisioningController } from './admin-provisioning.controller';
 import { AdminProvisioningService } from './admin-provisioning.service';
 import { cognitoIdentityProviderFactory } from './cognito.provider';
 import { DisciplinesModule } from '../disciplines/disciplines.module';
+import { UtilModule } from '../util/util.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { DisciplinesModule } from '../disciplines/disciplines.module';
     AuthModule,
     UsersModule,
     DisciplinesModule,
+    UtilModule,
   ],
   controllers: [AdminProvisioningController],
   providers: [AdminProvisioningService, cognitoIdentityProviderFactory],
