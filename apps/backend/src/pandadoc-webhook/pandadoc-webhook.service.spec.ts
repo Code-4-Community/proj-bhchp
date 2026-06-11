@@ -1,9 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 import { DataSource, EntityManager } from 'typeorm';
 import { PandadocWebhookService } from './pandadoc-webhook.service';
 import { AppStatus, ApplicantType } from '../applications/types';
+
+jest.mock('axios');
 
 function buildFullPayload(): Record<string, unknown> {
   return {
@@ -84,23 +88,113 @@ function buildMockDataSource(opts: {
   } as unknown as DataSource;
 }
 
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
+function buildMockConfigService(apiKey = 'test-api-key'): ConfigService {
+  return {
+    get: jest.fn((key: string) => {
+      if (key === 'PANDADOC_API_KEY') return apiKey;
+      return undefined;
+    }),
+  } as unknown as ConfigService;
+}
+
+function buildWebhookEvent(documentId = 'doc-abc123') {
+  return [{ event: 'document_completed_pdf_ready', data: { id: documentId } }];
+}
+
 describe('PandadocWebhookService', () => {
   async function buildService(
     dataSource: DataSource,
+    configService?: ConfigService,
   ): Promise<PandadocWebhookService> {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PandadocWebhookService,
         { provide: getDataSourceToken(), useValue: dataSource },
+        {
+          provide: ConfigService,
+          useValue: configService ?? buildMockConfigService(),
+        },
       ],
     }).compile();
     return module.get<PandadocWebhookService>(PandadocWebhookService);
   }
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should be defined', async () => {
     const saved: Saved = {};
     const service = await buildService(buildMockDataSource({ saved }));
     expect(service).toBeDefined();
+  });
+
+  describe('handleIncomingWebhook', () => {
+    it('fetches fields from PandaDoc API and creates the application', async () => {
+      const saved: Saved = {};
+      const service = await buildService(
+        buildMockDataSource({ generatedAppId: 99, saved }),
+      );
+
+      mockedAxios.get = jest.fn().mockResolvedValue({
+        data: {
+          fields: Object.entries(buildFullPayload()).map(
+            ([field_id, value]) => ({
+              field_id,
+              value,
+              assigned_to: { email: 'test@example.com' },
+            }),
+          ),
+        },
+      });
+
+      const result = await service.handleIncomingWebhook(
+        buildWebhookEvent('doc-xyz'),
+      );
+
+      expect(result).toEqual({ appId: 99 });
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect.stringContaining('/documents/doc-xyz/fields'),
+        expect.objectContaining({
+          headers: { Authorization: 'API-Key test-api-key' },
+        }),
+      );
+      expect(saved.Application?.email).toBe('test@example.com');
+    });
+
+    it('throws BadRequestException when payload is not an array of events', async () => {
+      const saved: Saved = {};
+      const service = await buildService(buildMockDataSource({ saved }));
+
+      await expect(service.handleIncomingWebhook({})).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException when data.id is missing', async () => {
+      const saved: Saved = {};
+      const service = await buildService(buildMockDataSource({ saved }));
+
+      await expect(
+        service.handleIncomingWebhook([
+          { event: 'document_completed_pdf_ready', data: {} },
+        ]),
+      ).rejects.toThrow('document ID');
+    });
+
+    it('throws InternalServerErrorException when PANDADOC_API_KEY is not set', async () => {
+      const saved: Saved = {};
+      const service = await buildService(
+        buildMockDataSource({ saved }),
+        buildMockConfigService(''),
+      );
+
+      await expect(
+        service.handleIncomingWebhook(buildWebhookEvent()),
+      ).rejects.toThrow('PandaDoc API key is not configured');
+    });
   });
 
   describe('processWebhook - happy path', () => {

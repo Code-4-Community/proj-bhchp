@@ -16,35 +16,13 @@ export class PandadocWebhookController {
 
   constructor(private readonly webhookService: PandadocWebhookService) {}
 
-  private getBodyStringField(
-    body: Record<string, unknown>,
-    key: string,
-  ): string | undefined {
-    const value = body[key];
-    return typeof value === 'string' && value.trim() ? value.trim() : undefined;
-  }
-
   @Post()
-  async handleWebhook(@Body() body: Record<string, unknown>) {
+  async handleWebhook(@Body() body: unknown) {
     const startedAt = Date.now();
-    const payloadKeys = Object.keys(body ?? {});
-    const eventType = this.getBodyStringField(body, 'event') ?? 'unknown';
-    const documentId =
-      this.getBodyStringField(body, 'document_id') ??
-      this.getBodyStringField(body, 'id') ??
-      'unknown';
-
-    this.logger.log(
-      `[PandaDoc] Incoming webhook request event=${eventType} documentId=${documentId} payloadFieldCount=${payloadKeys.length}`,
-    );
-    this.logger.debug(
-      `[PandaDoc] Payload key sample: ${
-        payloadKeys.slice(0, 20).join(', ') || 'none'
-      }`,
-    );
+    this.logger.log('[PandaDoc] Incoming webhook request');
 
     try {
-      const result = await this.webhookService.processWebhook(body);
+      const result = await this.webhookService.handleIncomingWebhook(body);
       this.logger.log(
         `[PandaDoc] Webhook request completed appId=${
           result.appId
@@ -56,12 +34,12 @@ export class PandadocWebhookController {
       const durationMs = Date.now() - startedAt;
       if (error instanceof Error) {
         this.logger.error(
-          `[PandaDoc] Webhook request failed event=${eventType} documentId=${documentId} durationMs=${durationMs} error=${message}`,
+          `[PandaDoc] Webhook request failed durationMs=${durationMs} error=${message}`,
           error.stack,
         );
       } else {
         this.logger.error(
-          `[PandaDoc] Webhook request failed event=${eventType} documentId=${documentId} durationMs=${durationMs} error=${message}`,
+          `[PandaDoc] Webhook request failed durationMs=${durationMs} error=${message}`,
         );
       }
       throw error;

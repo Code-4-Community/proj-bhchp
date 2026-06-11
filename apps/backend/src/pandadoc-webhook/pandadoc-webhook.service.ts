@@ -1,11 +1,20 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
+import axios from 'axios';
 import { DataSource, EntityManager } from 'typeorm';
 import { pandadocMapper } from '../pandadoc-helpers/pandadoc-mapper';
 import { AppStatus, ApplicantType, PHONE_REGEX } from '../applications/types';
 import { Application } from '../applications/application.entity';
 import { CandidateInfo } from '../candidate-info/candidate-info.entity';
 import { LearnerInfo } from '../learner-info/learner-info.entity';
+
+const PANDADOC_API_BASE = 'https://api.pandadoc.com/public/v1';
 
 /**
  * Orchestrates creation of Application, CandidateInfo, and LearnerInfo
@@ -19,7 +28,10 @@ import { LearnerInfo } from '../learner-info/learner-info.entity';
 export class PandadocWebhookService {
   private readonly logger = new Logger(PandadocWebhookService.name);
 
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
+  ) {}
 
   private maskEmail(email: string): string {
     const [localPart, domain] = email.split('@');
@@ -68,10 +80,119 @@ export class PandadocWebhookService {
   }
 
   /**
-   * Process a PandaDoc webhook payload: map fields, create all three
-   * records inside a single transaction.
+   * Entry point called by the controller. Receives the raw PandaDoc webhook
+   * body (an array of events), extracts the document ID, fetches the field
+   * values from the PandaDoc API, then delegates to `processWebhook`.
    *
-   * @param payload Raw PandaDoc webhook body (flat field id -> value record)
+   * PandaDoc webhook format: [{ event: string, data: { id: string, ... } }]
+   */
+  async handleIncomingWebhook(rawBody: unknown): Promise<{ appId: number }> {
+    const documentId = this.extractDocumentId(rawBody);
+    this.logger.log(
+      `[PandaDoc] Extracted documentId=${documentId} from webhook event`,
+    );
+
+    const fields = await this.fetchDocumentFields(documentId);
+    this.logger.log(
+      `[PandaDoc] Fetched ${
+        Object.keys(fields).length
+      } fields for documentId=${documentId}`,
+    );
+
+    return this.processWebhook(fields);
+  }
+
+  private extractDocumentId(rawBody: unknown): string {
+    const events = Array.isArray(rawBody) ? rawBody : [rawBody];
+    const firstEvent = events[0];
+
+    if (!firstEvent || typeof firstEvent !== 'object') {
+      throw new BadRequestException(
+        'Invalid webhook payload: expected an array of events',
+      );
+    }
+
+    const event = firstEvent as Record<string, unknown>;
+    const data = event['data'];
+
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new BadRequestException('Webhook event missing data field');
+    }
+
+    const id = (data as Record<string, unknown>)['id'];
+    if (typeof id !== 'string' || !id.trim()) {
+      throw new BadRequestException(
+        'Webhook event missing document ID in data.id',
+      );
+    }
+
+    return id.trim();
+  }
+
+  private async fetchDocumentFields(
+    documentId: string,
+  ): Promise<Record<string, unknown>> {
+    const apiKey = this.configService.get<string>('PANDADOC_API_KEY');
+    if (!apiKey) {
+      this.logger.error('[PandaDoc] PANDADOC_API_KEY is not configured');
+      throw new InternalServerErrorException(
+        'PandaDoc API key is not configured',
+      );
+    }
+
+    this.logger.debug(
+      `[PandaDoc] Fetching fields from API documentId=${documentId}`,
+    );
+
+    const response = await axios.get<{
+      fields: Array<{
+        field_id: string;
+        value: unknown;
+        assigned_to?: { email?: string; phone?: string };
+      }>;
+    }>(`${PANDADOC_API_BASE}/documents/${documentId}/fields`, {
+      headers: { Authorization: `API-Key ${apiKey}` },
+    });
+
+    const fields = response.data?.fields ?? [];
+    this.logger.debug(
+      `[PandaDoc] API returned ${fields.length} fields for documentId=${documentId}`,
+    );
+
+    const result = Object.fromEntries(fields.map((f) => [f.field_id, f.value]));
+
+    // Email and phone are not form fields — inject from recipient assigned_to.
+    // PandaDoc populates one or the other depending on how the doc was sent.
+    const recipient = fields[0]?.assigned_to;
+    if (!result['email'] && recipient?.email) {
+      result['email'] = recipient.email;
+      this.logger.debug(`[PandaDoc] Injected email from recipient assigned_to`);
+    }
+    if (!result['Volunteer_Phone'] && recipient?.phone) {
+      result['Volunteer_Phone'] = recipient.phone;
+      this.logger.debug(`[PandaDoc] Injected phone from recipient assigned_to`);
+    }
+
+    // Resume and cover letter each have two upload slots (*1 = supervisor, *2 = applicant).
+    // Coalesce so the mapper always sees the value regardless of which slot was used.
+    const isEmpty = (v: unknown) =>
+      !v || (typeof v === 'object' && Object.keys(v as object).length === 0);
+    if (isEmpty(result['Volunteer_ResumeUpload2'])) {
+      result['Volunteer_ResumeUpload2'] = result['Volunteer_ResumeUpload1'];
+    }
+    if (isEmpty(result['Volunteer_CoverletterUpload2'])) {
+      result['Volunteer_CoverletterUpload2'] =
+        result['Volunteer_CoverletterUpload1'];
+    }
+
+    return result;
+  }
+
+  /**
+   * Process a flat PandaDoc field map: map fields into persistence buckets and
+   * create all three records inside a single transaction.
+   *
+   * @param payload Flat field id -> value record (e.g. from the PandaDoc fields API)
    * @returns Object containing the created appId
    */
   async processWebhook(
@@ -98,7 +219,16 @@ export class PandadocWebhookService {
       this.logger.debug(
         '[PandaDoc] Mapping webhook payload into persistence buckets',
       );
-      const buckets = pandadocMapper(payload);
+      let buckets: ReturnType<typeof pandadocMapper>;
+      try {
+        buckets = pandadocMapper(payload);
+      } catch (mapErr) {
+        const msg = mapErr instanceof Error ? mapErr.message : String(mapErr);
+        if (msg.startsWith('Missing required PandaDoc fields')) {
+          throw new BadRequestException(msg);
+        }
+        throw mapErr;
+      }
       this.logger.log(
         `[PandaDoc] Mapped payload into buckets: application(${
           Object.keys(buckets.application).length
@@ -228,7 +358,8 @@ export class PandadocWebhookService {
   }
 
   private validatePhone(phone: unknown): void {
-    if (typeof phone !== 'string' || !PHONE_REGEX.test(phone)) {
+    if (typeof phone !== 'string' || phone === '') return;
+    if (!PHONE_REGEX.test(phone)) {
       this.logger.warn(
         `[PandaDoc] Phone validation failed phoneMask=${this.maskPhone(phone)}`,
       );

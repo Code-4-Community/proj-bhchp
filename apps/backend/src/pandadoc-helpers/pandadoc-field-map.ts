@@ -76,6 +76,18 @@ function normalizeSchoolLabel(value: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
+/**
+ * Convert a PandaDoc discipline label to the kebab-case key stored in the
+ * discipline catalog table (e.g. "Psychiatry or Psychiatric NP/PA" →
+ * "psychiatry-or-psychiatric-np-pa").
+ */
+function normalizeDisciplineKey(value: string): string {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 const LEGACY_SCHOOL_ALIASES: Array<[string, School]> = [
   [
     'BMC School of Medicine - Center for Multicultural Training in Psychology',
@@ -185,7 +197,8 @@ export const PANDADOC_FIELD_MAP: ValidPayload[] = [
   {
     pandaDocKey: 'Volunteer_Phone',
     backendField: 'phone',
-    required: true,
+    required: false,
+    defaultValue: '',
     targetTable: 'application',
   },
   {
@@ -203,6 +216,7 @@ export const PANDADOC_FIELD_MAP: ValidPayload[] = [
   {
     pandaDocKey: 'Volunteer_Discipline',
     backendField: 'discipline',
+    transform: (value: string) => normalizeDisciplineKey(value),
     required: true,
     targetTable: 'application',
   },
