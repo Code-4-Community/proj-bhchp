@@ -1,10 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager } from 'typeorm';
+import axios from 'axios';
 import { PandadocWebhookService } from './pandadoc-webhook.service';
 import { AppStatus, ApplicantType } from '../applications/types';
 
+jest.mock('axios');
+const mockedAxiosGet = axios.get as jest.MockedFunction<typeof axios.get>;
+
+/** Flat field map that satisfies all required PandaDoc field validations. */
 function buildFullPayload(): Record<string, unknown> {
   return {
     Volunteer_StartDate: '06-01-2026',
@@ -43,6 +49,41 @@ function buildFullPayload(): Record<string, unknown> {
     Volunteer_InstructorInfo: 'Dr. Smith',
     Volunteer_SyllabusUpload: 'syllabus.pdf',
   };
+}
+
+/**
+ * Build the PandaDoc webhook envelope that the controller now receives.
+ * `overrideData` lets individual tests tweak document-level fields.
+ */
+function buildEnvelope(
+  overrideData?: Partial<{ id: string; status: string; name: string }>,
+): unknown[] {
+  return [
+    {
+      event: 'document_completed_pdf_ready',
+      data: {
+        id: 'test-doc-id',
+        name: 'Student/Volunteer Interest Form',
+        status: 'document.completed',
+        ...overrideData,
+      },
+    },
+  ];
+}
+
+/**
+ * Prime the axios.get mock to return the given flat field map as a
+ * PandaDoc `/documents/{id}/fields` response.
+ */
+function mockFieldsResponse(payload: Record<string, unknown>): void {
+  mockedAxiosGet.mockResolvedValueOnce({
+    data: {
+      fields: Object.entries(payload).map(([name, value]) => ({
+        name,
+        value,
+      })),
+    },
+  } as never);
 }
 
 interface Saved {
@@ -92,15 +133,40 @@ describe('PandadocWebhookService', () => {
       providers: [
         PandadocWebhookService,
         { provide: getDataSourceToken(), useValue: dataSource },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn().mockReturnValue('test-api-key') },
+        },
       ],
     }).compile();
     return module.get<PandadocWebhookService>(PandadocWebhookService);
   }
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should be defined', async () => {
     const saved: Saved = {};
     const service = await buildService(buildMockDataSource({ saved }));
     expect(service).toBeDefined();
+  });
+
+  describe('processWebhook - event filtering', () => {
+    it('returns null appId and does not persist when document status is not completed', async () => {
+      const saved: Saved = {};
+      const dataSource = buildMockDataSource({ saved });
+      const txSpy = jest.spyOn(dataSource, 'transaction');
+      const service = await buildService(dataSource);
+
+      const result = await service.processWebhook(
+        buildEnvelope({ status: 'document.draft' }),
+      );
+
+      expect(result).toEqual({ appId: null });
+      expect(txSpy).not.toHaveBeenCalled();
+      expect(mockedAxiosGet).not.toHaveBeenCalled();
+    });
   });
 
   describe('processWebhook - happy path', () => {
@@ -109,11 +175,18 @@ describe('PandadocWebhookService', () => {
       const dataSource = buildMockDataSource({ generatedAppId: 42, saved });
       const txSpy = jest.spyOn(dataSource, 'transaction');
       const service = await buildService(dataSource);
+      mockFieldsResponse(buildFullPayload());
 
-      const result = await service.processWebhook(buildFullPayload());
+      const result = await service.processWebhook(buildEnvelope());
 
       expect(result).toEqual({ appId: 42 });
       expect(txSpy).toHaveBeenCalledTimes(1);
+      expect(mockedAxiosGet).toHaveBeenCalledWith(
+        expect.stringContaining('test-doc-id/fields'),
+        expect.objectContaining({
+          headers: { Authorization: 'API-Key test-api-key' },
+        }),
+      );
       expect(saved.Application?.email).toBe('test@example.com');
       expect(saved.Application?.appStatus).toBe(AppStatus.APP_SUBMITTED);
       expect(saved.Application?.phone).toBe('617-555-0199');
@@ -126,24 +199,24 @@ describe('PandadocWebhookService', () => {
     it('sets applicantType=LEARNER when schoolDepartment is present', async () => {
       const saved: Saved = {};
       const service = await buildService(buildMockDataSource({ saved }));
-      await service.processWebhook(buildFullPayload());
+      mockFieldsResponse(buildFullPayload());
+      await service.processWebhook(buildEnvelope());
       expect(saved.Application?.applicantType).toBe(ApplicantType.LEARNER);
     });
 
     it('sets applicantType=VOLUNTEER when schoolDepartment is empty', async () => {
       const saved: Saved = {};
       const service = await buildService(buildMockDataSource({ saved }));
-      await service.processWebhook({
-        ...buildFullPayload(),
-        Volunteer_Department: '',
-      });
+      mockFieldsResponse({ ...buildFullPayload(), Volunteer_Department: '' });
+      await service.processWebhook(buildEnvelope());
       expect(saved.Application?.applicantType).toBe(ApplicantType.VOLUNTEER);
     });
 
     it('formats proposedStartDate as YYYY-MM-DD', async () => {
       const saved: Saved = {};
       const service = await buildService(buildMockDataSource({ saved }));
-      await service.processWebhook(buildFullPayload());
+      mockFieldsResponse(buildFullPayload());
+      await service.processWebhook(buildEnvelope());
       expect(saved.Application?.proposedStartDate).toMatch(
         /^\d{4}-\d{2}-\d{2}$/,
       );
@@ -156,10 +229,11 @@ describe('PandadocWebhookService', () => {
       const dataSource = buildMockDataSource({ saved });
       const txSpy = jest.spyOn(dataSource, 'transaction');
       const service = await buildService(dataSource);
+      mockFieldsResponse({ email: 'x@example.com' });
 
-      await expect(
-        service.processWebhook({ email: 'x@example.com' }),
-      ).rejects.toThrow('Missing required PandaDoc fields');
+      await expect(service.processWebhook(buildEnvelope())).rejects.toThrow(
+        'Missing required PandaDoc fields',
+      );
 
       expect(txSpy).not.toHaveBeenCalled();
     });
@@ -169,9 +243,12 @@ describe('PandadocWebhookService', () => {
       const dataSource = buildMockDataSource({ saved });
       const txSpy = jest.spyOn(dataSource, 'transaction');
       const service = await buildService(dataSource);
+      mockFieldsResponse({
+        ...buildFullPayload(),
+        Volunteer_Phone: 'not-a-phone',
+      });
 
-      const payload = { ...buildFullPayload(), Volunteer_Phone: 'not-a-phone' };
-      await expect(service.processWebhook(payload)).rejects.toThrow(
+      await expect(service.processWebhook(buildEnvelope())).rejects.toThrow(
         BadRequestException,
       );
       expect(txSpy).not.toHaveBeenCalled();
@@ -184,7 +261,8 @@ describe('PandadocWebhookService', () => {
       const service = await buildService(
         buildMockDataSource({ failOn: 'Application', saved }),
       );
-      await expect(service.processWebhook(buildFullPayload())).rejects.toThrow(
+      mockFieldsResponse(buildFullPayload());
+      await expect(service.processWebhook(buildEnvelope())).rejects.toThrow(
         'Forced failure on Application',
       );
       expect(saved.Application).toBeUndefined();
@@ -197,7 +275,8 @@ describe('PandadocWebhookService', () => {
       const service = await buildService(
         buildMockDataSource({ failOn: 'CandidateInfo', saved }),
       );
-      await expect(service.processWebhook(buildFullPayload())).rejects.toThrow(
+      mockFieldsResponse(buildFullPayload());
+      await expect(service.processWebhook(buildEnvelope())).rejects.toThrow(
         'Forced failure on CandidateInfo',
       );
       expect(saved.LearnerInfo).toBeUndefined();
@@ -208,7 +287,8 @@ describe('PandadocWebhookService', () => {
       const service = await buildService(
         buildMockDataSource({ failOn: 'LearnerInfo', saved }),
       );
-      await expect(service.processWebhook(buildFullPayload())).rejects.toThrow(
+      mockFieldsResponse(buildFullPayload());
+      await expect(service.processWebhook(buildEnvelope())).rejects.toThrow(
         'Forced failure on LearnerInfo',
       );
     });
