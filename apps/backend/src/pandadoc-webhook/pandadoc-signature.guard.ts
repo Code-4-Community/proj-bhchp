@@ -36,8 +36,36 @@ export class PandadocSignatureGuard implements CanActivate {
     return `${signature.slice(0, 4)}...${signature.slice(-4)}`;
   }
 
+  private logIncomingRequestSnapshot(request: Request): void {
+    try {
+      const snapshot = {
+        method: request.method,
+        originalUrl: request.originalUrl,
+        url: request.url,
+        baseUrl: request.baseUrl,
+        path: request.path,
+        ip: request.ip,
+        params: request.params,
+        query: request.query,
+        headers: request.headers,
+        body: request.body,
+      };
+
+      this.logger.debug(
+        `[PandaDoc] Incoming request snapshot: ${JSON.stringify(snapshot)}`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `[PandaDoc] Failed to serialize incoming request snapshot error=${message}`,
+      );
+    }
+  }
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
+    this.logIncomingRequestSnapshot(request);
+
     const signature = request.headers[SIGNATURE_HEADER];
     const provided = Array.isArray(signature) ? signature[0] : signature;
     const sourceIp = request.ip ?? request.socket?.remoteAddress ?? 'unknown';
