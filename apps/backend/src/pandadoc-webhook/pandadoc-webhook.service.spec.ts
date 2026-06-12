@@ -53,12 +53,14 @@ interface Saved {
   Application?: Record<string, unknown>;
   CandidateInfo?: Record<string, unknown>;
   LearnerInfo?: Record<string, unknown>;
+  User?: Record<string, unknown>;
 }
 
 function buildMockDataSource(opts: {
   generatedAppId?: number;
-  failOn?: 'Application' | 'CandidateInfo' | 'LearnerInfo';
+  failOn?: 'Application' | 'CandidateInfo' | 'LearnerInfo' | 'User';
   saved: Saved;
+  existingUser?: Record<string, unknown> | null;
 }): DataSource {
   const generatedAppId = opts.generatedAppId ?? 42;
 
@@ -81,6 +83,7 @@ function buildMockDataSource(opts: {
         return stored;
       },
     ),
+    findOneBy: jest.fn(async () => opts.existingUser ?? null),
   } as unknown as EntityManager;
 
   return {
@@ -241,6 +244,60 @@ describe('PandadocWebhookService', () => {
       expect(saved.Application?.proposedStartDate).toMatch(
         /^\d{4}-\d{2}-\d{2}$/,
       );
+    });
+  });
+
+  describe('processWebhook - user creation', () => {
+    it('creates a User record when _firstName is present and no user exists', async () => {
+      const saved: Saved = {};
+      const service = await buildService(
+        buildMockDataSource({ generatedAppId: 42, saved }),
+      );
+
+      await service.processWebhook({
+        ...buildFullPayload(),
+        _firstName: 'Jane',
+        _lastName: 'Doe',
+      });
+
+      expect(saved.User).toEqual(
+        expect.objectContaining({
+          email: 'test@example.com',
+          firstName: 'Jane',
+          lastName: 'Doe',
+        }),
+      );
+    });
+
+    it('skips User creation when _firstName is absent', async () => {
+      const saved: Saved = {};
+      const service = await buildService(buildMockDataSource({ saved }));
+
+      await service.processWebhook(buildFullPayload());
+
+      expect(saved.User).toBeUndefined();
+    });
+
+    it('skips User creation when a user with that email already exists', async () => {
+      const saved: Saved = {};
+      const service = await buildService(
+        buildMockDataSource({
+          saved,
+          existingUser: {
+            email: 'test@example.com',
+            firstName: 'Old',
+            lastName: 'Name',
+          },
+        }),
+      );
+
+      await service.processWebhook({
+        ...buildFullPayload(),
+        _firstName: 'Jane',
+        _lastName: 'Doe',
+      });
+
+      expect(saved.User).toBeUndefined();
     });
   });
 

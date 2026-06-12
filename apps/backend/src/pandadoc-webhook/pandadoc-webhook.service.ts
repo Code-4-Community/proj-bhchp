@@ -13,6 +13,8 @@ import { AppStatus, ApplicantType, PHONE_REGEX } from '../applications/types';
 import { Application } from '../applications/application.entity';
 import { CandidateInfo } from '../candidate-info/candidate-info.entity';
 import { LearnerInfo } from '../learner-info/learner-info.entity';
+import { User } from '../users/user.entity';
+import { UserType } from '../users/types';
 
 const PANDADOC_API_BASE = 'https://api.pandadoc.com/public/v1';
 
@@ -148,7 +150,12 @@ export class PandadocWebhookService {
       fields: Array<{
         field_id: string;
         value: unknown;
-        assigned_to?: { email?: string; phone?: string };
+        assigned_to?: {
+          email?: string;
+          phone?: string;
+          first_name?: string;
+          last_name?: string;
+        };
       }>;
     }>(`${PANDADOC_API_BASE}/documents/${documentId}/fields`, {
       headers: { Authorization: `API-Key ${apiKey}` },
@@ -161,8 +168,8 @@ export class PandadocWebhookService {
 
     const result = Object.fromEntries(fields.map((f) => [f.field_id, f.value]));
 
-    // Email and phone are not form fields — inject from recipient assigned_to.
-    // PandaDoc populates one or the other depending on how the doc was sent.
+    // Email, phone, and name are not form fields — inject from recipient assigned_to.
+    // PandaDoc populates these depending on how the doc was sent.
     const recipient = fields[0]?.assigned_to;
     if (!result['email'] && recipient?.email) {
       result['email'] = recipient.email;
@@ -171,6 +178,18 @@ export class PandadocWebhookService {
     if (!result['Volunteer_Phone'] && recipient?.phone) {
       result['Volunteer_Phone'] = recipient.phone;
       this.logger.debug(`[PandaDoc] Injected phone from recipient assigned_to`);
+    }
+    if (recipient?.first_name) {
+      result['_firstName'] = recipient.first_name.trim();
+      this.logger.debug(
+        `[PandaDoc] Injected firstName from recipient assigned_to`,
+      );
+    }
+    if (recipient?.last_name) {
+      result['_lastName'] = recipient.last_name.trim();
+      this.logger.debug(
+        `[PandaDoc] Injected lastName from recipient assigned_to`,
+      );
     }
 
     // Resume and cover letter each have two upload slots (*1 = supervisor, *2 = applicant).
@@ -265,6 +284,9 @@ export class PandadocWebhookService {
         dateOfBirth: this.formatDate(buckets.learnerInfo['dateOfBirth']),
       };
 
+      const firstName = String(payload['_firstName'] ?? '').trim();
+      const lastName = String(payload['_lastName'] ?? '').trim();
+
       const email = String(buckets.candidateInfo['email'] ?? '');
       const normalizedEmail = email.trim();
       if (!normalizedEmail) {
@@ -320,6 +342,32 @@ export class PandadocWebhookService {
           this.logger.debug(
             `[PandaDoc] LearnerInfo saved appId=${saved.appId}`,
           );
+
+          if (firstName) {
+            const existingUser = await em.findOneBy(User, {
+              email: normalizedEmail,
+            });
+            if (!existingUser) {
+              const user = em.create(User, {
+                email: normalizedEmail,
+                firstName,
+                lastName,
+                userType: UserType.STANDARD,
+              });
+              await em.save(user);
+              this.logger.debug(
+                `[PandaDoc] User record created emailMask=${this.maskEmail(
+                  normalizedEmail,
+                )}`,
+              );
+            } else {
+              this.logger.debug(
+                `[PandaDoc] User already exists, skipping creation emailMask=${this.maskEmail(
+                  normalizedEmail,
+                )}`,
+              );
+            }
+          }
 
           this.logger.debug(
             `[PandaDoc] Transaction complete appId=${saved.appId}`,
