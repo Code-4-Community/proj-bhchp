@@ -520,7 +520,7 @@ export const PANDADOC_FIELD_MAP: ValidPayload[] = [
     pandaDocKey: 'Volunteer_DOB',
     backendField: 'dateOfBirth',
     transform: (value: string) => parseDate(value),
-    required: true,
+    required: false,
     targetTable: 'learnerInfo',
   },
   {

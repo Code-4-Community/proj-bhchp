@@ -302,6 +302,19 @@ describe('PandadocWebhookService', () => {
   });
 
   describe('processWebhook - validation', () => {
+    it('does not throw when Volunteer_DOB is missing', async () => {
+      const saved: Saved = {};
+      const service = await buildService(buildMockDataSource({ saved }));
+
+      const { Volunteer_DOB, ...payloadWithoutDob } = buildFullPayload();
+
+      await expect(service.processWebhook(payloadWithoutDob)).resolves.toEqual({
+        appId: 42,
+      });
+      expect(Volunteer_DOB).toBe('01-15-2000');
+      expect(saved.LearnerInfo?.dateOfBirth).toBeUndefined();
+    });
+
     it('throws for missing required PandaDoc fields', async () => {
       const saved: Saved = {};
       const dataSource = buildMockDataSource({ saved });
