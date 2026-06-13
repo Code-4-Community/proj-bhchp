@@ -220,21 +220,22 @@ describe('PandadocWebhookService', () => {
       expect(saved.LearnerInfo).toEqual(expect.objectContaining({ appId: 42 }));
     });
 
-    it('sets applicantType=LEARNER when schoolDepartment is present', async () => {
+    it('sets applicantType=LEARNER when school is present', async () => {
       const saved: Saved = {};
       const service = await buildService(buildMockDataSource({ saved }));
       await service.processWebhook(buildFullPayload());
       expect(saved.Application?.applicantType).toBe(ApplicantType.LEARNER);
     });
 
-    it('sets applicantType=VOLUNTEER when schoolDepartment is empty', async () => {
+    it('sets applicantType=LEARNER when school affiliation is present even if schoolDepartment is empty', async () => {
       const saved: Saved = {};
       const service = await buildService(buildMockDataSource({ saved }));
       await service.processWebhook({
         ...buildFullPayload(),
+        Volunteer_Affiliation: 'Boston University',
         Volunteer_Department: '',
       });
-      expect(saved.Application?.applicantType).toBe(ApplicantType.VOLUNTEER);
+      expect(saved.Application?.applicantType).toBe(ApplicantType.LEARNER);
     });
 
     it('formats proposedStartDate as YYYY-MM-DD', async () => {

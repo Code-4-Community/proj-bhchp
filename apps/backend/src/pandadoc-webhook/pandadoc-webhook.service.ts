@@ -258,7 +258,7 @@ export class PandadocWebhookService {
         } fields)`,
       );
 
-      const applicantType = buckets.learnerInfo['schoolDepartment']
+      const applicantType = buckets.learnerInfo['school']
         ? ApplicantType.LEARNER
         : ApplicantType.VOLUNTEER;
 
@@ -271,13 +271,14 @@ export class PandadocWebhookService {
         ),
         endDate: this.formatDate(buckets.application['endDate']),
       };
+      const applicationRecord = applicationData as Record<string, unknown>;
 
       this.logger.debug(
         `[PandaDoc] Prepared application record applicantType=${applicantType} phoneMask=${this.maskPhone(
-          applicationData['phone'],
+          applicationRecord['phone'],
         )}`,
       );
-      this.validatePhone(applicationData['phone']);
+      this.validatePhone(applicationRecord['phone']);
 
       const learnerData = {
         ...buckets.learnerInfo,
