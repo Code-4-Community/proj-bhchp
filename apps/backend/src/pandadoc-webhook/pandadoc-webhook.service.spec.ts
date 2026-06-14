@@ -6,6 +6,7 @@ import axios from 'axios';
 import { DataSource, EntityManager } from 'typeorm';
 import { PandadocWebhookService } from './pandadoc-webhook.service';
 import { AppStatus, ApplicantType } from '../applications/types';
+import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 
 jest.mock('axios');
 
@@ -106,10 +107,27 @@ function buildWebhookEvent(documentId = 'doc-abc123') {
   return [{ event: 'document_completed_pdf_ready', data: { id: documentId } }];
 }
 
+function buildMockS3Service(): Pick<AWSS3Service, 'uploadWithKey'> {
+  return {
+    uploadWithKey: jest
+      .fn()
+      .mockImplementation(
+        async (_buffer: Buffer, fileName: string, _mimeType: string) => ({
+          key: `${fileName.replace(/\.pdf$/i, '')}-stored.pdf`,
+          url: `https://bucket.s3.us-east-2.amazonaws.com/${fileName.replace(
+            /\.pdf$/i,
+            '',
+          )}-stored.pdf`,
+        }),
+      ),
+  };
+}
+
 describe('PandadocWebhookService', () => {
   async function buildService(
     dataSource: DataSource,
     configService?: ConfigService,
+    awsS3Service?: Pick<AWSS3Service, 'uploadWithKey'>,
   ): Promise<PandadocWebhookService> {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -118,6 +136,10 @@ describe('PandadocWebhookService', () => {
         {
           provide: ConfigService,
           useValue: configService ?? buildMockConfigService(),
+        },
+        {
+          provide: AWSS3Service,
+          useValue: awsS3Service ?? buildMockS3Service(),
         },
       ],
     }).compile();
@@ -137,21 +159,42 @@ describe('PandadocWebhookService', () => {
   describe('handleIncomingWebhook', () => {
     it('fetches fields from PandaDoc API and creates the application', async () => {
       const saved: Saved = {};
+      const s3Service = buildMockS3Service();
       const service = await buildService(
         buildMockDataSource({ generatedAppId: 99, saved }),
+        undefined,
+        s3Service,
       );
 
-      mockedAxios.get = jest.fn().mockResolvedValue({
-        data: {
-          fields: Object.entries(buildFullPayload()).map(
-            ([field_id, value]) => ({
+      mockedAxios.get = jest
+        .fn()
+        .mockResolvedValueOnce({
+          data: {
+            fields: Object.entries({
+              ...buildFullPayload(),
+              Volunteer_ResumeUpload2: {
+                name: 'resume.pdf',
+                url: 'https://files.pandadoc.test/resume.pdf',
+              },
+              Volunteer_CoverletterUpload2: {
+                name: 'cover-letter.pdf',
+                url: 'https://files.pandadoc.test/cover-letter.pdf',
+              },
+              Volunteer_SyllabusUpload: {
+                name: 'syllabus.pdf',
+                url: 'https://files.pandadoc.test/syllabus.pdf',
+              },
+            }).map(([field_id, value]) => ({
               field_id,
               value,
               assigned_to: { email: 'test@example.com' },
-            }),
-          ),
-        },
-      });
+            })),
+          },
+        })
+        .mockResolvedValue({
+          data: Buffer.from('file-bytes'),
+          headers: { 'content-type': 'application/pdf' },
+        });
 
       const result = await service.handleIncomingWebhook(
         buildWebhookEvent('doc-xyz'),
@@ -164,6 +207,30 @@ describe('PandadocWebhookService', () => {
           headers: { Authorization: 'API-Key test-api-key' },
         }),
       );
+      expect(s3Service.uploadWithKey).toHaveBeenCalledTimes(3);
+      expect(s3Service.uploadWithKey).toHaveBeenNthCalledWith(
+        1,
+        expect.any(Buffer),
+        'resumes/resume.pdf',
+        'application/pdf',
+      );
+      expect(s3Service.uploadWithKey).toHaveBeenNthCalledWith(
+        2,
+        expect.any(Buffer),
+        'cover-letters/cover-letter.pdf',
+        'application/pdf',
+      );
+      expect(s3Service.uploadWithKey).toHaveBeenNthCalledWith(
+        3,
+        expect.any(Buffer),
+        'syllabus/syllabus.pdf',
+        'application/pdf',
+      );
+      expect(saved.Application?.resume).toBe('resumes/resume-stored.pdf');
+      expect(saved.Application?.coverLetter).toBe(
+        'cover-letters/cover-letter-stored.pdf',
+      );
+      expect(saved.LearnerInfo?.syllabus).toBe('syllabus/syllabus-stored.pdf');
       expect(saved.Application?.email).toBe('test@example.com');
     });
 

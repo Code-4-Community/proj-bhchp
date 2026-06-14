@@ -13,10 +13,33 @@ import { AppStatus, ApplicantType, PHONE_REGEX } from '../applications/types';
 import { Application } from '../applications/application.entity';
 import { CandidateInfo } from '../candidate-info/candidate-info.entity';
 import { LearnerInfo } from '../learner-info/learner-info.entity';
+import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 import { User } from '../users/user.entity';
 import { UserType } from '../users/types';
 
 const PANDADOC_API_BASE = 'https://api.pandadoc.com/public/v1';
+const PANDADOC_FILE_FIELDS = [
+  {
+    fieldId: 'Volunteer_ResumeUpload2',
+    folder: 'resumes',
+    label: 'resume',
+  },
+  {
+    fieldId: 'Volunteer_CoverletterUpload2',
+    folder: 'cover-letters',
+    label: 'coverLetter',
+  },
+  {
+    fieldId: 'Volunteer_SyllabusUpload',
+    folder: 'syllabus',
+    label: 'syllabus',
+  },
+] as const;
+
+type PandaDocFileValue = {
+  name?: string;
+  url?: string;
+};
 
 /**
  * Orchestrates creation of Application, CandidateInfo, and LearnerInfo
@@ -33,6 +56,7 @@ export class PandadocWebhookService {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    private readonly awsS3Service: AWSS3Service,
   ) {}
 
   private maskEmail(email: string): string {
@@ -79,6 +103,72 @@ export class PandadocWebhookService {
     const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
     const dd = String(date.getUTCDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
+  }
+
+  private isPandaDocFileValue(value: unknown): value is PandaDocFileValue {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private inferMimeType(fileName: string, contentType?: string): string {
+    if (contentType && contentType.trim()) {
+      return contentType;
+    }
+
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.doc')) return 'application/msword';
+    if (lower.endsWith('.docx')) {
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+    if (lower.endsWith('.txt')) return 'text/plain';
+    return 'application/octet-stream';
+  }
+
+  private async uploadPandaDocFiles(
+    payload: Record<string, unknown>,
+    apiKey: string,
+  ): Promise<void> {
+    for (const fileField of PANDADOC_FILE_FIELDS) {
+      const rawValue = payload[fileField.fieldId];
+      if (!this.isPandaDocFileValue(rawValue)) {
+        continue;
+      }
+
+      const fileName = rawValue.name?.trim();
+      const fileUrl = rawValue.url?.trim();
+      if (!fileName || !fileUrl) {
+        this.logger.warn(
+          `[PandaDoc] Skipping ${fileField.label} upload field=${fileField.fieldId} because name or url is missing`,
+        );
+        continue;
+      }
+
+      this.logger.log(
+        `[PandaDoc] Downloading PandaDoc ${fileField.label} field=${fileField.fieldId} fileName=${fileName}`,
+      );
+
+      const response = await axios.get<ArrayBuffer>(fileUrl, {
+        headers: { Authorization: `API-Key ${apiKey}` },
+        responseType: 'arraybuffer',
+      });
+
+      const contentTypeHeader = response.headers['content-type'];
+      const mimeType = this.inferMimeType(
+        fileName,
+        typeof contentTypeHeader === 'string' ? contentTypeHeader : undefined,
+      );
+      const uploadBaseName = `${fileField.folder}/${fileName}`;
+      const uploadResult = await this.awsS3Service.uploadWithKey(
+        Buffer.from(response.data),
+        uploadBaseName,
+        mimeType,
+      );
+
+      payload[fileField.fieldId] = uploadResult.key;
+      this.logger.log(
+        `[PandaDoc] Uploaded ${fileField.label} to S3 field=${fileField.fieldId} s3Key=${uploadResult.key}`,
+      );
+    }
   }
 
   /**
@@ -203,6 +293,8 @@ export class PandadocWebhookService {
       result['Volunteer_CoverletterUpload2'] =
         result['Volunteer_CoverletterUpload1'];
     }
+
+    await this.uploadPandaDocFiles(result, apiKey);
 
     return result;
   }
