@@ -16,22 +16,23 @@ export const QuestionFrame: React.FC<{
           {frameProps.question}
         </Heading>
         <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} gap={2}>
-          {frameProps.answers.map((answer) => (
-            <Button
-              borderRadius="full"
-              px={4}
-              py={3}
-              minW="auto"
-              w="fit-content"
-              bg="#008CA7"
-              color="white"
-              fontFamily="Poppins, sans-serif"
-              border="1px solid #013594"
-              key={answer}
-            >
-              {answer}
-            </Button>
-          ))}
+          {frameProps.answers &&
+            frameProps.answers.map((answer) => (
+              <Button
+                borderRadius="full"
+                px={4}
+                py={3}
+                minW="auto"
+                w="fit-content"
+                bg="#008CA7"
+                color="white"
+                fontFamily="Poppins, sans-serif"
+                border="1px solid #013594"
+                key={answer}
+              >
+                {answer}
+              </Button>
+            ))}
         </SimpleGrid>
       </Flex>
     </Box>

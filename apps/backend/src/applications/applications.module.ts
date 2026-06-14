@@ -13,6 +13,8 @@ import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { CandidateInfo } from '../candidate-info/candidate-info.entity';
 import { EmailService } from '../util/email/email.service';
 import { DisciplinesModule } from '../disciplines/disciplines.module';
+import { CandidateProvisioningService } from './candidate-provisioning.service';
+import { cognitoIdentityProviderFactory } from '../admin-provisioning/cognito.provider';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { DisciplinesModule } from '../disciplines/disciplines.module';
   controllers: [ApplicationsController],
   providers: [
     ApplicationsService,
+    CandidateProvisioningService,
+    cognitoIdentityProviderFactory,
     CandidateInfoService,
     EmailService,
     CurrentUserInterceptor,

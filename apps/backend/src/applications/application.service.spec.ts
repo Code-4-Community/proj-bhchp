@@ -17,6 +17,7 @@ import { UsersService } from '../users/users.service';
 import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 import { DisciplinesService } from '../disciplines/disciplines.service';
+import { CandidateProvisioningService } from './candidate-provisioning.service';
 
 jest.mock('../util/aws-exports', () => ({
   __esModule: true,
@@ -156,6 +157,10 @@ describe('ApplicationsService', () => {
     uploadWithKey: jest.fn(),
   };
 
+  const mockCandidateProvisioningService = {
+    provisionSubmittedCandidate: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -183,6 +188,10 @@ describe('ApplicationsService', () => {
         {
           provide: AWSS3Service,
           useValue: mockS3Service,
+        },
+        {
+          provide: CandidateProvisioningService,
+          useValue: mockCandidateProvisioningService,
         },
       ],
     }).compile();
@@ -662,20 +671,43 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
       };
 
+      mockRepository.count.mockResolvedValue(0);
       mockRepository.save.mockResolvedValue(savedApplication);
 
       const result = await service.create(dummyCreateApplicationDto);
 
       expect(repository.save).toHaveBeenCalled();
       expect(result).toEqual(savedApplication);
-      expect(mockEmailService.queueEmail).toHaveBeenCalledWith(
-        savedApplication.email,
-        'Your Application Has Been Received',
-        expect.stringContaining('Thank you for submitting'),
-      );
+      expect(
+        mockCandidateProvisioningService.provisionSubmittedCandidate,
+      ).toHaveBeenCalledWith(savedApplication, true);
     });
 
-    it('should pass along email service errors without information loss', async () => {
+    it('should provision repeat applicants without first-time credentials', async () => {
+      const savedApplication: Application = {
+        appId: 4,
+        ...dummyCreateApplicationDto,
+        email: 'jane.doe@example.com',
+        proposedStartDate: new Date('2024-01-01'),
+        endDate: new Date('2024-06-30'),
+        resume: 'janedoe_resume_2_6_2026.pdf',
+        coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
+        actualStartDate: undefined,
+      };
+
+      mockRepository.count.mockResolvedValue(2);
+      mockRepository.save.mockResolvedValue(savedApplication);
+
+      await service.create(dummyCreateApplicationDto);
+
+      expect(
+        mockCandidateProvisioningService.provisionSubmittedCandidate,
+      ).toHaveBeenCalledWith(savedApplication, false);
+    });
+
+    it('should pass along candidate provisioning errors without information loss', async () => {
       const savedApplication: Application = {
         appId: 3,
         ...dummyCreateApplicationDto,
@@ -689,8 +721,9 @@ describe('ApplicationsService', () => {
         actualStartDate: undefined,
       };
 
+      mockRepository.count.mockResolvedValue(0);
       mockRepository.save.mockResolvedValue(savedApplication);
-      mockEmailService.queueEmail.mockRejectedValueOnce(
+      mockCandidateProvisioningService.provisionSubmittedCandidate.mockRejectedValueOnce(
         new Error('Failed to send email'),
       );
 
