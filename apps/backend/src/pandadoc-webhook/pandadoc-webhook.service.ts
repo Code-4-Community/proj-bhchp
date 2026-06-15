@@ -5,17 +5,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectDataSource } from '@nestjs/typeorm';
 import axios from 'axios';
-import { DataSource, EntityManager } from 'typeorm';
 import { pandadocMapper } from '../pandadoc-helpers/pandadoc-mapper';
 import { AppStatus, ApplicantType, PHONE_REGEX } from '../applications/types';
-import { Application } from '../applications/application.entity';
-import { CandidateInfo } from '../candidate-info/candidate-info.entity';
-import { LearnerInfo } from '../learner-info/learner-info.entity';
+import { ApplicationsService } from '../applications/applications.service';
+import { CreateApplicationDto } from '../applications/dto/create-application.request.dto';
+import { CreateLearnerInfoDto } from '../learner-info/dto/create-learner-info.request.dto';
+import { LearnerInfoService } from '../learner-info/learner-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
-import { User } from '../users/user.entity';
-import { UserType } from '../users/types';
 
 const PANDADOC_API_BASE = 'https://api.pandadoc.com/public/v1';
 const PANDADOC_FILE_FIELDS = [
@@ -54,9 +51,10 @@ export class PandadocWebhookService {
   private readonly logger = new Logger(PandadocWebhookService.name);
 
   constructor(
-    @InjectDataSource() private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
     private readonly awsS3Service: AWSS3Service,
+    private readonly applicationsService: ApplicationsService,
+    private readonly learnerInfoService: LearnerInfoService,
   ) {}
 
   private maskEmail(email: string): string {
@@ -373,12 +371,10 @@ export class PandadocWebhookService {
       this.validatePhone(applicationRecord['phone']);
 
       const learnerData = {
-        ...buckets.learnerInfo,
+        ...(buckets.learnerInfo as Record<string, unknown>),
         dateOfBirth: this.formatDate(buckets.learnerInfo['dateOfBirth']),
       };
-
-      const firstName = String(payload['_firstName'] ?? '').trim();
-      const lastName = String(payload['_lastName'] ?? '').trim();
+      const learnerRecord = learnerData as Record<string, unknown>;
 
       const email = String(buckets.candidateInfo['email'] ?? '');
       const normalizedEmail = email.trim();
@@ -392,89 +388,44 @@ export class PandadocWebhookService {
       }
 
       this.logger.log(
-        `[PandaDoc] Creating application transaction emailMask=${this.maskEmail(
+        `[PandaDoc] Delegating application creation emailMask=${this.maskEmail(
           normalizedEmail,
         )} applicantType=${applicantType}`,
       );
 
-      const appId = await this.dataSource.transaction(
-        async (em: EntityManager) => {
-          this.logger.debug('[PandaDoc] Transaction started');
-
-          this.logger.debug('[PandaDoc] Persisting Application entity');
-          const application = em.create(Application, applicationData);
-          const saved = await em.save(application);
-          this.logger.debug(
-            `[PandaDoc] Application saved appId=${saved.appId}`,
-          );
-
-          this.logger.debug(
-            `[PandaDoc] Persisting CandidateInfo entity appId=${
-              saved.appId
-            } emailMask=${this.maskEmail(normalizedEmail)}`,
-          );
-          const candidate = em.create(CandidateInfo, {
-            appId: saved.appId,
-            email: normalizedEmail,
-          });
-          await em.save(candidate);
-          this.logger.debug(
-            `[PandaDoc] CandidateInfo saved appId=${saved.appId}`,
-          );
-
-          this.logger.debug(
-            `[PandaDoc] Persisting LearnerInfo entity appId=${
-              saved.appId
-            } learnerFieldCount=${Object.keys(learnerData).length}`,
-          );
-          const learner = em.create(LearnerInfo, {
-            ...learnerData,
-            appId: saved.appId,
-          });
-          await em.save(learner);
-          this.logger.debug(
-            `[PandaDoc] LearnerInfo saved appId=${saved.appId}`,
-          );
-
-          if (firstName) {
-            const existingUser = await em.findOneBy(User, {
-              email: normalizedEmail,
-            });
-            if (!existingUser) {
-              const user = em.create(User, {
-                email: normalizedEmail,
-                firstName,
-                lastName,
-                userType: UserType.STANDARD,
-              });
-              await em.save(user);
-              this.logger.debug(
-                `[PandaDoc] User record created emailMask=${this.maskEmail(
-                  normalizedEmail,
-                )}`,
-              );
-            } else {
-              this.logger.debug(
-                `[PandaDoc] User already exists, skipping creation emailMask=${this.maskEmail(
-                  normalizedEmail,
-                )}`,
-              );
-            }
-          }
-
-          this.logger.debug(
-            `[PandaDoc] Transaction complete appId=${saved.appId}`,
-          );
-          return saved.appId;
-        },
+      const createdApplication = await this.applicationsService.create(
+        applicationData as CreateApplicationDto,
       );
+
+      this.logger.debug(
+        `[PandaDoc] ApplicationsService.create complete appId=${createdApplication.appId}`,
+      );
+
+      if (learnerRecord['school']) {
+        this.logger.debug(
+          `[PandaDoc] Delegating learner info creation appId=${
+            createdApplication.appId
+          } learnerFieldCount=${Object.keys(learnerData).length}`,
+        );
+        const learnerCreateData = learnerData as unknown as Omit<
+          CreateLearnerInfoDto,
+          'appId'
+        >;
+        await this.learnerInfoService.create({
+          ...learnerCreateData,
+          appId: createdApplication.appId,
+        });
+        this.logger.debug(
+          `[PandaDoc] LearnerInfoService.create complete appId=${createdApplication.appId}`,
+        );
+      }
 
       this.logger.log(
-        `[PandaDoc] Webhook processing complete appId=${appId} durationMs=${
-          Date.now() - startedAt
-        }`,
+        `[PandaDoc] Webhook processing complete appId=${
+          createdApplication.appId
+        } durationMs=${Date.now() - startedAt}`,
       );
-      return { appId };
+      return { appId: createdApplication.appId };
     } catch (error) {
       const durationMs = Date.now() - startedAt;
       const message = error instanceof Error ? error.message : String(error);

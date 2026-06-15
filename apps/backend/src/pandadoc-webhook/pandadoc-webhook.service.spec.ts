@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getDataSourceToken } from '@nestjs/typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { DataSource, EntityManager } from 'typeorm';
 import { PandadocWebhookService } from './pandadoc-webhook.service';
 import { AppStatus, ApplicantType } from '../applications/types';
+import { ApplicationsService } from '../applications/applications.service';
+import { LearnerInfoService } from '../learner-info/learner-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 
 jest.mock('axios');
@@ -50,48 +50,6 @@ function buildFullPayload(): Record<string, unknown> {
   };
 }
 
-interface Saved {
-  Application?: Record<string, unknown>;
-  CandidateInfo?: Record<string, unknown>;
-  LearnerInfo?: Record<string, unknown>;
-  User?: Record<string, unknown>;
-}
-
-function buildMockDataSource(opts: {
-  generatedAppId?: number;
-  failOn?: 'Application' | 'CandidateInfo' | 'LearnerInfo' | 'User';
-  saved: Saved;
-  existingUser?: Record<string, unknown> | null;
-}): DataSource {
-  const generatedAppId = opts.generatedAppId ?? 42;
-
-  const em = {
-    create: (
-      entityClass: new () => unknown,
-      data: Record<string, unknown>,
-    ) => ({ __entity: entityClass.name, ...data }),
-    save: jest.fn(
-      async (entity: Record<string, unknown> & { __entity: string }) => {
-        const name = entity.__entity;
-        if (opts.failOn === name) {
-          throw new Error(`Forced failure on ${name}`);
-        }
-        const stored = { ...entity };
-        if (name === 'Application') {
-          stored.appId = generatedAppId;
-        }
-        opts.saved[name as keyof Saved] = stored;
-        return stored;
-      },
-    ),
-    findOneBy: jest.fn(async () => opts.existingUser ?? null),
-  } as unknown as EntityManager;
-
-  return {
-    transaction: async (cb: (em: EntityManager) => Promise<unknown>) => cb(em),
-  } as unknown as DataSource;
-}
-
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 function buildMockConfigService(apiKey = 'test-api-key'): ConfigService {
@@ -123,16 +81,31 @@ function buildMockS3Service(): Pick<AWSS3Service, 'uploadWithKey'> {
   };
 }
 
+function buildMockApplicationsService(generatedAppId = 42) {
+  return {
+    create: jest.fn(async (dto) => ({
+      appId: generatedAppId,
+      ...dto,
+    })),
+  } as unknown as Pick<ApplicationsService, 'create'>;
+}
+
+function buildMockLearnerInfoService() {
+  return {
+    create: jest.fn(async (dto) => dto),
+  } as unknown as Pick<LearnerInfoService, 'create'>;
+}
+
 describe('PandadocWebhookService', () => {
   async function buildService(
-    dataSource: DataSource,
     configService?: ConfigService,
     awsS3Service?: Pick<AWSS3Service, 'uploadWithKey'>,
+    applicationsService?: Pick<ApplicationsService, 'create'>,
+    learnerInfoService?: Pick<LearnerInfoService, 'create'>,
   ): Promise<PandadocWebhookService> {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PandadocWebhookService,
-        { provide: getDataSourceToken(), useValue: dataSource },
         {
           provide: ConfigService,
           useValue: configService ?? buildMockConfigService(),
@@ -140,6 +113,14 @@ describe('PandadocWebhookService', () => {
         {
           provide: AWSS3Service,
           useValue: awsS3Service ?? buildMockS3Service(),
+        },
+        {
+          provide: ApplicationsService,
+          useValue: applicationsService ?? buildMockApplicationsService(),
+        },
+        {
+          provide: LearnerInfoService,
+          useValue: learnerInfoService ?? buildMockLearnerInfoService(),
         },
       ],
     }).compile();
@@ -151,19 +132,20 @@ describe('PandadocWebhookService', () => {
   });
 
   it('should be defined', async () => {
-    const saved: Saved = {};
-    const service = await buildService(buildMockDataSource({ saved }));
+    const service = await buildService();
     expect(service).toBeDefined();
   });
 
   describe('handleIncomingWebhook', () => {
-    it('fetches fields from PandaDoc API and creates the application', async () => {
-      const saved: Saved = {};
+    it('fetches fields from PandaDoc API and delegates creation through existing services', async () => {
       const s3Service = buildMockS3Service();
+      const applicationsService = buildMockApplicationsService(99);
+      const learnerInfoService = buildMockLearnerInfoService();
       const service = await buildService(
-        buildMockDataSource({ generatedAppId: 99, saved }),
         undefined,
         s3Service,
+        applicationsService,
+        learnerInfoService,
       );
 
       mockedAxios.get = jest
@@ -226,17 +208,24 @@ describe('PandadocWebhookService', () => {
         'syllabus/syllabus.pdf',
         'application/pdf',
       );
-      expect(saved.Application?.resume).toBe('resumes/resume-stored.pdf');
-      expect(saved.Application?.coverLetter).toBe(
-        'cover-letters/cover-letter-stored.pdf',
+      expect(applicationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'test@example.com',
+          appStatus: AppStatus.APP_SUBMITTED,
+          resume: 'resumes/resume-stored.pdf',
+          coverLetter: 'cover-letters/cover-letter-stored.pdf',
+        }),
       );
-      expect(saved.LearnerInfo?.syllabus).toBe('syllabus/syllabus-stored.pdf');
-      expect(saved.Application?.email).toBe('test@example.com');
+      expect(learnerInfoService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          appId: 99,
+          syllabus: 'syllabus/syllabus-stored.pdf',
+        }),
+      );
     });
 
     it('throws BadRequestException when payload is not an array of events', async () => {
-      const saved: Saved = {};
-      const service = await buildService(buildMockDataSource({ saved }));
+      const service = await buildService();
 
       await expect(service.handleIncomingWebhook({})).rejects.toThrow(
         BadRequestException,
@@ -244,8 +233,7 @@ describe('PandadocWebhookService', () => {
     });
 
     it('throws BadRequestException when data.id is missing', async () => {
-      const saved: Saved = {};
-      const service = await buildService(buildMockDataSource({ saved }));
+      const service = await buildService();
 
       await expect(
         service.handleIncomingWebhook([
@@ -255,11 +243,7 @@ describe('PandadocWebhookService', () => {
     });
 
     it('throws InternalServerErrorException when PANDADOC_API_KEY is not set', async () => {
-      const saved: Saved = {};
-      const service = await buildService(
-        buildMockDataSource({ saved }),
-        buildMockConfigService(''),
-      );
+      const service = await buildService(buildMockConfigService(''));
 
       await expect(
         service.handleIncomingWebhook(buildWebhookEvent()),
@@ -268,111 +252,92 @@ describe('PandadocWebhookService', () => {
   });
 
   describe('processWebhook - happy path', () => {
-    it('creates all three records in a single transaction with shared appId', async () => {
-      const saved: Saved = {};
-      const dataSource = buildMockDataSource({ generatedAppId: 42, saved });
-      const txSpy = jest.spyOn(dataSource, 'transaction');
-      const service = await buildService(dataSource);
+    it('delegates application and learner creation to existing services', async () => {
+      const applicationsService = buildMockApplicationsService(42);
+      const learnerInfoService = buildMockLearnerInfoService();
+      const service = await buildService(
+        undefined,
+        undefined,
+        applicationsService,
+        learnerInfoService,
+      );
 
       const result = await service.processWebhook(buildFullPayload());
 
       expect(result).toEqual({ appId: 42 });
-      expect(txSpy).toHaveBeenCalledTimes(1);
-      expect(saved.Application?.email).toBe('test@example.com');
-      expect(saved.Application?.appStatus).toBe(AppStatus.APP_SUBMITTED);
-      expect(saved.Application?.phone).toBe('617-555-0199');
-      expect(saved.CandidateInfo).toEqual(
-        expect.objectContaining({ appId: 42, email: 'test@example.com' }),
+      expect(applicationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'test@example.com',
+          appStatus: AppStatus.APP_SUBMITTED,
+          phone: '617-555-0199',
+        }),
       );
-      expect(saved.LearnerInfo).toEqual(expect.objectContaining({ appId: 42 }));
+      expect(learnerInfoService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ appId: 42 }),
+      );
     });
 
     it('sets applicantType=LEARNER when school is present', async () => {
-      const saved: Saved = {};
-      const service = await buildService(buildMockDataSource({ saved }));
+      const applicationsService = buildMockApplicationsService();
+      const service = await buildService(
+        undefined,
+        undefined,
+        applicationsService,
+      );
+
       await service.processWebhook(buildFullPayload());
-      expect(saved.Application?.applicantType).toBe(ApplicantType.LEARNER);
+
+      expect(applicationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ applicantType: ApplicantType.LEARNER }),
+      );
     });
 
     it('sets applicantType=LEARNER when school affiliation is present even if schoolDepartment is empty', async () => {
-      const saved: Saved = {};
-      const service = await buildService(buildMockDataSource({ saved }));
+      const applicationsService = buildMockApplicationsService();
+      const service = await buildService(
+        undefined,
+        undefined,
+        applicationsService,
+      );
+
       await service.processWebhook({
         ...buildFullPayload(),
         Volunteer_Affiliation: 'Boston University',
         Volunteer_Department: '',
       });
-      expect(saved.Application?.applicantType).toBe(ApplicantType.LEARNER);
+
+      expect(applicationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ applicantType: ApplicantType.LEARNER }),
+      );
     });
 
     it('formats proposedStartDate as YYYY-MM-DD', async () => {
-      const saved: Saved = {};
-      const service = await buildService(buildMockDataSource({ saved }));
-      await service.processWebhook(buildFullPayload());
-      expect(saved.Application?.proposedStartDate).toMatch(
-        /^\d{4}-\d{2}-\d{2}$/,
-      );
-    });
-  });
-
-  describe('processWebhook - user creation', () => {
-    it('creates a User record when _firstName is present and no user exists', async () => {
-      const saved: Saved = {};
+      const applicationsService = buildMockApplicationsService();
       const service = await buildService(
-        buildMockDataSource({ generatedAppId: 42, saved }),
+        undefined,
+        undefined,
+        applicationsService,
       );
 
-      await service.processWebhook({
-        ...buildFullPayload(),
-        _firstName: 'Jane',
-        _lastName: 'Doe',
-      });
+      await service.processWebhook(buildFullPayload());
 
-      expect(saved.User).toEqual(
+      expect(applicationsService.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          email: 'test@example.com',
-          firstName: 'Jane',
-          lastName: 'Doe',
+          proposedStartDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         }),
       );
-    });
-
-    it('skips User creation when _firstName is absent', async () => {
-      const saved: Saved = {};
-      const service = await buildService(buildMockDataSource({ saved }));
-
-      await service.processWebhook(buildFullPayload());
-
-      expect(saved.User).toBeUndefined();
-    });
-
-    it('skips User creation when a user with that email already exists', async () => {
-      const saved: Saved = {};
-      const service = await buildService(
-        buildMockDataSource({
-          saved,
-          existingUser: {
-            email: 'test@example.com',
-            firstName: 'Old',
-            lastName: 'Name',
-          },
-        }),
-      );
-
-      await service.processWebhook({
-        ...buildFullPayload(),
-        _firstName: 'Jane',
-        _lastName: 'Doe',
-      });
-
-      expect(saved.User).toBeUndefined();
     });
   });
 
   describe('processWebhook - validation', () => {
     it('does not throw when Volunteer_DOB is missing', async () => {
-      const saved: Saved = {};
-      const service = await buildService(buildMockDataSource({ saved }));
+      const learnerInfoService = buildMockLearnerInfoService();
+      const service = await buildService(
+        undefined,
+        undefined,
+        undefined,
+        learnerInfoService,
+      );
 
       const { Volunteer_DOB, ...payloadWithoutDob } = buildFullPayload();
 
@@ -380,66 +345,76 @@ describe('PandadocWebhookService', () => {
         appId: 42,
       });
       expect(Volunteer_DOB).toBe('01-15-2000');
-      expect(saved.LearnerInfo?.dateOfBirth).toBeUndefined();
+      expect(learnerInfoService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ dateOfBirth: undefined }),
+      );
     });
 
     it('throws for missing required PandaDoc fields', async () => {
-      const saved: Saved = {};
-      const dataSource = buildMockDataSource({ saved });
-      const txSpy = jest.spyOn(dataSource, 'transaction');
-      const service = await buildService(dataSource);
+      const applicationsService = buildMockApplicationsService();
+      const service = await buildService(
+        undefined,
+        undefined,
+        applicationsService,
+      );
 
       await expect(
         service.processWebhook({ email: 'x@example.com' }),
       ).rejects.toThrow('Missing required PandaDoc fields');
 
-      expect(txSpy).not.toHaveBeenCalled();
+      expect(applicationsService.create).not.toHaveBeenCalled();
     });
 
     it('throws BadRequestException for malformed phone number', async () => {
-      const saved: Saved = {};
-      const dataSource = buildMockDataSource({ saved });
-      const txSpy = jest.spyOn(dataSource, 'transaction');
-      const service = await buildService(dataSource);
+      const applicationsService = buildMockApplicationsService();
+      const service = await buildService(
+        undefined,
+        undefined,
+        applicationsService,
+      );
 
       const payload = { ...buildFullPayload(), Volunteer_Phone: 'not-a-phone' };
       await expect(service.processWebhook(payload)).rejects.toThrow(
         BadRequestException,
       );
-      expect(txSpy).not.toHaveBeenCalled();
+      expect(applicationsService.create).not.toHaveBeenCalled();
     });
   });
 
-  describe('processWebhook - transaction rollback', () => {
-    it('propagates the error when Application save fails', async () => {
-      const saved: Saved = {};
+  describe('processWebhook - delegated service failures', () => {
+    it('propagates the error when ApplicationsService.create fails', async () => {
+      const applicationsService = {
+        create: jest
+          .fn()
+          .mockRejectedValue(new Error('Forced failure on Application')),
+      } as unknown as Pick<ApplicationsService, 'create'>;
+      const learnerInfoService = buildMockLearnerInfoService();
       const service = await buildService(
-        buildMockDataSource({ failOn: 'Application', saved }),
+        undefined,
+        undefined,
+        applicationsService,
+        learnerInfoService,
       );
+
       await expect(service.processWebhook(buildFullPayload())).rejects.toThrow(
         'Forced failure on Application',
       );
-      expect(saved.Application).toBeUndefined();
-      expect(saved.CandidateInfo).toBeUndefined();
-      expect(saved.LearnerInfo).toBeUndefined();
+      expect(learnerInfoService.create).not.toHaveBeenCalled();
     });
 
-    it('propagates the error when CandidateInfo save fails (transaction rolls back)', async () => {
-      const saved: Saved = {};
+    it('propagates the error when LearnerInfoService.create fails', async () => {
+      const learnerInfoService = {
+        create: jest
+          .fn()
+          .mockRejectedValue(new Error('Forced failure on LearnerInfo')),
+      } as unknown as Pick<LearnerInfoService, 'create'>;
       const service = await buildService(
-        buildMockDataSource({ failOn: 'CandidateInfo', saved }),
+        undefined,
+        undefined,
+        undefined,
+        learnerInfoService,
       );
-      await expect(service.processWebhook(buildFullPayload())).rejects.toThrow(
-        'Forced failure on CandidateInfo',
-      );
-      expect(saved.LearnerInfo).toBeUndefined();
-    });
 
-    it('propagates the error when LearnerInfo save fails (transaction rolls back)', async () => {
-      const saved: Saved = {};
-      const service = await buildService(
-        buildMockDataSource({ failOn: 'LearnerInfo', saved }),
-      );
       await expect(service.processWebhook(buildFullPayload())).rejects.toThrow(
         'Forced failure on LearnerInfo',
       );
