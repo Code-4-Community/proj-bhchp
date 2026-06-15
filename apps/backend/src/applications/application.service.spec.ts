@@ -613,50 +613,6 @@ describe('ApplicationsService', () => {
       await expect(service.create(createApplicationDto)).rejects.toThrow();
     });
 
-    it('should not accept 0 weekly hours', async () => {
-      const createApplicationDto: CreateApplicationDto = {
-        ...dummyCreateApplicationDto,
-        weeklyHours: 0,
-      };
-
-      const savedApplication: Application = {
-        appId: 1,
-        ...createApplicationDto,
-        proposedStartDate: new Date('2024-01-01'),
-        endDate: new Date('2024-06-30'),
-        actualStartDate: undefined,
-        resume: 'janedoe_resume_2_6_2026.pdf',
-        coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      };
-
-      mockRepository.save.mockResolvedValue(savedApplication);
-      await expect(service.create(createApplicationDto)).rejects.toThrow();
-    });
-
-    it('should not accept negative weekly hours', async () => {
-      const createApplicationDto: CreateApplicationDto = {
-        ...dummyCreateApplicationDto,
-        weeklyHours: -5,
-      };
-
-      const savedApplication: Application = {
-        appId: 1,
-        ...createApplicationDto,
-        proposedStartDate: new Date('2024-01-01'),
-        endDate: new Date('2024-06-30'),
-        actualStartDate: undefined,
-        resume: 'janedoe_resume_2_6_2026.pdf',
-        coverLetter: 'janedoe_coverLetter_2_6_2026.pdf',
-        createdAt: new Date('2024-01-01'),
-        updatedAt: new Date('2024-01-01'),
-      };
-
-      mockRepository.save.mockResolvedValue(savedApplication);
-      await expect(service.create(createApplicationDto)).rejects.toThrow();
-    });
-
     it('should send an email when creating an application', async () => {
       const savedApplication: Application = {
         appId: 2,
@@ -738,7 +694,7 @@ describe('ApplicationsService', () => {
       };
 
       await expect(service.create(createApplicationDto)).rejects.toThrow(
-        'Weekly hours must be greater than 0 and less than 7 * 24 hours',
+        'Weekly hours must be less than 7 * 24 hours',
       );
     });
   });

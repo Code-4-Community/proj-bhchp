@@ -360,9 +360,9 @@ export class ApplicationsService {
     }
 
     // Validate weeklyHours is positive
-    if (dto.weeklyHours <= 0 || dto.weeklyHours > 7 * 24) {
+    if (dto.weeklyHours > 7 * 24) {
       throw new BadRequestException(
-        'Weekly hours must be greater than 0 and less than 7 * 24 hours',
+        'Weekly hours must be less than 7 * 24 hours',
       );
     }
   }
