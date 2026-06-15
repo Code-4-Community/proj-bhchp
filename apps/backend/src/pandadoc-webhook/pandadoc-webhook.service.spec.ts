@@ -70,13 +70,16 @@ function buildMockS3Service(): Pick<AWSS3Service, 'uploadWithKey'> {
     uploadWithKey: jest
       .fn()
       .mockImplementation(
-        async (_buffer: Buffer, fileName: string, _mimeType: string) => ({
-          key: `${fileName.replace(/\.pdf$/i, '')}-stored.pdf`,
-          url: `https://bucket.s3.us-east-2.amazonaws.com/${fileName.replace(
-            /\.pdf$/i,
-            '',
-          )}-stored.pdf`,
-        }),
+        async (_buffer: Buffer, fileName: string, mimeType: string) => {
+          void mimeType;
+          return {
+            key: `${fileName.replace(/\.pdf$/i, '')}-stored.pdf`,
+            url: `https://bucket.s3.us-east-2.amazonaws.com/${fileName.replace(
+              /\.pdf$/i,
+              '',
+            )}-stored.pdf`,
+          };
+        },
       ),
   };
 }
@@ -87,7 +90,11 @@ function buildMockApplicationsService(generatedAppId = 42) {
       appId: generatedAppId,
       ...dto,
     })),
-  } as unknown as Pick<ApplicationsService, 'create'>;
+    sendSubmissionErrorEmail: jest.fn().mockResolvedValue(undefined),
+  } as unknown as Pick<
+    ApplicationsService,
+    'create' | 'sendSubmissionErrorEmail'
+  >;
 }
 
 function buildMockLearnerInfoService() {
@@ -100,7 +107,10 @@ describe('PandadocWebhookService', () => {
   async function buildService(
     configService?: ConfigService,
     awsS3Service?: Pick<AWSS3Service, 'uploadWithKey'>,
-    applicationsService?: Pick<ApplicationsService, 'create'>,
+    applicationsService?: Pick<
+      ApplicationsService,
+      'create' | 'sendSubmissionErrorEmail'
+    >,
     learnerInfoService?: Pick<LearnerInfoService, 'create'>,
   ): Promise<PandadocWebhookService> {
     const module: TestingModule = await Test.createTestingModule({
@@ -363,6 +373,9 @@ describe('PandadocWebhookService', () => {
       ).rejects.toThrow('Missing required PandaDoc fields');
 
       expect(applicationsService.create).not.toHaveBeenCalled();
+      expect(
+        applicationsService.sendSubmissionErrorEmail,
+      ).not.toHaveBeenCalled();
     });
 
     it('throws BadRequestException for malformed phone number', async () => {
@@ -378,6 +391,46 @@ describe('PandadocWebhookService', () => {
         BadRequestException,
       );
       expect(applicationsService.create).not.toHaveBeenCalled();
+      expect(applicationsService.sendSubmissionErrorEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'test@example.com',
+          phone: 'not-a-phone',
+        }),
+        'Phone number must be in ###-###-#### format',
+      );
+    });
+
+    it('sends the invalid-input email through ApplicationsService when create rejects a BadRequestException', async () => {
+      const applicationsService = {
+        ...buildMockApplicationsService(),
+        create: jest
+          .fn()
+          .mockRejectedValue(
+            new BadRequestException(
+              'Weekly hours must be greater than 0 and less than 7 * 24 hours',
+            ),
+          ),
+      } as unknown as Pick<
+        ApplicationsService,
+        'create' | 'sendSubmissionErrorEmail'
+      >;
+      const service = await buildService(
+        undefined,
+        undefined,
+        applicationsService,
+      );
+
+      await expect(service.processWebhook(buildFullPayload())).rejects.toThrow(
+        'Weekly hours must be greater than 0 and less than 7 * 24 hours',
+      );
+
+      expect(applicationsService.sendSubmissionErrorEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'test@example.com',
+          weeklyHours: 10,
+        }),
+        'Weekly hours must be greater than 0 and less than 7 * 24 hours',
+      );
     });
   });
 
@@ -387,7 +440,11 @@ describe('PandadocWebhookService', () => {
         create: jest
           .fn()
           .mockRejectedValue(new Error('Forced failure on Application')),
-      } as unknown as Pick<ApplicationsService, 'create'>;
+        sendSubmissionErrorEmail: jest.fn().mockResolvedValue(undefined),
+      } as unknown as Pick<
+        ApplicationsService,
+        'create' | 'sendSubmissionErrorEmail'
+      >;
       const learnerInfoService = buildMockLearnerInfoService();
       const service = await buildService(
         undefined,
@@ -400,6 +457,9 @@ describe('PandadocWebhookService', () => {
         'Forced failure on Application',
       );
       expect(learnerInfoService.create).not.toHaveBeenCalled();
+      expect(
+        applicationsService.sendSubmissionErrorEmail,
+      ).not.toHaveBeenCalled();
     });
 
     it('propagates the error when LearnerInfoService.create fails', async () => {

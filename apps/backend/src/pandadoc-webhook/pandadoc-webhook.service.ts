@@ -309,6 +309,7 @@ export class PandadocWebhookService {
   ): Promise<{ appId: number }> {
     const startedAt = Date.now();
     const payloadKeys = Object.keys(payload ?? {});
+    let applicationDto: CreateApplicationDto | undefined;
     const eventType = this.getPayloadString(payload, 'event') ?? 'unknown';
     const documentId =
       this.getPayloadString(payload, 'document_id') ??
@@ -361,6 +362,7 @@ export class PandadocWebhookService {
         ),
         endDate: this.formatDate(buckets.application['endDate']),
       };
+      applicationDto = applicationData as CreateApplicationDto;
       const applicationRecord = applicationData as Record<string, unknown>;
 
       this.logger.debug(
@@ -394,7 +396,7 @@ export class PandadocWebhookService {
       );
 
       const createdApplication = await this.applicationsService.create(
-        applicationData as CreateApplicationDto,
+        applicationDto,
       );
 
       this.logger.debug(
@@ -431,6 +433,21 @@ export class PandadocWebhookService {
       const message = error instanceof Error ? error.message : String(error);
 
       if (error instanceof BadRequestException) {
+        if (applicationDto) {
+          try {
+            await this.applicationsService.sendSubmissionErrorEmail(
+              applicationDto,
+              message,
+            );
+          } catch (emailError) {
+            this.logger.error(
+              `[PandaDoc] Failed to send invalid-submission email event=${eventType} documentId=${documentId}`,
+              emailError instanceof Error
+                ? emailError.stack
+                : String(emailError),
+            );
+          }
+        }
         this.logger.warn(
           `[PandaDoc] Webhook rejected event=${eventType} documentId=${documentId} durationMs=${durationMs} reason=${message}`,
         );

@@ -213,6 +213,8 @@ export class ApplicationsService {
     'Confidentiality_Form.pdf';
   private static readonly CONFIDENTIALITY_UPLOAD_FOLDER =
     'confidentiality-forms';
+  private static readonly PANDADOC_RESUBMISSION_LINK =
+    'https://eform.pandadoc.com/?eform=e27f6460-7fa2-40f2-825b-4a83c507b9fe';
 
   private static readonly APPLICATION_EXPORT_HEADERS =
     APPLICATION_EXPORT_COLUMNS.map(([, header]) => header).join(',');
@@ -888,6 +890,31 @@ export class ApplicationsService {
       throw new NotFoundException(`Application with ID ${appId} not found`);
     }
     await this.applicationRepository.remove(application);
+  }
+
+  async sendSubmissionErrorEmail(
+    applicantDto: CreateApplicationDto,
+    errorMessage: string,
+    applicantName = 'Applicant',
+  ): Promise<void> {
+    const recipientEmail = applicantDto.email?.trim();
+
+    if (!recipientEmail) {
+      return;
+    }
+
+    const emailBody = this.buildApplicationSubmissionErrorEmailBody(
+      applicantName,
+      applicantDto,
+      errorMessage,
+      ApplicationsService.PANDADOC_RESUBMISSION_LINK,
+    );
+
+    await this.emailService.queueEmail(
+      recipientEmail,
+      'Action Required: Issue with Your Application Submission',
+      emailBody,
+    );
   }
 
   /**
