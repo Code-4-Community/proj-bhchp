@@ -19,7 +19,10 @@ import {
   useRejectedApplicationsCount,
   useTotalApplicationsCount,
 } from '@api/apiClient';
-import { useApplications } from '@hooks/useApplications';
+import {
+  useApplications,
+  APPLICATIONS_PAGE_SIZE,
+} from '@hooks/useApplications';
 import {
   EMPTY_APPLICATION_FILTERS,
   type ApplicationFilters,
@@ -35,7 +38,11 @@ const AdminLanding: React.FC = () => {
   const { count: inReviewCount } = useInReviewApplicationsCount();
   const { count: rejectedCount } = useRejectedApplicationsCount();
   const { count: approvedCount } = useApprovedApplicationsCount();
-  const { applications, loading, error } = useApplications();
+  const { applications, loading, error, total } = useApplications(
+    page,
+    APPLICATIONS_PAGE_SIZE,
+  );
+  const maxPages = Math.max(1, Math.ceil(total / APPLICATIONS_PAGE_SIZE));
 
   const disciplineAdminOptions = Array.from(
     new Set(
@@ -167,12 +174,12 @@ const AdminLanding: React.FC = () => {
         <Flex justify="space-between" align="center" mt="4" mb="4">
           <PageTransitionButton
             buttonType="previous"
-            onClick={() => setPage(page - 1)}
+            onClick={() => setPage(Math.max(1, page - 1))}
           />
-          <PageCounter page={page} setPage={setPage} maxPages={1} />
+          <PageCounter page={page} setPage={setPage} maxPages={maxPages} />
           <PageTransitionButton
             buttonType="next"
-            onClick={() => setPage(page + 1)}
+            onClick={() => setPage(Math.min(maxPages, page + 1))}
           />
         </Flex>
       </Box>

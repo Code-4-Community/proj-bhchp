@@ -16,6 +16,7 @@ import {
   UploadConfidentialityFormResponse,
   DisciplineAdminMap,
   DisciplineCatalogItem,
+  PaginatedResponse,
   User,
 } from './types';
 
@@ -56,8 +57,13 @@ export class ApiClient {
     return this.get('/api') as Promise<string>;
   }
 
-  public async getApplications(): Promise<Application[]> {
-    return this.get('/api/applications') as Promise<Application[]>;
+  public async getApplications(
+    page = 1,
+    limit = 25,
+  ): Promise<PaginatedResponse<Application>> {
+    return this.get(`/api/applications?page=${page}&limit=${limit}`) as Promise<
+      PaginatedResponse<Application>
+    >;
   }
 
   public async getApplicationsByDiscipline(
@@ -72,13 +78,15 @@ export class ApiClient {
 
   public async getApplicationsByDisciplines(
     disciplines: string[],
-  ): Promise<Application[]> {
+    page = 1,
+    limit = 25,
+  ): Promise<PaginatedResponse<Application>> {
     const value = disciplines.map((discipline) => discipline.trim()).join(',');
     return this.get(
       `/api/applications/by-disciplines?disciplines=${encodeURIComponent(
         value,
-      )}`,
-    ) as Promise<Application[]>;
+      )}&page=${page}&limit=${limit}`,
+    ) as Promise<PaginatedResponse<Application>>;
   }
 
   public async getDisciplines(): Promise<DisciplineCatalogItem[]> {

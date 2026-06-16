@@ -146,9 +146,12 @@ describe('useApplications', () => {
   });
 
   it('should fetch applications and users then merge names', async () => {
-    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue(
-      mockApplications,
-    );
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: mockApplications,
+      total: mockApplications.length,
+      page: 1,
+      limit: 25,
+    });
 
     const { result } = renderHook(() => useApplications());
 
@@ -156,6 +159,7 @@ describe('useApplications', () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.applications).toHaveLength(2);
+    expect(result.current.total).toBe(2);
 
     const first = result.current.applications[0];
     expect(first.appId).toBe(1);
@@ -178,9 +182,12 @@ describe('useApplications', () => {
   });
 
   it('should fall back to email when user not found', async () => {
-    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue(
-      mockApplications,
-    );
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: mockApplications,
+      total: mockApplications.length,
+      page: 1,
+      limit: 25,
+    });
     vi.mocked(apiClient.getApplicants).mockResolvedValue([]);
 
     const { result } = renderHook(() => useApplications());
@@ -205,7 +212,12 @@ describe('useApplications', () => {
   });
 
   it('should handle empty response', async () => {
-    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue([]);
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 25,
+    });
 
     const { result } = renderHook(() => useApplications());
 
@@ -216,7 +228,12 @@ describe('useApplications', () => {
   });
 
   it('should resolve discipline and call scoped endpoints exactly once', async () => {
-    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue([]);
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 25,
+    });
 
     renderHook(() => useApplications());
 
@@ -227,6 +244,8 @@ describe('useApplications', () => {
       );
       expect(apiClient.getApplicationsByDisciplines).toHaveBeenCalledWith(
         mockAdminInfo.disciplines,
+        1,
+        25,
       );
       expect(apiClient.getApplicants).toHaveBeenCalledTimes(1);
     });

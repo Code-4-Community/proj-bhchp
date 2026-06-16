@@ -116,6 +116,17 @@ export interface Application extends AvailabilityFields {
 }
 
 /**
+ * Generic envelope for a single page of results from a paginated endpoint.
+ * Mirrors the backend `PaginatedResult<T>`.
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+/**
  * School of the applicant — kept in sync with apps/backend/src/learner-info/types.ts
  * TODO: add this to a shared package
  */

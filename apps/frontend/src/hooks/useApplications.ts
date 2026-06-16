@@ -21,10 +21,15 @@ export interface ApplicationRow {
   updatedAt: string;
 }
 
+/** Default number of applications fetched per page. */
+export const APPLICATIONS_PAGE_SIZE = 25;
+
 interface UseApplicationsResult {
   applications: ApplicationRow[];
   loading: boolean;
   error: string | null;
+  /** Total number of applications across all pages (for pagination controls). */
+  total: number;
 }
 
 function toRows(
@@ -58,10 +63,14 @@ function toRows(
   });
 }
 
-export function useApplications(): UseApplicationsResult {
+export function useApplications(
+  page = 1,
+  limit = APPLICATIONS_PAGE_SIZE,
+): UseApplicationsResult {
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,11 +101,18 @@ export function useApplications(): UseApplicationsResult {
           adminInfo.disciplines,
         ).catch(() => undefined);
 
-        const [apps, disciplineAdminMap, disciplines] = await Promise.all([
-          apiClient.getApplicationsByDisciplines(adminInfo.disciplines),
-          getDisciplineAdminMapCached().catch(() => ({})),
-          apiClient.getDisciplines().catch(() => [] as DisciplineCatalogItem[]),
-        ]);
+        const [appsResponse, disciplineAdminMap, disciplines] =
+          await Promise.all([
+            apiClient.getApplicationsByDisciplines(
+              adminInfo.disciplines,
+              page,
+              limit,
+            ),
+            getDisciplineAdminMapCached().catch(() => ({})),
+            apiClient
+              .getDisciplines()
+              .catch(() => [] as DisciplineCatalogItem[]),
+          ]);
 
         if (!cancelled) {
           const usersByEmail = new Map(
@@ -105,9 +121,10 @@ export function useApplications(): UseApplicationsResult {
           const disciplineLabelByKey = new Map(
             disciplines.map((discipline) => [discipline.key, discipline.label]),
           );
+          setTotal(appsResponse.total);
           setApplications(
             toRows(
-              apps,
+              appsResponse.data,
               usersByEmail,
               disciplineAdminMap,
               disciplineLabelByKey,
@@ -129,7 +146,7 @@ export function useApplications(): UseApplicationsResult {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [page, limit]);
 
-  return { applications, loading, error };
+  return { applications, loading, error, total };
 }

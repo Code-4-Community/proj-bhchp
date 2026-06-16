@@ -1,6 +1,7 @@
 import {
   Entity,
   Column,
+  Index,
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
@@ -30,6 +31,7 @@ export class Application {
    *
    * Example: "bob.ross@example.com"
    */
+  @Index('IDX_application_email')
   @Column({ type: 'varchar' })
   email!: string;
 
@@ -63,6 +65,7 @@ export class Application {
    *
    * Example: "Nursing"
    */
+  @Index('IDX_application_discipline')
   @Column({ type: 'varchar' })
   discipline!: string;
 
@@ -77,6 +80,7 @@ export class Application {
    *
    * Example: AppStatus.APP_SUBMITTED.
    */
+  @Index('IDX_application_appStatus')
   @Column({ type: 'enum', enum: AppStatus, default: AppStatus.APP_SUBMITTED })
   appStatus!: AppStatus;
 

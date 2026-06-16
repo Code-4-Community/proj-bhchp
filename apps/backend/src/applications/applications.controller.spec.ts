@@ -347,14 +347,23 @@ describe('ApplicationsController', () => {
   });
 
   describe('getAllApplications', () => {
-    it('should return all applications', async () => {
+    const query = { page: 1, limit: 25 };
+
+    it('should return a page of applications', async () => {
+      const paginated = {
+        data: [mockApplication],
+        total: 1,
+        page: 1,
+        limit: 25,
+      };
       jest
         .spyOn(mockApplicationsService, 'findAll')
-        .mockResolvedValue([mockApplication]);
+        .mockResolvedValue(paginated);
 
-      await expect(controller.getAllApplications()).resolves.toEqual([
-        mockApplication,
-      ]);
+      await expect(controller.getAllApplications(query)).resolves.toEqual(
+        paginated,
+      );
+      expect(mockApplicationsService.findAll).toHaveBeenCalledWith(query);
       expect(mockApplicationsService.findAll).toHaveBeenCalledTimes(1);
     });
 
@@ -365,7 +374,7 @@ describe('ApplicationsController', () => {
           new Error('There was a problem retrieving the info'),
         );
 
-      await expect(controller.getAllApplications()).rejects.toThrow(
+      await expect(controller.getAllApplications(query)).rejects.toThrow(
         'There was a problem retrieving the info',
       );
     });

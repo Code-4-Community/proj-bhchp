@@ -118,6 +118,7 @@ describe('ApplicationsService', () => {
 
   const mockRepository = {
     find: jest.fn(),
+    findAndCount: jest.fn(),
     count: jest.fn(),
     findOne: jest.fn(),
     save: jest.fn(),
@@ -211,28 +212,49 @@ describe('ApplicationsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return an array of applications', async () => {
+    it('should return a page of applications plus the total count', async () => {
       const mockApplications: Application[] = [dummyApplication];
 
-      mockRepository.find.mockResolvedValue(mockApplications);
+      mockRepository.findAndCount.mockResolvedValue([mockApplications, 1]);
 
       const result = await service.findAll();
 
-      expect(repository.find).toHaveBeenCalled();
-      expect(result).toEqual(mockApplications);
+      expect(repository.findAndCount).toHaveBeenCalled();
+      expect(result).toEqual({
+        data: mockApplications,
+        total: 1,
+        page: 1,
+        limit: 25,
+      });
     });
 
-    it('should return an empty array if the repo returns one', async () => {
-      mockRepository.find.mockResolvedValue([]);
+    it('should honor the requested page and limit', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[dummyApplication], 60]);
+
+      const result = await service.findAll({ page: 3, limit: 20 });
+
+      expect(repository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 40, take: 20 }),
+      );
+      expect(result).toEqual({
+        data: [dummyApplication],
+        total: 60,
+        page: 3,
+        limit: 20,
+      });
+    });
+
+    it('should return an empty page if the repo returns one', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
-      expect(repository.find).toHaveBeenCalled();
-      expect(result).toEqual([]);
+      expect(repository.findAndCount).toHaveBeenCalled();
+      expect(result).toEqual({ data: [], total: 0, page: 1, limit: 25 });
     });
 
     it('should pass along any repo errors without information loss', async () => {
-      mockRepository.find.mockRejectedValue(
+      mockRepository.findAndCount.mockRejectedValue(
         new Error('There was a problem retrieving the info'),
       );
 

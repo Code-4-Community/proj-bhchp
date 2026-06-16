@@ -18,6 +18,24 @@ import { DisciplinesService } from '../disciplines/disciplines.service';
 import { CandidateProvisioningService } from './candidate-provisioning.service';
 import { User } from '../users/user.entity';
 import { LearnerInfo } from '../learner-info/learner-info.entity';
+import { PaginatedResult } from '../common/paginated-result.interface';
+import { ApplicationQueryDto } from './dto/application-query.dto';
+
+/**
+ * Columns returned by the paginated list endpoints. Only the fields the admin
+ * table renders are selected, so the bulk of each row (availability strings,
+ * resume/cover-letter, emergency contact, enum arrays, etc.) is never serialized.
+ */
+const APPLICATION_LIST_COLUMNS: (keyof Application)[] = [
+  'appId',
+  'email',
+  'proposedStartDate',
+  'actualStartDate',
+  'discipline',
+  'desiredExperience',
+  'applicantType',
+  'appStatus',
+];
 
 type ApplicationExportRawRow = {
   appId: number;
@@ -366,12 +384,25 @@ export class ApplicationsService {
   }
 
   /**
-   * Returns all applications in the repository.
-   * @returns A promise resolving to all applications in the repository.
+   * Returns a single page of applications, projected to the list columns.
+   * @param query pagination options (page, limit). Defaults to page 1, limit 25.
+   * @returns A promise resolving to the page of applications plus the total count.
    * @throws {Error} which is unchanged from what repository throws.
    */
-  async findAll(): Promise<Application[]> {
-    return await this.applicationRepository.find();
+  async findAll(
+    query: ApplicationQueryDto = new ApplicationQueryDto(),
+  ): Promise<PaginatedResult<Application>> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 25;
+
+    const [data, total] = await this.applicationRepository.findAndCount({
+      select: APPLICATION_LIST_COLUMNS,
+      order: { appId: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+
+    return { data, total, page, limit };
   }
 
   /**
@@ -479,13 +510,18 @@ export class ApplicationsService {
   }
 
   /**
-   * Returns applications that belong to any of the provided disciplines.
+   * Returns a single page of applications belonging to any of the provided disciplines,
+   * projected to the list columns.
    * @param disciplines discipline keys to filter by.
-   * @returns matching applications across all provided disciplines.
+   * @param query pagination options (page, limit). Defaults to page 1, limit 25.
+   * @returns matching page of applications plus the total count across all pages.
    * @throws {BadRequestException} if no disciplines are provided or keys are invalid/inactive.
    * @throws {Error} anything that the repository throws.
    */
-  async findByDisciplines(disciplines: string[]): Promise<Application[]> {
+  async findByDisciplines(
+    disciplines: string[],
+    query: ApplicationQueryDto = new ApplicationQueryDto(),
+  ): Promise<PaginatedResult<Application>> {
     const uniqueDisciplines = [
       ...new Set(
         disciplines
@@ -500,9 +536,18 @@ export class ApplicationsService {
 
     await this.disciplinesService.ensureActiveDisciplineKeys(uniqueDisciplines);
 
-    return this.applicationRepository.find({
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 25;
+
+    const [data, total] = await this.applicationRepository.findAndCount({
+      select: APPLICATION_LIST_COLUMNS,
       where: { discipline: In(uniqueDisciplines) },
+      order: { appId: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { data, total, page, limit };
   }
 
   private buildApplicationExportQuery(

@@ -9,6 +9,7 @@ const tablePropsSpy = vi.fn();
 
 vi.mock('@hooks/useApplications', () => ({
   useApplications: () => mockUseApplications(),
+  APPLICATIONS_PAGE_SIZE: 25,
 }));
 
 vi.mock('@api/apiClient', () => ({
@@ -122,6 +123,7 @@ describe('AdminLanding', () => {
       ],
       loading: false,
       error: null,
+      total: 1,
     });
   });
 
