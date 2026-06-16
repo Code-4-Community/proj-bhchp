@@ -63,6 +63,10 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Authenticated user was not found.');
     }
 
+    if (!databaseUser.isActive) {
+      throw new ForbiddenException('This account has been deactivated.');
+    }
+
     request.user = databaseUser;
 
     if (!requiredRoles.includes(databaseUser.userType)) {
