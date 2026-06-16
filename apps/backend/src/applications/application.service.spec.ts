@@ -264,6 +264,62 @@ describe('ApplicationsService', () => {
     });
   });
 
+  describe('findByDisciplines', () => {
+    const createQb = (data: Application[], total: number) => {
+      const qb: Record<string, jest.Mock> = {};
+      qb.select = jest.fn(() => qb);
+      qb.where = jest.fn(() => qb);
+      qb.andWhere = jest.fn(() => qb);
+      qb.orderBy = jest.fn(() => qb);
+      qb.skip = jest.fn(() => qb);
+      qb.take = jest.fn(() => qb);
+      qb.getManyAndCount = jest.fn().mockResolvedValue([data, total]);
+      return qb;
+    };
+
+    it('returns a paginated, projected page with search + filters applied', async () => {
+      const qb = createQb([dummyApplication], 1);
+      mockRepository.createQueryBuilder.mockReturnValue(qb);
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+
+      const result = await service.findByDisciplines(['RN'], {
+        page: 2,
+        limit: 10,
+        search: 'spanish',
+        statuses: ['Accepted'],
+      });
+
+      // Disciplines are normalized to lowercase keys before validation/query.
+      expect(
+        mockDisciplinesService.ensureActiveDisciplineKeys,
+      ).toHaveBeenCalledWith(['rn']);
+      expect(qb.where).toHaveBeenCalledWith(
+        'app.discipline IN (:...disciplines)',
+        {
+          disciplines: ['rn'],
+        },
+      );
+      // Search bracket + status filter both add andWhere clauses.
+      expect(qb.andWhere).toHaveBeenCalled();
+      expect(qb.skip).toHaveBeenCalledWith(10);
+      expect(qb.take).toHaveBeenCalledWith(10);
+      expect(result).toEqual({
+        data: [dummyApplication],
+        total: 1,
+        page: 2,
+        limit: 10,
+      });
+    });
+
+    it('throws when no disciplines are provided', async () => {
+      await expect(service.findByDisciplines([])).rejects.toThrow(
+        'At least one discipline must be provided',
+      );
+    });
+  });
+
   describe('findByEmail', () => {
     it('should return applications for an email ordered by descending appId', async () => {
       const applicationHistory: Application[] = [

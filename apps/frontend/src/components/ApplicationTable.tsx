@@ -1,14 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Flex, Input, InputGroup, Spacer, Table } from '@chakra-ui/react';
 import type { ApplicationRow } from '@hooks/useApplications';
 import StatusPill, { StatusPillConfig, StatusVariant } from './StatusPill';
-import {
-  compileApplicationFilterPredicate,
-  compileApplicationSearchPredicate,
-  EMPTY_APPLICATION_FILTERS,
-  normalizeDateToDay,
-  type ApplicationFilters,
-} from '@utils/applicationFilters';
+import { normalizeDateToDay } from '@utils/applicationFilters';
 import apiClient from '@api/apiClient';
 import { MdEdit } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
@@ -30,8 +24,6 @@ const PRE_LICENSURE_SHORT_LABEL = 'Pre-Licensure Placement';
 
 interface ApplicationTableProps {
   applications: ApplicationRow[];
-  searchQuery?: string;
-  filters?: ApplicationFilters;
 }
 
 function formatDate(dateStr: string): string {
@@ -66,25 +58,12 @@ function formatDesiredExperience(value: string): string {
   return value;
 }
 
-export function ApplicationTable({
-  applications,
-  searchQuery = '',
-  filters = EMPTY_APPLICATION_FILTERS,
-}: ApplicationTableProps) {
+export function ApplicationTable({ applications }: ApplicationTableProps) {
   const navigate = useNavigate();
   const [actualStartDates, setActualStartDates] = useState<
     Record<number, string>
   >({});
   const [editingIds, setEditingIds] = useState<Set<number>>(new Set());
-  const matchesStructuredFilters = useMemo(
-    () => compileApplicationFilterPredicate(filters),
-    [filters],
-  );
-
-  const matchesSearchQuery = useMemo(
-    () => compileApplicationSearchPredicate(searchQuery),
-    [searchQuery],
-  );
 
   useEffect(() => {
     setActualStartDates((prev) => {
@@ -98,17 +77,6 @@ export function ApplicationTable({
       return next;
     });
   }, [applications]);
-
-  const filteredApplications = useMemo(
-    () =>
-      applications.filter((application) => {
-        return (
-          matchesSearchQuery(application) &&
-          matchesStructuredFilters(application)
-        );
-      }),
-    [applications, matchesSearchQuery, matchesStructuredFilters],
-  );
 
   const handleActualStartDateUpdate = async (
     nextDate: string,
@@ -139,7 +107,7 @@ export function ApplicationTable({
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {filteredApplications.map((application) => {
+        {applications.map((application) => {
           const isEditingActualStart = editingIds.has(application.appId);
 
           return (

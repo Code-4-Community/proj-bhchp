@@ -7,7 +7,7 @@ import clockIcon from '../assets/icons/clock.svg';
 import crossIcon from '../assets/icons/cross.svg';
 import checkmarkIcon from '../assets/icons/checkmark.svg';
 import { Box, Flex, Spinner, Text } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PageTransitionButton from '@components/PageTransitionButton';
 import Searchbar from '@components/TableSearchBar';
 import PageCounter from '@components/PageCounter';
@@ -38,27 +38,25 @@ const AdminLanding: React.FC = () => {
   const { count: inReviewCount } = useInReviewApplicationsCount();
   const { count: rejectedCount } = useRejectedApplicationsCount();
   const { count: approvedCount } = useApprovedApplicationsCount();
-  const { applications, loading, error, total } = useApplications(
+  const {
+    applications,
+    loading,
+    error,
+    total,
+    disciplineOptions,
+    disciplineAdminOptions,
+  } = useApplications({
     page,
-    APPLICATIONS_PAGE_SIZE,
-  );
+    limit: APPLICATIONS_PAGE_SIZE,
+    search: searchQuery,
+    filters: applicationFilters,
+  });
   const maxPages = Math.max(1, Math.ceil(total / APPLICATIONS_PAGE_SIZE));
 
-  const disciplineAdminOptions = Array.from(
-    new Set(
-      applications
-        .map((application) => application.disciplineAdminName)
-        .filter((name) => Boolean(name?.trim())),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
-
-  const disciplineOptions = Array.from(
-    new Set(
-      applications
-        .map((application) => application.discipline)
-        .filter((discipline) => Boolean(discipline?.trim())),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
+  // Searching/filtering changes the result set, so return to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, applicationFilters]);
 
   function onResetFilters() {
     setApplicationFilters(EMPTY_APPLICATION_FILTERS);
@@ -163,11 +161,7 @@ const AdminLanding: React.FC = () => {
           {loading && <Spinner size="xl" alignSelf="center" mt="10" />}
           {error && <Text color="red.500">{error}</Text>}
           {!loading && !error && (
-            <ApplicationTable
-              applications={applications}
-              searchQuery={searchQuery}
-              filters={applicationFilters}
-            />
+            <ApplicationTable applications={applications} />
           )}
         </Box>
 

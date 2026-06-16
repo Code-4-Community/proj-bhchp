@@ -126,6 +126,31 @@ export interface PaginatedResponse<T> {
   limit: number;
 }
 
+/** Direction for a date filter: `before` (on or before) or `after` (on or after). */
+export type ListDateFilterDirection = 'before' | 'after';
+
+/**
+ * Query parameters accepted by the paginated applications list endpoints.
+ * Mirrors the backend `ApplicationQueryDto`. Discipline/admin filtering is folded
+ * into the `disciplines` argument by the caller, not carried here.
+ */
+export interface ApplicationListParams {
+  page?: number;
+  limit?: number;
+  /** Free-text search across all searchable columns (not applicant name). */
+  search?: string;
+  /** `appStatus` values to include. */
+  statuses?: string[];
+  proposedStartDate?: string;
+  proposedStartDateDirection?: ListDateFilterDirection;
+  actualStartDate?: string;
+  actualStartDateDirection?: ListDateFilterDirection;
+  createdAt?: string;
+  createdAtDirection?: ListDateFilterDirection;
+  updatedAt?: string;
+  updatedAtDirection?: ListDateFilterDirection;
+}
+
 /**
  * School of the applicant — kept in sync with apps/backend/src/learner-info/types.ts
  * TODO: add this to a shared package

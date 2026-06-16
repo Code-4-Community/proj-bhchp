@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Brackets, In, Repository, SelectQueryBuilder } from 'typeorm';
 import { Readable } from 'stream';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
@@ -539,15 +539,142 @@ export class ApplicationsService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 25;
 
-    const [data, total] = await this.applicationRepository.findAndCount({
-      select: APPLICATION_LIST_COLUMNS,
-      where: { discipline: In(uniqueDisciplines) },
-      order: { appId: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const qb = this.applicationRepository
+      .createQueryBuilder('app')
+      .select(APPLICATION_LIST_COLUMNS.map((column) => `app.${column}`))
+      .where('app.discipline IN (:...disciplines)', {
+        disciplines: uniqueDisciplines,
+      });
+
+    this.applyApplicationFilters(qb, query);
+
+    const [data, total] = await qb
+      .orderBy('app.appId', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
     return { data, total, page, limit };
+  }
+
+  /**
+   * Applies the optional free-text search and structured filters from the query
+   * to a list query builder. Search is matched across every searchable
+   * application column including columns the table does not display.
+   * @param qb the query builder to mutate (aliased `app`).
+   * @param query the validated query parameters.
+   */
+  private applyApplicationFilters(
+    qb: SelectQueryBuilder<Application>,
+    query: ApplicationQueryDto,
+  ): void {
+    const search = query.search?.trim();
+    if (search) {
+      const q = `%${search}%`;
+      qb.andWhere(
+        new Brackets((where) => {
+          where
+            // Plain text columns (includes off-table fields).
+            .where('app.email ILIKE :q', { q })
+            .orWhere('app.phone ILIKE :q', { q })
+            .orWhere('app.discipline ILIKE :q', { q })
+            .orWhere('app.otherDisciplineDescription ILIKE :q', { q })
+            .orWhere('app.license ILIKE :q', { q })
+            .orWhere('app.pronouns ILIKE :q', { q })
+            .orWhere('app.nonEnglishLangs ILIKE :q', { q })
+            .orWhere('app.desiredExperience ILIKE :q', { q })
+            .orWhere('app.elaborateOtherDiscipline ILIKE :q', { q })
+            .orWhere('app.referredEmail ILIKE :q', { q })
+            .orWhere('app.emergencyContactName ILIKE :q', { q })
+            .orWhere('app.emergencyContactPhone ILIKE :q', { q })
+            .orWhere('app.emergencyContactRelationship ILIKE :q', { q })
+            .orWhere('app.mondayAvailability ILIKE :q', { q })
+            .orWhere('app.tuesdayAvailability ILIKE :q', { q })
+            .orWhere('app.wednesdayAvailability ILIKE :q', { q })
+            .orWhere('app.thursdayAvailability ILIKE :q', { q })
+            .orWhere('app.fridayAvailability ILIKE :q', { q })
+            .orWhere('app.saturdayAvailability ILIKE :q', { q })
+            // Enum columns (cast to text).
+            .orWhere('app.appStatus::text ILIKE :q', { q })
+            .orWhere('app.applicantType::text ILIKE :q', { q })
+            // Numeric column (cast to text).
+            .orWhere('CAST(app.weeklyHours AS text) ILIKE :q', { q })
+            // Enum array columns (flattened to text).
+            .orWhere("array_to_string(app.interest, ' ') ILIKE :q", { q })
+            .orWhere("array_to_string(app.heardAboutFrom, ' ') ILIKE :q", { q })
+            // Date/timestamp columns (match both ISO and the displayed MM/DD/YYYY).
+            .orWhere("to_char(app.proposedStartDate, 'YYYY-MM-DD') ILIKE :q", {
+              q,
+            })
+            .orWhere("to_char(app.proposedStartDate, 'MM/DD/YYYY') ILIKE :q", {
+              q,
+            })
+            .orWhere("to_char(app.actualStartDate, 'YYYY-MM-DD') ILIKE :q", {
+              q,
+            })
+            .orWhere("to_char(app.actualStartDate, 'MM/DD/YYYY') ILIKE :q", {
+              q,
+            })
+            .orWhere("to_char(app.createdAt, 'YYYY-MM-DD') ILIKE :q", { q })
+            .orWhere("to_char(app.createdAt, 'MM/DD/YYYY') ILIKE :q", { q })
+            .orWhere("to_char(app.updatedAt, 'YYYY-MM-DD') ILIKE :q", { q })
+            .orWhere("to_char(app.updatedAt, 'MM/DD/YYYY') ILIKE :q", { q });
+        }),
+      );
+    }
+
+    if (query.statuses?.length) {
+      qb.andWhere('app.appStatus IN (:...statuses)', {
+        statuses: query.statuses,
+      });
+    }
+
+    this.applyDateFilter(
+      qb,
+      'proposedStartDate',
+      query.proposedStartDate,
+      query.proposedStartDateDirection,
+    );
+    this.applyDateFilter(
+      qb,
+      'actualStartDate',
+      query.actualStartDate,
+      query.actualStartDateDirection,
+    );
+    this.applyDateFilter(
+      qb,
+      'createdAt',
+      query.createdAt,
+      query.createdAtDirection,
+    );
+    this.applyDateFilter(
+      qb,
+      'updatedAt',
+      query.updatedAt,
+      query.updatedAtDirection,
+    );
+  }
+
+  /**
+   * Adds a single inclusive day-granularity date bound to the query builder.
+   * @param qb the query builder to mutate (aliased `app`).
+   * @param field the application date/timestamp column to bound.
+   * @param date the bound in YYYY-MM-DD form, or undefined to skip.
+   * @param direction `before` (on or before) or `after` (on or after, default).
+   */
+  private applyDateFilter(
+    qb: SelectQueryBuilder<Application>,
+    field: 'proposedStartDate' | 'actualStartDate' | 'createdAt' | 'updatedAt',
+    date: string | undefined,
+    direction: 'before' | 'after' = 'after',
+  ): void {
+    if (!date) {
+      return;
+    }
+
+    const operator = direction === 'before' ? '<=' : '>=';
+    const param = `${field}Bound`;
+    qb.andWhere(`app.${field}::date ${operator} :${param}`, { [param]: date });
   }
 
   private buildApplicationExportQuery(
