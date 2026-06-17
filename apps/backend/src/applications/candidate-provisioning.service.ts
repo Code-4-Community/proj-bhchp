@@ -123,7 +123,6 @@ export class CandidateProvisioningService {
     loginUrl: string,
     temporaryPassword?: string,
   ): string {
-    const { firstName } = this.deriveNameParts(email);
     const passwordBlock = temporaryPassword
       ? `<p><strong>Temporary password:</strong> ${temporaryPassword}</p>
 
@@ -131,7 +130,7 @@ export class CandidateProvisioningService {
       : `<p>You can log in with your existing applicant account to track your status.</p>`;
 
     return `
-            <p>Hello ${firstName},</p>
+            <p>Hello Applicant,</p>
 
             <p>Your application has been submitted successfully.</p>
 

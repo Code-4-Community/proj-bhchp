@@ -275,6 +275,7 @@ const CandidateViewApplication: React.FC = () => {
         <SchoolAffiliationFrame
           isLearner={application.applicantType === ApplicantType.LEARNER}
           schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
+          otherSchool={learnerInfo?.otherSchool}
           schoolDepartment={
             (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'
           }
