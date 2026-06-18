@@ -7,6 +7,23 @@ import {
 import { School } from '../learner-info/types';
 import { PANDADOC_FIELD_MAP } from './pandadoc-field-map';
 
+jest.mock('../util/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+      region: 'us-east-2',
+      bucketName: 'bucket',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 const mappingPairKey = (item: {
   targetTable: string;
   backendField: string;
