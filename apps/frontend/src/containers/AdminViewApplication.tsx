@@ -468,7 +468,7 @@ const AdminViewApplication: React.FC = () => {
           relationship={application.emergencyContactRelationship}
         />
 
-        <Box borderWidth="1px" borderRadius="lg" p={6} bg="orange.50">
+        <Box borderWidth="1px" borderRadius="lg" p={6} bg="white">
           <Heading as="h2" size="md" mb={1}>
             Internal Notes
           </Heading>
