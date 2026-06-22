@@ -575,56 +575,72 @@ export class ApplicationsService {
         new Brackets((where) => {
           where
             // Plain text columns (includes off-table fields).
-            .where('app.email ILIKE :q', { q })
-            .orWhere('app.phone ILIKE :q', { q })
-            .orWhere('app.discipline ILIKE :q', { q })
-            .orWhere('app.otherDisciplineDescription ILIKE :q', { q })
-            .orWhere('app.license ILIKE :q', { q })
-            .orWhere('app.pronouns ILIKE :q', { q })
-            .orWhere('app.nonEnglishLangs ILIKE :q', { q })
-            .orWhere('app.desiredExperience ILIKE :q', { q })
-            .orWhere('app.elaborateOtherDiscipline ILIKE :q', { q })
-            .orWhere('app.referredEmail ILIKE :q', { q })
-            .orWhere('app.emergencyContactName ILIKE :q', { q })
-            .orWhere('app.emergencyContactPhone ILIKE :q', { q })
-            .orWhere('app.emergencyContactRelationship ILIKE :q', { q })
-            .orWhere('app.mondayAvailability ILIKE :q', { q })
-            .orWhere('app.tuesdayAvailability ILIKE :q', { q })
-            .orWhere('app.wednesdayAvailability ILIKE :q', { q })
-            .orWhere('app.thursdayAvailability ILIKE :q', { q })
-            .orWhere('app.fridayAvailability ILIKE :q', { q })
-            .orWhere('app.saturdayAvailability ILIKE :q', { q })
+            .where('"app"."email" ILIKE :q', { q })
+            .orWhere('"app"."phone" ILIKE :q', { q })
+            .orWhere('"app"."discipline" ILIKE :q', { q })
+            .orWhere('"app"."otherDisciplineDescription" ILIKE :q', { q })
+            .orWhere('"app"."license" ILIKE :q', { q })
+            .orWhere('"app"."pronouns" ILIKE :q', { q })
+            .orWhere('"app"."nonEnglishLangs" ILIKE :q', { q })
+            .orWhere('"app"."desiredExperience" ILIKE :q', { q })
+            .orWhere('"app"."elaborateOtherDiscipline" ILIKE :q', { q })
+            .orWhere('"app"."referredEmail" ILIKE :q', { q })
+            .orWhere('"app"."emergencyContactName" ILIKE :q', { q })
+            .orWhere('"app"."emergencyContactPhone" ILIKE :q', { q })
+            .orWhere('"app"."emergencyContactRelationship" ILIKE :q', { q })
+            .orWhere('"app"."mondayAvailability" ILIKE :q', { q })
+            .orWhere('"app"."tuesdayAvailability" ILIKE :q', { q })
+            .orWhere('"app"."wednesdayAvailability" ILIKE :q', { q })
+            .orWhere('"app"."thursdayAvailability" ILIKE :q', { q })
+            .orWhere('"app"."fridayAvailability" ILIKE :q', { q })
+            .orWhere('"app"."saturdayAvailability" ILIKE :q', { q })
             // Enum columns (cast to text).
-            .orWhere('app.appStatus::text ILIKE :q', { q })
-            .orWhere('app.applicantType::text ILIKE :q', { q })
+            .orWhere('CAST("app"."appStatus" AS text) ILIKE :q', { q })
+            .orWhere('CAST("app"."applicantType" AS text) ILIKE :q', { q })
             // Numeric column (cast to text).
-            .orWhere('CAST(app.weeklyHours AS text) ILIKE :q', { q })
+            .orWhere('CAST("app"."weeklyHours" AS text) ILIKE :q', { q })
             // Enum array columns (flattened to text).
-            .orWhere("array_to_string(app.interest, ' ') ILIKE :q", { q })
-            .orWhere("array_to_string(app.heardAboutFrom, ' ') ILIKE :q", { q })
+            .orWhere(`array_to_string("app"."interest", ' ') ILIKE :q`, { q })
+            .orWhere(`array_to_string("app"."heardAboutFrom", ' ') ILIKE :q`, {
+              q,
+            })
             // Date/timestamp columns (match both ISO and the displayed MM/DD/YYYY).
-            .orWhere("to_char(app.proposedStartDate, 'YYYY-MM-DD') ILIKE :q", {
+            .orWhere(
+              `to_char("app"."proposedStartDate", 'YYYY-MM-DD') ILIKE :q`,
+              {
+                q,
+              },
+            )
+            .orWhere(
+              `to_char("app"."proposedStartDate", 'MM/DD/YYYY') ILIKE :q`,
+              {
+                q,
+              },
+            )
+            .orWhere(
+              `to_char("app"."actualStartDate", 'YYYY-MM-DD') ILIKE :q`,
+              {
+                q,
+              },
+            )
+            .orWhere(
+              `to_char("app"."actualStartDate", 'MM/DD/YYYY') ILIKE :q`,
+              {
+                q,
+              },
+            )
+            .orWhere(`to_char("app"."createdAt", 'YYYY-MM-DD') ILIKE :q`, { q })
+            .orWhere(`to_char("app"."createdAt", 'MM/DD/YYYY') ILIKE :q`, { q })
+            .orWhere(`to_char("app"."updatedAt", 'YYYY-MM-DD') ILIKE :q`, { q })
+            .orWhere(`to_char("app"."updatedAt", 'MM/DD/YYYY') ILIKE :q`, {
               q,
-            })
-            .orWhere("to_char(app.proposedStartDate, 'MM/DD/YYYY') ILIKE :q", {
-              q,
-            })
-            .orWhere("to_char(app.actualStartDate, 'YYYY-MM-DD') ILIKE :q", {
-              q,
-            })
-            .orWhere("to_char(app.actualStartDate, 'MM/DD/YYYY') ILIKE :q", {
-              q,
-            })
-            .orWhere("to_char(app.createdAt, 'YYYY-MM-DD') ILIKE :q", { q })
-            .orWhere("to_char(app.createdAt, 'MM/DD/YYYY') ILIKE :q", { q })
-            .orWhere("to_char(app.updatedAt, 'YYYY-MM-DD') ILIKE :q", { q })
-            .orWhere("to_char(app.updatedAt, 'MM/DD/YYYY') ILIKE :q", { q });
+            });
         }),
       );
     }
 
     if (query.statuses?.length) {
-      qb.andWhere('app.appStatus IN (:...statuses)', {
+      qb.andWhere('"app"."appStatus" IN (:...statuses)', {
         statuses: query.statuses,
       });
     }
@@ -674,7 +690,9 @@ export class ApplicationsService {
 
     const operator = direction === 'before' ? '<=' : '>=';
     const param = `${field}Bound`;
-    qb.andWhere(`app.${field}::date ${operator} :${param}`, { [param]: date });
+    qb.andWhere(`CAST("app"."${field}" AS date) ${operator} :${param}`, {
+      [param]: date,
+    });
   }
 
   private buildApplicationExportQuery(
