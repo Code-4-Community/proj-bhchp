@@ -277,6 +277,33 @@ describe('useApplications', () => {
     });
   });
 
+  it('should forward applicant type filters to the backend', async () => {
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 25,
+    });
+
+    renderHook(() =>
+      useApplications({
+        filters: {
+          ...EMPTY_APPLICATION_FILTERS,
+          applicantTypes: ['Learner'],
+        },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(apiClient.getApplicationsByDisciplines).toHaveBeenCalledWith(
+        ['rn'],
+        expect.objectContaining({
+          applicantTypes: ['Learner'],
+        }),
+      );
+    });
+  });
+
   it('should resolve a discipline-admin-name filter to discipline keys', async () => {
     vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
       data: [],

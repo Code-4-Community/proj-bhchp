@@ -1,5 +1,6 @@
 export type ApplicationFilters = {
   statuses: string[];
+  applicantTypes: string[];
   disciplines: string[];
   disciplineAdminNames: string[];
   proposedStartDate?: string;
@@ -16,6 +17,7 @@ export type DateFilterDirection = 'before' | 'after';
 
 export const EMPTY_APPLICATION_FILTERS: ApplicationFilters = {
   statuses: [],
+  applicantTypes: [],
   disciplines: [],
   disciplineAdminNames: [],
   proposedStartDate: undefined,
@@ -30,6 +32,7 @@ export const EMPTY_APPLICATION_FILTERS: ApplicationFilters = {
 
 interface FilterableApplication {
   status: string;
+  applicantType: string;
   discipline: string;
   disciplineAdminName: string;
   proposedStartDate: string;
@@ -126,6 +129,7 @@ function formatIsoToMmddyyyy(iso?: string): string | undefined {
 export function countActiveFilters(filters: ApplicationFilters): number {
   return (
     filters.statuses.length +
+    filters.applicantTypes.length +
     filters.disciplines.length +
     filters.disciplineAdminNames.length +
     (normalizeDateToDay(filters.proposedStartDate) ? 1 : 0) +
@@ -213,6 +217,15 @@ export function compileApplicationFilterPredicate(
       ? new Set(filters.statuses.map((status) => normalizeText(status)))
       : undefined;
 
+  const allowedApplicantTypes =
+    filters.applicantTypes.length > 0
+      ? new Set(
+          filters.applicantTypes.map((applicantType) =>
+            normalizeText(applicantType),
+          ),
+        )
+      : undefined;
+
   const allowedDisciplines =
     filters.disciplines.length > 0
       ? new Set(
@@ -237,6 +250,13 @@ export function compileApplicationFilterPredicate(
     if (
       allowedStatuses &&
       !allowedStatuses.has(normalizeText(application.status))
+    ) {
+      return false;
+    }
+
+    if (
+      allowedApplicantTypes &&
+      !allowedApplicantTypes.has(normalizeText(application.applicantType))
     ) {
       return false;
     }

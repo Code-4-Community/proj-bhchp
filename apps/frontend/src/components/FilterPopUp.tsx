@@ -23,6 +23,7 @@ import {
   EMPTY_APPLICATION_FILTERS,
   type ApplicationFilters,
 } from '@utils/applicationFilters';
+import { ApplicantType } from '@api/types';
 
 export const STATUS_OPTIONS = Object.entries(StatusPillConfig).map(
   ([value, config]) => ({
@@ -30,6 +31,11 @@ export const STATUS_OPTIONS = Object.entries(StatusPillConfig).map(
     label: config.label,
   }),
 );
+
+const APPLICANT_TYPE_OPTIONS = [
+  { value: ApplicantType.LEARNER, label: ApplicantType.LEARNER },
+  { value: ApplicantType.VOLUNTEER, label: ApplicantType.VOLUNTEER },
+];
 
 interface FilterPopUpProps {
   open?: boolean;
@@ -62,6 +68,7 @@ const FilterPopUp = ({
     'Actual Start Date',
     'Created At Date',
     'Updated At Date',
+    'Applicant Type',
     'Discipline',
     'Discipline Admin Name',
     'Status',
@@ -82,6 +89,7 @@ const FilterPopUp = ({
     'Actual Start Date',
     'Created At Date',
     'Updated At Date',
+    'Applicant Type',
     'Discipline',
     'Discipline Admin Name',
     'Status',
@@ -102,6 +110,10 @@ const FilterPopUp = ({
 
     if (category === 'Status') {
       return filters.statuses.length;
+    }
+
+    if (category === 'Applicant Type') {
+      return filters.applicantTypes.length;
     }
 
     if (category === 'Discipline Admin Name') {
@@ -152,6 +164,18 @@ const FilterPopUp = ({
       name.toLowerCase().includes(normalizedSearch),
     );
   }, [disciplineAdminOptions, normalizedSearch]);
+
+  const visibleApplicantTypes = useMemo(() => {
+    if (!normalizedSearch) {
+      return APPLICANT_TYPE_OPTIONS;
+    }
+
+    return APPLICANT_TYPE_OPTIONS.filter(
+      (type) =>
+        type.value.toLowerCase().includes(normalizedSearch) ||
+        type.label.toLowerCase().includes(normalizedSearch),
+    );
+  }, [normalizedSearch]);
 
   function getDateDirection(category: string): DateFilterDirection {
     if (category === 'Proposed Start Date') {
@@ -495,6 +519,38 @@ const FilterPopUp = ({
                                             <StatusPill variant={status.value}>
                                               {status.label}
                                             </StatusPill>
+                                          </Checkbox.Label>
+                                        </Checkbox.Root>
+                                      )}
+                                    </For>
+                                  </Fieldset.Content>
+                                </CheckboxGroup>
+                              </Fieldset.Root>
+                            </Stack>
+                          ) : category === 'Applicant Type' ? (
+                            <Stack gap="3">
+                              <Fieldset.Root>
+                                <CheckboxGroup
+                                  name="applicant_types"
+                                  value={filters.applicantTypes}
+                                  onValueChange={(value) =>
+                                    onFiltersChange({
+                                      ...filters,
+                                      applicantTypes: value,
+                                    })
+                                  }
+                                >
+                                  <Fieldset.Content>
+                                    <For each={visibleApplicantTypes}>
+                                      {(type) => (
+                                        <Checkbox.Root
+                                          key={type.value}
+                                          value={type.value}
+                                        >
+                                          <Checkbox.HiddenInput />
+                                          <Checkbox.Control />
+                                          <Checkbox.Label>
+                                            {type.label}
                                           </Checkbox.Label>
                                         </Checkbox.Root>
                                       )}
