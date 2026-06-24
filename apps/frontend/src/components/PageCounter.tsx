@@ -9,25 +9,27 @@ function PageCounter({ page, setPage, maxPages }: PageCounterProps) {
     const pages: (number | string)[] = [];
 
     if (maxPages <= 4) {
-      // Show all pages if 4 or fewer
       for (let i = 1; i <= maxPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always show first 3 pages when near the start
-      if (page <= 3) {
+      if (page <= 2) {
         pages.push(1, 2, 3);
         pages.push('...');
         pages.push(maxPages);
-      }
-      // Show last 3 pages when near the end
-      else if (page >= maxPages - 2) {
+      } else if (page === 3) {
+        pages.push(1, 2, 3, 4);
+        pages.push('...');
+        pages.push(maxPages);
+      } else if (page >= maxPages - 1) {
         pages.push(1);
         pages.push('...');
         pages.push(maxPages - 2, maxPages - 1, maxPages);
-      }
-      // Show current page with neighbors in the middle
-      else {
+      } else if (page === maxPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        pages.push(page - 2, page, page + 1, maxPages);
+      } else {
         pages.push(1);
         pages.push('...');
         pages.push(page - 1, page, page + 1);
@@ -69,7 +71,7 @@ function PageCounter({ page, setPage, maxPages }: PageCounterProps) {
               cursor: 'pointer',
               fontFamily: 'Lato, sans-serif',
               fontSize: '14px',
-              fontWeight: 400,
+              fontWeight: p === page ? 700 : 400,
               lineHeight: '100%',
               display: 'flex',
               alignItems: 'center',
