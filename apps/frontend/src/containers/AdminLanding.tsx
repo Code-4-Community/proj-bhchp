@@ -7,7 +7,7 @@ import clockIcon from '../assets/icons/clock.svg';
 import crossIcon from '../assets/icons/cross.svg';
 import checkmarkIcon from '../assets/icons/checkmark.svg';
 import { Box, Flex, Spinner, Text } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PageTransitionButton from '@components/PageTransitionButton';
 import Searchbar from '@components/TableSearchBar';
 import PageCounter from '@components/PageCounter';
@@ -19,7 +19,10 @@ import {
   useRejectedApplicationsCount,
   useTotalApplicationsCount,
 } from '@api/apiClient';
-import { useApplications } from '@hooks/useApplications';
+import {
+  useApplications,
+  APPLICATIONS_PAGE_SIZE,
+} from '@hooks/useApplications';
 import {
   EMPTY_APPLICATION_FILTERS,
   type ApplicationFilters,
@@ -35,23 +38,25 @@ const AdminLanding: React.FC = () => {
   const { count: inReviewCount } = useInReviewApplicationsCount();
   const { count: rejectedCount } = useRejectedApplicationsCount();
   const { count: approvedCount } = useApprovedApplicationsCount();
-  const { applications, loading, error } = useApplications();
+  const {
+    applications,
+    loading,
+    error,
+    total,
+    disciplineOptions,
+    disciplineAdminOptions,
+  } = useApplications({
+    page,
+    limit: APPLICATIONS_PAGE_SIZE,
+    search: searchQuery,
+    filters: applicationFilters,
+  });
+  const maxPages = Math.max(1, Math.ceil(total / APPLICATIONS_PAGE_SIZE));
 
-  const disciplineAdminOptions = Array.from(
-    new Set(
-      applications
-        .map((application) => application.disciplineAdminName)
-        .filter((name) => Boolean(name?.trim())),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
-
-  const disciplineOptions = Array.from(
-    new Set(
-      applications
-        .map((application) => application.discipline)
-        .filter((discipline) => Boolean(discipline?.trim())),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
+  // Searching/filtering changes the result set, so return to the first page.
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, applicationFilters]);
 
   function onResetFilters() {
     setApplicationFilters(EMPTY_APPLICATION_FILTERS);
@@ -156,23 +161,19 @@ const AdminLanding: React.FC = () => {
           {loading && <Spinner size="xl" alignSelf="center" mt="10" />}
           {error && <Text color="red.500">{error}</Text>}
           {!loading && !error && (
-            <ApplicationTable
-              applications={applications}
-              searchQuery={searchQuery}
-              filters={applicationFilters}
-            />
+            <ApplicationTable applications={applications} />
           )}
         </Box>
 
         <Flex justify="space-between" align="center" mt="4" mb="4">
           <PageTransitionButton
             buttonType="previous"
-            onClick={() => setPage(page - 1)}
+            onClick={() => setPage(Math.max(1, page - 1))}
           />
-          <PageCounter page={page} setPage={setPage} maxPages={1} />
+          <PageCounter page={page} setPage={setPage} maxPages={maxPages} />
           <PageTransitionButton
             buttonType="next"
-            onClick={() => setPage(page + 1)}
+            onClick={() => setPage(Math.min(maxPages, page + 1))}
           />
         </Flex>
       </Box>

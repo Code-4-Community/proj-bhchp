@@ -124,24 +124,22 @@ export class CandidateProvisioningService {
     temporaryPassword?: string,
   ): string {
     const passwordBlock = temporaryPassword
-      ? `<p><strong>Temporary password:</strong> ${temporaryPassword}</p>
-
-            <p>We created your applicant account so you can log in and track your status.</p>`
-      : `<p>You can log in with your existing applicant account to track your status.</p>`;
+      ? `<p><strong>Temporary password:</strong> ${temporaryPassword}</p>`
+      : '';
 
     return `
             <p>Hello Applicant,</p>
 
-            <p>Your application has been submitted successfully.</p>
+            <p>Thank you for submitting your application! You can now create an account here on the portal to track your status. Please use the same email as your application.</p>
 
             ${passwordBlock}
 
             <p><a href="${loginUrl}">Sign in to your account</a></p>
 
             <p>Or copy and paste this link into your browser:</p>
-            <p><a href="${loginUrl}">${loginUrl}</a></p>
+            <p>${loginUrl}</p>
 
-            <p>If you did not submit this application, you can ignore this email.</p>
+            <p>Thank you,<br>Boston Health Care for the Homeless Program</p>
           `;
   }
 

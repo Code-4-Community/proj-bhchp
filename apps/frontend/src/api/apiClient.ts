@@ -16,6 +16,8 @@ import {
   UploadConfidentialityFormResponse,
   DisciplineAdminMap,
   DisciplineCatalogItem,
+  PaginatedResponse,
+  ApplicationListParams,
   User,
 } from './types';
 
@@ -56,8 +58,13 @@ export class ApiClient {
     return this.get('/api') as Promise<string>;
   }
 
-  public async getApplications(): Promise<Application[]> {
-    return this.get('/api/applications') as Promise<Application[]>;
+  public async getApplications(
+    page = 1,
+    limit = 25,
+  ): Promise<PaginatedResponse<Application>> {
+    return this.get(`/api/applications?page=${page}&limit=${limit}`) as Promise<
+      PaginatedResponse<Application>
+    >;
   }
 
   public async getApplicationsByDiscipline(
@@ -72,13 +79,44 @@ export class ApiClient {
 
   public async getApplicationsByDisciplines(
     disciplines: string[],
-  ): Promise<Application[]> {
+    params: ApplicationListParams = {},
+  ): Promise<PaginatedResponse<Application>> {
     const value = disciplines.map((discipline) => discipline.trim()).join(',');
+    const search = new URLSearchParams();
+    search.set('disciplines', value);
+    search.set('page', String(params.page ?? 1));
+    search.set('limit', String(params.limit ?? 25));
+    if (params.search) {
+      search.set('search', params.search);
+    }
+    if (params.statuses?.length) {
+      search.set('statuses', params.statuses.join(','));
+    }
+    if (params.proposedStartDate) {
+      search.set('proposedStartDate', params.proposedStartDate);
+      search.set(
+        'proposedStartDateDirection',
+        params.proposedStartDateDirection ?? 'after',
+      );
+    }
+    if (params.actualStartDate) {
+      search.set('actualStartDate', params.actualStartDate);
+      search.set(
+        'actualStartDateDirection',
+        params.actualStartDateDirection ?? 'after',
+      );
+    }
+    if (params.createdAt) {
+      search.set('createdAt', params.createdAt);
+      search.set('createdAtDirection', params.createdAtDirection ?? 'after');
+    }
+    if (params.updatedAt) {
+      search.set('updatedAt', params.updatedAt);
+      search.set('updatedAtDirection', params.updatedAtDirection ?? 'after');
+    }
     return this.get(
-      `/api/applications/by-disciplines?disciplines=${encodeURIComponent(
-        value,
-      )}`,
-    ) as Promise<Application[]>;
+      `/api/applications/by-disciplines?${search.toString()}`,
+    ) as Promise<PaginatedResponse<Application>>;
   }
 
   public async getDisciplines(): Promise<DisciplineCatalogItem[]> {

@@ -24,6 +24,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApplicationsService } from './applications.service';
 import { Application } from './application.entity';
 import { CreateApplicationDto } from './dto/create-application.request.dto';
+import { ApplicationQueryDto } from './dto/application-query.dto';
+import { PaginatedResult } from '../common/paginated-result.interface';
 import { ApiTags } from '@nestjs/swagger';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.request.dto';
 import { UpdateApplicationDisciplineDto } from './dto/update-application-discipline.request.dto';
@@ -100,14 +102,17 @@ export class ApplicationsController {
   }
 
   /**
-   * Exposes an endpoint to return all applications.
-   * @returns A promise of the list of all available applications.
+   * Exposes an endpoint to return a page of applications.
+   * @param query pagination options (page, limit).
+   * @returns A promise of a page of applications plus the total count.
    * @throws {Error} which is unchanged from what repository throws.
    */
   @Get()
   @Roles(UserType.ADMIN)
-  async getAllApplications(): Promise<Application[]> {
-    return await this.applicationsService.findAll();
+  async getAllApplications(
+    @Query() query: ApplicationQueryDto,
+  ): Promise<PaginatedResult<Application>> {
+    return await this.applicationsService.findAll(query);
   }
 
   /**
@@ -138,13 +143,17 @@ export class ApplicationsController {
   @Roles(UserType.ADMIN)
   async getApplicationsByDisciplines(
     @Query('disciplines') disciplinesCsv: string,
-  ): Promise<Application[]> {
+    @Query() query: ApplicationQueryDto,
+  ): Promise<PaginatedResult<Application>> {
     const disciplines = disciplinesCsv
       ?.split(',')
       .map((discipline) => discipline.trim())
       .filter(Boolean);
 
-    return await this.applicationsService.findByDisciplines(disciplines ?? []);
+    return await this.applicationsService.findByDisciplines(
+      disciplines ?? [],
+      query,
+    );
   }
 
   /**

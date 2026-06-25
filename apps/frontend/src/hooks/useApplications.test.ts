@@ -14,6 +14,7 @@ import {
   getDisciplineAdminMapCached,
   prefetchDisciplineAdminMap,
 } from '@utils/disciplineAdminCache';
+import { EMPTY_APPLICATION_FILTERS } from '@utils/applicationFilters';
 
 const disciplineKeys = {
   rn: 'rn',
@@ -146,9 +147,12 @@ describe('useApplications', () => {
   });
 
   it('should fetch applications and users then merge names', async () => {
-    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue(
-      mockApplications,
-    );
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: mockApplications,
+      total: mockApplications.length,
+      page: 1,
+      limit: 25,
+    });
 
     const { result } = renderHook(() => useApplications());
 
@@ -156,6 +160,7 @@ describe('useApplications', () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.applications).toHaveLength(2);
+    expect(result.current.total).toBe(2);
 
     const first = result.current.applications[0];
     expect(first.appId).toBe(1);
@@ -178,9 +183,12 @@ describe('useApplications', () => {
   });
 
   it('should fall back to email when user not found', async () => {
-    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue(
-      mockApplications,
-    );
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: mockApplications,
+      total: mockApplications.length,
+      page: 1,
+      limit: 25,
+    });
     vi.mocked(apiClient.getApplicants).mockResolvedValue([]);
 
     const { result } = renderHook(() => useApplications());
@@ -205,7 +213,12 @@ describe('useApplications', () => {
   });
 
   it('should handle empty response', async () => {
-    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue([]);
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 25,
+    });
 
     const { result } = renderHook(() => useApplications());
 
@@ -216,7 +229,12 @@ describe('useApplications', () => {
   });
 
   it('should resolve discipline and call scoped endpoints exactly once', async () => {
-    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue([]);
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 25,
+    });
 
     renderHook(() => useApplications());
 
@@ -227,8 +245,79 @@ describe('useApplications', () => {
       );
       expect(apiClient.getApplicationsByDisciplines).toHaveBeenCalledWith(
         mockAdminInfo.disciplines,
+        expect.objectContaining({ page: 1, limit: 25 }),
       );
       expect(apiClient.getApplicants).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('should forward search and status filters to the backend', async () => {
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 25,
+    });
+
+    renderHook(() =>
+      useApplications({
+        search: 'spanish',
+        filters: { ...EMPTY_APPLICATION_FILTERS, statuses: ['Accepted'] },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(apiClient.getApplicationsByDisciplines).toHaveBeenCalledWith(
+        ['rn'],
+        expect.objectContaining({
+          search: 'spanish',
+          statuses: ['Accepted'],
+        }),
+      );
+    });
+  });
+
+  it('should resolve a discipline-admin-name filter to discipline keys', async () => {
+    vi.mocked(apiClient.getApplicationsByDisciplines).mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 25,
+    });
+
+    renderHook(() =>
+      useApplications({
+        filters: {
+          ...EMPTY_APPLICATION_FILTERS,
+          disciplineAdminNames: ['Alex Kim'],
+        },
+      }),
+    );
+
+    // 'Alex Kim' administers the 'rn' discipline, which the admin is scoped to.
+    await waitFor(() => {
+      expect(apiClient.getApplicationsByDisciplines).toHaveBeenCalledWith(
+        ['rn'],
+        expect.objectContaining({ page: 1, limit: 25 }),
+      );
+    });
+  });
+
+  it('should return an empty result without fetching when filters exclude all disciplines', async () => {
+    const { result } = renderHook(() =>
+      useApplications({
+        filters: {
+          ...EMPTY_APPLICATION_FILTERS,
+          // 'Jo Rivera' administers 'social-work', which this admin is not scoped to.
+          disciplineAdminNames: ['Jo Rivera'],
+        },
+      }),
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.applications).toEqual([]);
+    expect(result.current.total).toBe(0);
+    expect(apiClient.getApplicationsByDisciplines).not.toHaveBeenCalled();
   });
 });

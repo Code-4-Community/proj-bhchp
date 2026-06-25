@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: '2010-09-09'
 Description: Recreated S3 bucket from existing bhchp-bucket configuration
 
 Parameters:
@@ -25,18 +25,28 @@ Resources:
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIAThenGlacier
+            Status: Enabled
+            Filter: {}
+            Transitions:
+              - StorageClass: STANDARD_IA
+                TransitionInDays: 30
+              - StorageClass: GLACIER_IR
+                TransitionInDays: 90
   BhchpBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref BhchpBucket
       PolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Sid: PublicReadGetObject
             Effect: Allow
-            Principal: "*"
+            Principal: '*'
             Action: s3:GetObject
-            Resource: !Sub "arn:aws:s3:::${BhchpBucket}/*"
+            Resource: !Sub 'arn:aws:s3:::${BhchpBucket}/*'
 
 Outputs:
   BucketName:

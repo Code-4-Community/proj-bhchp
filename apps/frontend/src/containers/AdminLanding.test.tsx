@@ -5,10 +5,10 @@ import AdminLanding from './AdminLanding';
 import { EMPTY_APPLICATION_FILTERS } from '@utils/applicationFilters';
 
 const mockUseApplications = vi.fn();
-const tablePropsSpy = vi.fn();
 
 vi.mock('@hooks/useApplications', () => ({
-  useApplications: () => mockUseApplications(),
+  useApplications: (params: unknown) => mockUseApplications(params),
+  APPLICATIONS_PAGE_SIZE: 25,
 }));
 
 vi.mock('@api/apiClient', () => ({
@@ -49,10 +49,7 @@ vi.mock('@components/TableSearchBar', () => ({
 }));
 
 vi.mock('@components/ApplicationTable', () => ({
-  default: (props: unknown) => {
-    tablePropsSpy(props);
-    return <div data-testid="application-table" />;
-  },
+  default: () => <div data-testid="application-table" />,
 }));
 
 vi.mock('@components/FilterPopUp', () => ({
@@ -100,9 +97,18 @@ function renderPage() {
   );
 }
 
+type UseApplicationsArgs = {
+  search: string;
+  filters: typeof EMPTY_APPLICATION_FILTERS;
+};
+
+function lastUseApplicationsArgs(): UseApplicationsArgs {
+  return mockUseApplications.mock.calls.at(-1)?.[0] as UseApplicationsArgs;
+}
+
 describe('AdminLanding', () => {
   beforeEach(() => {
-    tablePropsSpy.mockClear();
+    mockUseApplications.mockClear();
     mockUseApplications.mockReturnValue({
       applications: [
         {
@@ -122,61 +128,43 @@ describe('AdminLanding', () => {
       ],
       loading: false,
       error: null,
+      total: 1,
+      disciplineOptions: ['RN'],
+      disciplineAdminOptions: ['Alex Kim'],
     });
   });
 
-  it('passes initial search and filters to ApplicationTable', () => {
+  it('passes initial search and filters to useApplications', () => {
     renderPage();
 
-    const lastCallArgs = tablePropsSpy.mock.calls.at(-1)?.[0] as {
-      searchQuery: string;
-      filters: typeof EMPTY_APPLICATION_FILTERS;
-    };
+    const args = lastUseApplicationsArgs();
 
-    expect(lastCallArgs.searchQuery).toBe('');
-    expect(lastCallArgs.filters).toEqual(EMPTY_APPLICATION_FILTERS);
+    expect(args.search).toBe('');
+    expect(args.filters).toEqual(EMPTY_APPLICATION_FILTERS);
   });
 
-  it('updates search query passed to ApplicationTable', () => {
+  it('forwards the updated search query to useApplications', () => {
     renderPage();
 
     fireEvent.change(screen.getByLabelText('search'), {
       target: { value: 'jane' },
     });
 
-    const lastCallArgs = tablePropsSpy.mock.calls.at(-1)?.[0] as {
-      searchQuery: string;
-    };
-
-    expect(lastCallArgs.searchQuery).toBe('jane');
+    expect(lastUseApplicationsArgs().search).toBe('jane');
   });
 
-  it('updates filters and supports reset behavior', () => {
+  it('forwards filter changes and reset to useApplications', () => {
     renderPage();
 
     fireEvent.click(screen.getByText('apply-filters'));
 
-    let lastCallArgs = tablePropsSpy.mock.calls.at(-1)?.[0] as {
-      filters: {
-        statuses: string[];
-        disciplines: string[];
-        disciplineAdminNames: string[];
-        proposedStartDate?: string;
-        proposedStartDateDirection?: 'before' | 'after';
-        actualStartDate?: string;
-        actualStartDateDirection?: 'before' | 'after';
-      };
-    };
-
-    expect(lastCallArgs.filters.statuses).toEqual(['Accepted']);
-    expect(lastCallArgs.filters.disciplines).toEqual(['RN']);
+    let args = lastUseApplicationsArgs();
+    expect(args.filters.statuses).toEqual(['Accepted']);
+    expect(args.filters.disciplines).toEqual(['RN']);
 
     fireEvent.click(screen.getByText('reset-filters'));
 
-    lastCallArgs = tablePropsSpy.mock.calls.at(-1)?.[0] as {
-      filters: typeof EMPTY_APPLICATION_FILTERS;
-    };
-
-    expect(lastCallArgs.filters).toEqual(EMPTY_APPLICATION_FILTERS);
+    args = lastUseApplicationsArgs();
+    expect(args.filters).toEqual(EMPTY_APPLICATION_FILTERS);
   });
 });

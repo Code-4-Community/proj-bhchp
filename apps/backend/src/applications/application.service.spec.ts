@@ -118,6 +118,7 @@ describe('ApplicationsService', () => {
 
   const mockRepository = {
     find: jest.fn(),
+    findAndCount: jest.fn(),
     count: jest.fn(),
     findOne: jest.fn(),
     save: jest.fn(),
@@ -211,33 +212,110 @@ describe('ApplicationsService', () => {
   });
 
   describe('findAll', () => {
-    it('should return an array of applications', async () => {
+    it('should return a page of applications plus the total count', async () => {
       const mockApplications: Application[] = [dummyApplication];
 
-      mockRepository.find.mockResolvedValue(mockApplications);
+      mockRepository.findAndCount.mockResolvedValue([mockApplications, 1]);
 
       const result = await service.findAll();
 
-      expect(repository.find).toHaveBeenCalled();
-      expect(result).toEqual(mockApplications);
+      expect(repository.findAndCount).toHaveBeenCalled();
+      expect(result).toEqual({
+        data: mockApplications,
+        total: 1,
+        page: 1,
+        limit: 25,
+      });
     });
 
-    it('should return an empty array if the repo returns one', async () => {
-      mockRepository.find.mockResolvedValue([]);
+    it('should honor the requested page and limit', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[dummyApplication], 60]);
+
+      const result = await service.findAll({ page: 3, limit: 20 });
+
+      expect(repository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 40, take: 20 }),
+      );
+      expect(result).toEqual({
+        data: [dummyApplication],
+        total: 60,
+        page: 3,
+        limit: 20,
+      });
+    });
+
+    it('should return an empty page if the repo returns one', async () => {
+      mockRepository.findAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
-      expect(repository.find).toHaveBeenCalled();
-      expect(result).toEqual([]);
+      expect(repository.findAndCount).toHaveBeenCalled();
+      expect(result).toEqual({ data: [], total: 0, page: 1, limit: 25 });
     });
 
     it('should pass along any repo errors without information loss', async () => {
-      mockRepository.find.mockRejectedValue(
+      mockRepository.findAndCount.mockRejectedValue(
         new Error('There was a problem retrieving the info'),
       );
 
       await expect(service.findAll()).rejects.toThrow(
         `There was a problem retrieving the info`,
+      );
+    });
+  });
+
+  describe('findByDisciplines', () => {
+    const createQb = (data: Application[], total: number) => {
+      const qb: Record<string, jest.Mock> = {};
+      qb.select = jest.fn(() => qb);
+      qb.where = jest.fn(() => qb);
+      qb.andWhere = jest.fn(() => qb);
+      qb.orderBy = jest.fn(() => qb);
+      qb.skip = jest.fn(() => qb);
+      qb.take = jest.fn(() => qb);
+      qb.getManyAndCount = jest.fn().mockResolvedValue([data, total]);
+      return qb;
+    };
+
+    it('returns a paginated, projected page with search + filters applied', async () => {
+      const qb = createQb([dummyApplication], 1);
+      mockRepository.createQueryBuilder.mockReturnValue(qb);
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+
+      const result = await service.findByDisciplines(['RN'], {
+        page: 2,
+        limit: 10,
+        search: 'spanish',
+        statuses: ['Accepted'],
+      });
+
+      // Disciplines are normalized to lowercase keys before validation/query.
+      expect(
+        mockDisciplinesService.ensureActiveDisciplineKeys,
+      ).toHaveBeenCalledWith(['rn']);
+      expect(qb.where).toHaveBeenCalledWith(
+        'app.discipline IN (:...disciplines)',
+        {
+          disciplines: ['rn'],
+        },
+      );
+      // Search bracket + status filter both add andWhere clauses.
+      expect(qb.andWhere).toHaveBeenCalled();
+      expect(qb.skip).toHaveBeenCalledWith(10);
+      expect(qb.take).toHaveBeenCalledWith(10);
+      expect(result).toEqual({
+        data: [dummyApplication],
+        total: 1,
+        page: 2,
+        limit: 10,
+      });
+    });
+
+    it('throws when no disciplines are provided', async () => {
+      await expect(service.findByDisciplines([])).rejects.toThrow(
+        'At least one discipline must be provided',
       );
     });
   });
