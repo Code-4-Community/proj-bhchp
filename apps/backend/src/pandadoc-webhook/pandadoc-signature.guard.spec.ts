@@ -3,6 +3,23 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PandadocSignatureGuard } from './pandadoc-signature.guard';
 
+jest.mock('../util/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+      region: 'us-east-2',
+      bucketName: 'bucket',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 const KEY = 'sandbox-key-abc123';
 const BODY = Buffer.from(JSON.stringify([{ event: 'document_completed' }]));
 

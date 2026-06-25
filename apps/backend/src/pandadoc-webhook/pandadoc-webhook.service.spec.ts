@@ -10,6 +10,23 @@ import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
 
 jest.mock('axios');
 
+jest.mock('../util/aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+      region: 'us-east-2',
+      bucketName: 'bucket',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 function buildFullPayload(): Record<string, unknown> {
   return {
     Volunteer_StartDate: '06-01-2026',
