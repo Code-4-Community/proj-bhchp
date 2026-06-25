@@ -301,4 +301,12 @@ export class Application {
    */
   @UpdateDateColumn({ type: 'timestamp' })
   updatedAt!: Date;
+
+  /**
+   * Internal notes about the application, only visible to admins.
+   *
+   * Example: "Applicant is potentially a good fit."
+   */
+  @Column({ type: 'varchar', nullable: true })
+  internalNotes?: string;
 }

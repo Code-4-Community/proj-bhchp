@@ -71,6 +71,7 @@ const dummyApplication: Application = {
   emergencyContactPhone: '111-111-1111',
   emergencyContactRelationship: 'Mother',
   heardAboutFrom: [],
+  internalNotes: undefined,
 };
 
 const dummyCreateApplicationDto: CreateApplicationDto = {
@@ -1194,6 +1195,86 @@ describe('ApplicationsService', () => {
       await expect(service.updateEndDate(1, updatedEndDate)).rejects.toThrow(
         'There was a problem saving the info',
       );
+    });
+  });
+
+  describe('updateInternalNotes', () => {
+    it('should update internal notes', async () => {
+      const updatedApplication: Application = {
+        ...dummyApplication,
+        internalNotes: 'Applicant is potentially a good fit.',
+      };
+
+      mockRepository.findOne.mockResolvedValue(dummyApplication);
+      mockRepository.save.mockResolvedValue(updatedApplication);
+
+      const result = await service.updateInternalNotes(
+        1,
+        'Applicant is potentially a good fit.',
+      );
+
+      expect(result).toEqual(updatedApplication);
+      expect(repository.findOne).toHaveBeenCalledWith({ where: { appId: 1 } });
+      expect(repository.save).toHaveBeenCalledWith({
+        ...dummyApplication,
+        internalNotes: 'Applicant is potentially a good fit.',
+      });
+    });
+
+    it('should clear internal notes when undefined is passed', async () => {
+      const updatedApplication: Application = {
+        ...dummyApplication,
+        internalNotes: undefined,
+      };
+
+      mockRepository.findOne.mockResolvedValue(dummyApplication);
+      mockRepository.save.mockResolvedValue(updatedApplication);
+
+      const result = await service.updateInternalNotes(1, undefined);
+
+      expect(result).toEqual(updatedApplication);
+      expect(repository.save).toHaveBeenCalledWith({
+        ...dummyApplication,
+        internalNotes: undefined,
+      });
+    });
+
+    it('should throw NotFoundException if application is not found', async () => {
+      mockRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateInternalNotes(
+          999,
+          'Applicant is potentially a good fit.',
+        ),
+      ).rejects.toThrow('Application with ID 999 not found');
+    });
+
+    it('should throw BadRequestException if application id is missing', async () => {
+      await expect(
+        service.updateInternalNotes(0, 'Applicant is potentially a good fit.'),
+      ).rejects.toThrow('Application ID is required');
+    });
+
+    it('should error out without information loss if the repository throws an error during retrieval', async () => {
+      mockRepository.findOne.mockRejectedValueOnce(
+        new Error('There was a problem retrieving the info'),
+      );
+
+      await expect(
+        service.updateInternalNotes(1, 'Applicant is potentially a good fit.'),
+      ).rejects.toThrow('There was a problem retrieving the info');
+    });
+
+    it('should error out without information loss if the repository throws an error during save', async () => {
+      mockRepository.findOne.mockResolvedValue(dummyApplication);
+      mockRepository.save.mockRejectedValueOnce(
+        new Error('There was a problem saving the info'),
+      );
+
+      await expect(
+        service.updateInternalNotes(1, 'Applicant is potentially a good fit.'),
+      ).rejects.toThrow('There was a problem saving the info');
     });
   });
 

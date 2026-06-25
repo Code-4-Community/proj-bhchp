@@ -30,6 +30,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.request.dto';
 import { UpdateApplicationDisciplineDto } from './dto/update-application-discipline.request.dto';
 import { UpdateApplicationAvailabilityDto } from './dto/update-application-availability.request.dto';
+import { UpdateApplicationInternalNotesDto } from './dto/update-application-internal-notes.request.dto';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { AuthGuard } from '@nestjs/passport';
 import { UserType } from '../users/types';
@@ -369,6 +370,26 @@ export class ApplicationsController {
     return await this.applicationsService.updateEndDate(
       appId,
       new Date(endDate),
+    );
+  }
+
+  /**
+   * Exposes an endpoint to update the internal notes of an application.
+   * @param appId The id of the application to update.
+   * @param updateInternalNotesDto Object containing the new internal notes.
+   * @returns The updated application object.
+   * @throws {NotFoundException} with message 'Application with ID <appId> not found'
+   *         if the application does not exist.
+   */
+  @Patch('/:appId/internal-notes')
+  @Roles(UserType.ADMIN)
+  async updateApplicationInternalNotes(
+    @Param('appId', ParseIntPipe) appId: number,
+    @Body() updateInternalNotesDto: UpdateApplicationInternalNotesDto,
+  ): Promise<Application> {
+    return await this.applicationsService.updateInternalNotes(
+      appId,
+      updateInternalNotesDto.internalNotes,
     );
   }
 

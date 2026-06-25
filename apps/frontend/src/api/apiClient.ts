@@ -262,6 +262,15 @@ export class ApiClient {
     }) as Promise<Application>;
   }
 
+  public async updateApplicationInternalNotes(
+    appId: number,
+    internalNotes: string | undefined,
+  ): Promise<Application> {
+    return this.patch(`/api/applications/${appId}/internal-notes`, {
+      internalNotes,
+    }) as Promise<Application>;
+  }
+
   public async getConfidentialityTemplateUrl(): Promise<ConfidentialityTemplateResponse> {
     return this.get(
       '/api/applications/forms/confidentiality/template',

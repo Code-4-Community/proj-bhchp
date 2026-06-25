@@ -113,6 +113,7 @@ export interface Application extends AvailabilityFields {
   emergencyContactRelationship: string;
   heardAboutFrom: HeardAboutFrom[];
   endDate?: string;
+  internalNotes?: string;
 }
 
 /**

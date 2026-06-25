@@ -1084,6 +1084,28 @@ export class ApplicationsService {
   }
 
   /**
+   * Updates the internal notes of an application.
+   * @param appId The id of the application to update.
+   * @param internalNotes The new internal notes string.
+   * @returns The updated application object.
+   * @throws {NotFoundException} if the application does not exist.
+   * @throws {Error} which is unchanged from what repository throws.
+   */
+  async updateInternalNotes(
+    appId: number,
+    internalNotes: string | undefined,
+  ): Promise<Application> {
+    if (!appId) {
+      throw new BadRequestException('Application ID is required');
+    }
+
+    const application = await this.findById(appId);
+
+    application.internalNotes = internalNotes;
+    return await this.applicationRepository.save(application);
+  }
+
+  /**
    * Deletes an application from the repository by id.
    * @param appId the id of the application to delete.
    * @throws {NotFoundException} if the application does not exist.
