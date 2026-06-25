@@ -2,6 +2,7 @@ import NavBar from '@components/NavBar/NavBar';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import apiClient from '@api/apiClient';
 import {
+  Alert,
   Badge,
   Box,
   Button,
@@ -195,20 +196,41 @@ const AdminViewApplication: React.FC = () => {
     application?.internalNotes ?? '',
   );
   const [notesSaving, setNotesSaving] = useState(false);
+  const [notesSaveError, setNotesSaveError] = useState<string | null>(null);
+  const [showNotesSaved, setShowNotesSaved] = useState(false);
 
   useEffect(() => {
     setInternalNotes(application?.internalNotes ?? '');
   }, [application]);
 
+  useEffect(() => {
+    if (!showNotesSaved) return;
+
+    const t = setTimeout(() => setShowNotesSaved(false), 4500);
+    return () => clearTimeout(t);
+  }, [showNotesSaved]);
+
   const handleInternalNotesUpdate = async () => {
-    if (!application) return;
+    if (!application || notesSaving) return;
+
+    setNotesSaveError(null);
     setNotesSaving(true);
-    const updatedApplication = await apiClient.updateApplicationInternalNotes(
-      application.appId,
-      internalNotes,
-    );
-    setApplication(updatedApplication);
-    setNotesSaving(false);
+
+    try {
+      const updatedApplication = await apiClient.updateApplicationInternalNotes(
+        application.appId,
+        internalNotes,
+      );
+      setApplication(updatedApplication);
+      setShowNotesSaved(true);
+    } catch (error) {
+      console.error('[ui] AdminViewApplication notes save failed', error);
+      setNotesSaveError(
+        'We could not save internal notes. Please try again or contact support.',
+      );
+    } finally {
+      setNotesSaving(false);
+    }
   };
 
   if (loading) {
@@ -246,6 +268,43 @@ const AdminViewApplication: React.FC = () => {
         overflowY="auto"
         maxH="100vh"
       >
+        {showNotesSaved && (
+          <Box
+            position="fixed"
+            top="20px"
+            right="20px"
+            zIndex={9999}
+            bg="white"
+            border="1px solid rgba(0,0,0,0.08)"
+            boxShadow="0 6px 18px rgba(0,0,0,0.12)"
+            borderRadius="8px"
+            px="16px"
+            py="10px"
+            display="flex"
+            alignItems="center"
+            gap="12px"
+          >
+            <Box
+              width="28px"
+              height="28px"
+              borderRadius="full"
+              bg="#E7EEFF"
+              color="#4C6EDB"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              fontSize="14px"
+            >
+              !
+            </Box>
+            <Box>
+              <Text fontWeight="700">Notes saved</Text>
+              <Text fontSize="12px">
+                Internal notes have been successfully updated.
+              </Text>
+            </Box>
+          </Box>
+        )}
         <ApplicationProfileHeader
           firstName={user ? user.firstName : ''}
           lastName={user ? user.lastName : ''}
@@ -475,9 +534,21 @@ const AdminViewApplication: React.FC = () => {
           <Text fontSize="sm" color="orange.700" mb={3}>
             Admin only — not visible to applicants.
           </Text>
+          {notesSaveError && (
+            <Alert.Root status="error" mb={3}>
+              <Alert.Indicator />
+              <Alert.Content>
+                <Alert.Title>Failed to save notes</Alert.Title>
+                <Alert.Description>{notesSaveError}</Alert.Description>
+              </Alert.Content>
+            </Alert.Root>
+          )}
           <Textarea
             value={internalNotes}
-            onChange={(e) => setInternalNotes(e.target.value)}
+            onChange={(e) => {
+              setInternalNotes(e.target.value);
+              setNotesSaveError(null);
+            }}
             placeholder="Add internal notes about this applicant..."
             bg="white"
             rows={4}
