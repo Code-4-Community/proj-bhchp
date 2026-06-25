@@ -21,12 +21,7 @@ const AppDataSource = new DataSource({
   username: process.env.NX_DB_USERNAME,
   password: process.env.NX_DB_PASSWORD,
   database: process.env.NX_DB_DATABASE,
-  ssl: sslCa
-    ? {
-        rejectUnauthorized: true,
-        ca: sslCa,
-      }
-    : undefined,
+  ssl: { rejectUnauthorized: false },
   entities: [
     Application,
     CandidateInfo,

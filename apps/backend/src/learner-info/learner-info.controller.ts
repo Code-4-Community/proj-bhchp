@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Param,
   Post,
+  Req,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -11,6 +13,7 @@ import { LearnerInfo } from './learner-info.entity';
 import { ApiTags } from '@nestjs/swagger';
 import { LearnerInfoService } from './learner-info.service';
 import { CreateLearnerInfoDto } from './dto/create-learner-info.request.dto';
+import { ApplicationsService } from '../applications/applications.service';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
 import { AuthGuard } from '@nestjs/passport';
 import { UserType } from '../users/types';
@@ -25,7 +28,10 @@ import { RolesGuard } from '../auth/roles.guard';
 @UseInterceptors(CurrentUserInterceptor)
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class LearnerInfoController {
-  constructor(private learnerInfoService: LearnerInfoService) {}
+  constructor(
+    private learnerInfoService: LearnerInfoService,
+    private applicationsService: ApplicationsService,
+  ) {}
 
   /**
    * Exposes an endpoint to create a learner info.
@@ -51,8 +57,20 @@ export class LearnerInfoController {
    * @throws {BadRequestException} if the id field is invalid (e.g. null or undefined)
    */
   @Get('/:appId')
-  @Roles(UserType.ADMIN)
-  async getLearnerInfo(@Param('appId') appId: number): Promise<LearnerInfo> {
+  @Roles(UserType.ADMIN, UserType.STANDARD)
+  async getLearnerInfo(
+    @Param('appId') appId: number,
+    @Req() req: { user?: { email?: string; userType?: UserType } },
+  ): Promise<LearnerInfo> {
+    if (req.user?.userType === UserType.STANDARD) {
+      const application = await this.applicationsService.findById(appId);
+      if (req.user.email !== application.email) {
+        throw new ForbiddenException(
+          'Standard users can only access their own learner info.',
+        );
+      }
+    }
+
     return await this.learnerInfoService.findById(appId);
   }
 }

@@ -6,9 +6,15 @@ import { LearnerInfo } from './learner-info.entity';
 import { AuthModule } from '../auth/auth.module';
 import { UsersModule } from '../users/users.module';
 import { CurrentUserInterceptor } from '../interceptors/current-user.interceptor';
+import { ApplicationsModule } from '../applications/applications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([LearnerInfo]), AuthModule, UsersModule],
+  imports: [
+    TypeOrmModule.forFeature([LearnerInfo]),
+    AuthModule,
+    UsersModule,
+    ApplicationsModule,
+  ],
   controllers: [LearnerInfoController],
   providers: [LearnerInfoService, CurrentUserInterceptor],
   exports: [LearnerInfoService],
