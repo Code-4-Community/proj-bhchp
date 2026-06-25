@@ -196,7 +196,11 @@ describe('PandadocWebhookService', () => {
             }).map(([field_id, value]) => ({
               field_id,
               value,
-              assigned_to: { email: 'test@example.com' },
+              assigned_to: {
+                email: 'test@example.com',
+                first_name: 'Jamie',
+                last_name: 'Smith',
+              },
             })),
           },
         })
@@ -241,6 +245,12 @@ describe('PandadocWebhookService', () => {
           appStatus: AppStatus.APP_SUBMITTED,
           resume: 'resumes/resume-stored.pdf',
           coverLetter: 'cover-letters/cover-letter-stored.pdf',
+        }),
+        expect.objectContaining({
+          candidateName: expect.objectContaining({
+            firstName: 'Jamie',
+            lastName: 'Smith',
+          }),
         }),
       );
       expect(learnerInfoService.create).toHaveBeenCalledWith(

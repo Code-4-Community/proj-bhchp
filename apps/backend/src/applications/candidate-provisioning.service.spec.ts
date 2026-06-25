@@ -188,4 +188,25 @@ describe('CandidateProvisioningService', () => {
       expect.not.stringContaining('Temporary password:'),
     );
   });
+
+  it('uses provided candidate names for database user creation and email greeting', async () => {
+    mockCognitoIdentityProvider.send.mockResolvedValue({});
+
+    await service.provisionSubmittedCandidate(application, true, {
+      firstName: 'Avery',
+      lastName: 'Johnson',
+    });
+
+    expect(mockUsersService.create).toHaveBeenCalledWith(
+      'jane.doe@example.com',
+      'Avery',
+      'Johnson',
+      UserType.STANDARD,
+    );
+    expect(mockEmailService.queueEmail).toHaveBeenCalledWith(
+      'jane.doe@example.com',
+      'Your application has been submitted',
+      expect.stringContaining('Hello Avery,'),
+    );
+  });
 });

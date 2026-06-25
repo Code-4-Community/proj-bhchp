@@ -21,6 +21,13 @@ import { LearnerInfo } from '../learner-info/learner-info.entity';
 import { PaginatedResult } from '../common/paginated-result.interface';
 import { ApplicationQueryDto } from './dto/application-query.dto';
 
+type CandidateCreateOptions = {
+  candidateName?: {
+    firstName?: string;
+    lastName?: string;
+  };
+};
+
 /**
  * Columns returned by the paginated list endpoints. Only the fields the admin
  * table renders are selected, so the bulk of each row (availability strings,
@@ -882,6 +889,7 @@ export class ApplicationsService {
    */
   async create(
     createApplicationDto: CreateApplicationDto,
+    options?: CandidateCreateOptions,
   ): Promise<Application> {
     this.validateApplicationDto(createApplicationDto);
     const normalizedEmail = createApplicationDto.email.trim().toLowerCase();
@@ -898,10 +906,18 @@ export class ApplicationsService {
     });
     const saved = await this.applicationRepository.save(application);
 
-    await this.candidateProvisioningService.provisionSubmittedCandidate(
-      saved,
-      existingApplicationCount === 0,
-    );
+    if (options?.candidateName) {
+      await this.candidateProvisioningService.provisionSubmittedCandidate(
+        saved,
+        existingApplicationCount === 0,
+        options.candidateName,
+      );
+    } else {
+      await this.candidateProvisioningService.provisionSubmittedCandidate(
+        saved,
+        existingApplicationCount === 0,
+      );
+    }
 
     return saved;
   }

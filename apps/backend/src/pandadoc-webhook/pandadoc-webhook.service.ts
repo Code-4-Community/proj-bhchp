@@ -380,6 +380,14 @@ export class PandadocWebhookService {
 
       const email = String(buckets.candidateInfo['email'] ?? '');
       const normalizedEmail = email.trim();
+      const candidateFirstName =
+        this.getPayloadString(payload, '_firstName') ??
+        this.getPayloadString(payload, 'Volunteer_FirstName') ??
+        this.getPayloadString(payload, 'firstName');
+      const candidateLastName =
+        this.getPayloadString(payload, '_lastName') ??
+        this.getPayloadString(payload, 'Volunteer_LastName') ??
+        this.getPayloadString(payload, 'lastName');
       if (!normalizedEmail) {
         this.logger.warn(
           `[PandaDoc] Candidate email missing after mapping event=${eventType} documentId=${documentId}`,
@@ -395,9 +403,19 @@ export class PandadocWebhookService {
         )} applicantType=${applicantType}`,
       );
 
-      const createdApplication = await this.applicationsService.create(
-        applicationDto,
-      );
+      const candidateName =
+        candidateFirstName || candidateLastName
+          ? {
+              firstName: candidateFirstName,
+              lastName: candidateLastName,
+            }
+          : undefined;
+
+      const createdApplication = candidateName
+        ? await this.applicationsService.create(applicationDto, {
+            candidateName,
+          })
+        : await this.applicationsService.create(applicationDto);
 
       this.logger.debug(
         `[PandaDoc] ApplicationsService.create complete appId=${createdApplication.appId}`,
