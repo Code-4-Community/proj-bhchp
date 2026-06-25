@@ -656,6 +656,12 @@ export class ApplicationsService {
       });
     }
 
+    if (query.applicantTypes?.length) {
+      qb.andWhere('"app"."applicantType" IN (:...applicantTypes)', {
+        applicantTypes: query.applicantTypes,
+      });
+    }
+
     this.applyDateFilter(
       qb,
       'proposedStartDate',

@@ -36,6 +36,7 @@ describe('FilterPopUp', () => {
         onOpenChange={vi.fn()}
         filters={{
           statuses: ['Accepted'],
+          applicantTypes: ['Learner'],
           disciplines: ['RN'],
           disciplineAdminNames: ['Alex Kim'],
           proposedStartDate: '2026-01-15',
@@ -49,7 +50,7 @@ describe('FilterPopUp', () => {
       />,
     );
 
-    expect(screen.getByText('4')).toBeDefined();
+    expect(screen.getByText('5')).toBeDefined();
   });
 
   it('calls onResetFilters when reset button is pressed', () => {

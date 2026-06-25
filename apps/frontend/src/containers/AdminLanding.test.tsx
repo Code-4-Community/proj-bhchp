@@ -59,6 +59,7 @@ vi.mock('@components/FilterPopUp', () => ({
   }: {
     onFiltersChange: (filters: {
       statuses: string[];
+      applicantTypes: string[];
       disciplines: string[];
       disciplineAdminNames: string[];
       proposedStartDate?: string;
@@ -73,6 +74,7 @@ vi.mock('@components/FilterPopUp', () => ({
         onClick={() =>
           onFiltersChange({
             statuses: ['Accepted'],
+            applicantTypes: ['Learner'],
             disciplines: ['RN'],
             disciplineAdminNames: ['Alex Kim'],
             proposedStartDate: '2026-01-15',

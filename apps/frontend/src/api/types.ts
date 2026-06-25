@@ -141,6 +141,8 @@ export interface ApplicationListParams {
   search?: string;
   /** `appStatus` values to include. */
   statuses?: string[];
+  /** Applicant types to include (e.g., Learner, Volunteer). */
+  applicantTypes?: string[];
   proposedStartDate?: string;
   proposedStartDateDirection?: ListDateFilterDirection;
   actualStartDate?: string;

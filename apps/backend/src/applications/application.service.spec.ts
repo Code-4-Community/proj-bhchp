@@ -313,6 +313,25 @@ describe('ApplicationsService', () => {
       });
     });
 
+    it('applies applicant type filters when provided', async () => {
+      const qb = createQb([dummyApplication], 1);
+      mockRepository.createQueryBuilder.mockReturnValue(qb);
+      mockDisciplinesService.ensureActiveDisciplineKeys.mockResolvedValue(
+        undefined,
+      );
+
+      await service.findByDisciplines(['RN'], {
+        page: 1,
+        limit: 25,
+        applicantTypes: [ApplicantType.LEARNER],
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '"app"."applicantType" IN (:...applicantTypes)',
+        { applicantTypes: [ApplicantType.LEARNER] },
+      );
+    });
+
     it('throws when no disciplines are provided', async () => {
       await expect(service.findByDisciplines([])).rejects.toThrow(
         'At least one discipline must be provided',

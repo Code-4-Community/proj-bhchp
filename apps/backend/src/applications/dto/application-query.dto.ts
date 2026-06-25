@@ -8,6 +8,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { ApplicantType } from '../types';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -81,6 +82,16 @@ export class ApplicationQueryDto {
   @Transform(({ value }) => csvToArray(value))
   @IsString({ each: true })
   statuses?: string[];
+
+  /**
+   * Comma-separated applicant types to include.
+   *
+   * Example: 'Learner,Volunteer'.
+   */
+  @IsOptional()
+  @Transform(({ value }) => csvToArray(value))
+  @IsIn(Object.values(ApplicantType), { each: true })
+  applicantTypes?: ApplicantType[];
 
   /**
    * Proposed-start-date bound (YYYY-MM-DD), paired with {@link proposedStartDateDirection}.

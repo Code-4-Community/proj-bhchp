@@ -92,6 +92,9 @@ export class ApiClient {
     if (params.statuses?.length) {
       search.set('statuses', params.statuses.join(','));
     }
+    if (params.applicantTypes?.length) {
+      search.set('applicantTypes', params.applicantTypes.join(','));
+    }
     if (params.proposedStartDate) {
       search.set('proposedStartDate', params.proposedStartDate);
       search.set(

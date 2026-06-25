@@ -164,6 +164,10 @@ function buildListParams(
     params.statuses = filters.statuses;
   }
 
+  if (filters.applicantTypes.length) {
+    params.applicantTypes = filters.applicantTypes;
+  }
+
   const proposed = normalizeDateToDay(filters.proposedStartDate);
   if (proposed) {
     params.proposedStartDate = proposed;
