@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { PandadocWebhookService } from './pandadoc-webhook.service';
 import { AppStatus, ApplicantType } from '../applications/types';
+import { School } from '../learner-info/types';
 import { ApplicationsService } from '../applications/applications.service';
 import { LearnerInfoService } from '../learner-info/learner-info.service';
 import { AWSS3Service } from '../util/aws-s3/aws-s3.service';
@@ -327,6 +328,29 @@ describe('PandadocWebhookService', () => {
       expect(applicationsService.create).toHaveBeenCalledWith(
         expect.objectContaining({ applicantType: ApplicantType.LEARNER }),
       );
+    });
+
+    it('sets applicantType=VOLUNTEER when affiliation is "Does Not Apply"', async () => {
+      const applicationsService = buildMockApplicationsService();
+      const learnerInfoService = buildMockLearnerInfoService();
+      const service = await buildService(
+        undefined,
+        undefined,
+        applicationsService,
+        learnerInfoService,
+      );
+
+      const payload = {
+        ...buildFullPayload(),
+        Volunteer_Affiliation: School.DOES_NOT_APPLY,
+      };
+
+      await service.processWebhook(payload);
+
+      expect(applicationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ applicantType: ApplicantType.VOLUNTEER }),
+      );
+      expect(learnerInfoService.create).not.toHaveBeenCalled();
     });
 
     it('sets applicantType=LEARNER when school affiliation is present even if schoolDepartment is empty', async () => {

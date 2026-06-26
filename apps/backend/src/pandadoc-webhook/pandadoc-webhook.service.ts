@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { pandadocMapper } from '../pandadoc-helpers/pandadoc-mapper';
 import { AppStatus, ApplicantType, PHONE_REGEX } from '../applications/types';
+import { School } from '../learner-info/types';
 import { ApplicationsService } from '../applications/applications.service';
 import { CreateApplicationDto } from '../applications/dto/create-application.request.dto';
 import { CreateLearnerInfoDto } from '../learner-info/dto/create-learner-info.request.dto';
@@ -349,9 +350,11 @@ export class PandadocWebhookService {
         } fields)`,
       );
 
-      const applicantType = buckets.learnerInfo['school']
-        ? ApplicantType.LEARNER
-        : ApplicantType.VOLUNTEER;
+      const applicantType =
+        buckets.learnerInfo['school'] &&
+        buckets.learnerInfo['school'] !== School.DOES_NOT_APPLY
+          ? ApplicantType.LEARNER
+          : ApplicantType.VOLUNTEER;
 
       const applicationData = {
         ...buckets.application,
@@ -421,7 +424,10 @@ export class PandadocWebhookService {
         `[PandaDoc] ApplicationsService.create complete appId=${createdApplication.appId}`,
       );
 
-      if (learnerRecord['school']) {
+      if (
+        learnerRecord['school'] &&
+        learnerRecord['school'] !== School.DOES_NOT_APPLY
+      ) {
         this.logger.debug(
           `[PandaDoc] Delegating learner info creation appId=${
             createdApplication.appId
