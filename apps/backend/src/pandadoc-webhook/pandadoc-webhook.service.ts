@@ -257,6 +257,10 @@ export class PandadocWebhookService {
 
     const result = Object.fromEntries(fields.map((f) => [f.field_id, f.value]));
 
+    this.logger.log(
+      `[PandaDoc] Raw Volunteer_Affiliation from API: "${result['Volunteer_Affiliation']}"`,
+    );
+
     // Email, phone, and name are not form fields — inject from recipient assigned_to.
     // PandaDoc populates these depending on how the doc was sent.
     const recipient = fields[0]?.assigned_to;
@@ -350,11 +354,21 @@ export class PandadocWebhookService {
         } fields)`,
       );
 
+      const rawAffiliation = payload['Volunteer_Affiliation'];
+      const mappedSchool = buckets.learnerInfo['school'];
+      const isDoesNotApply = mappedSchool === School.DOES_NOT_APPLY;
       const applicantType =
-        buckets.learnerInfo['school'] &&
-        buckets.learnerInfo['school'] !== School.DOES_NOT_APPLY
+        mappedSchool && !isDoesNotApply
           ? ApplicantType.LEARNER
           : ApplicantType.VOLUNTEER;
+
+      this.logger.log(
+        `[PandaDoc] Applicant type determination:` +
+          ` rawAffiliation="${rawAffiliation}"` +
+          ` mappedSchool="${mappedSchool}"` +
+          ` isDoesNotApply=${isDoesNotApply}` +
+          ` applicantType=${applicantType}`,
+      );
 
       const applicationData = {
         ...buckets.application,
