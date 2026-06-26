@@ -34,7 +34,7 @@ export class DisciplinesController {
    * @returns a list of all disciplines
    */
   @Get()
-  @Roles(UserType.ADMIN)
+  @Roles(UserType.ADMIN, UserType.STANDARD)
   async getAll(
     @Query('includeInactive') includeInactive?: string,
   ): Promise<Discipline[]> {
