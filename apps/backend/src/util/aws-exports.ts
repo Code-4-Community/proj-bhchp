@@ -33,6 +33,8 @@ const AWSConfig = {
     process.env.COGNITO_REGION ||
     process.env.VITE_COGNITO_REGION ||
     'us-east-2',
+  sesSenderEmail:
+    process.env.BHCHP_AWS_SES_SENDER_EMAIL || process.env.AWS_SES_SENDER_EMAIL,
 };
 
 /**

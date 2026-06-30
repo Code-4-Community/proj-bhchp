@@ -2,6 +2,7 @@ type AwsExports = {
   AWSConfig: {
     bucketName?: string;
     region?: string;
+    sesSenderEmail?: string;
   };
   CognitoAuthConfig: {
     userPoolId?: string;
@@ -51,6 +52,7 @@ describe('aws-exports', () => {
   it('loads config when required primary env vars are present', async () => {
     process.env.BHCHP_AWS_BUCKET_NAME = 'app-bucket';
     process.env.BHCHP_AWS_REGION = 'us-west-2';
+    process.env.BHCHP_AWS_SES_SENDER_EMAIL = 'sender@example.com';
     process.env.COGNITO_APP_CLIENT_ID = 'cognito-client';
     process.env.COGNITO_USER_POOL_ID = 'pool-id';
 
@@ -59,6 +61,7 @@ describe('aws-exports', () => {
     expect(config.AWSConfig).toEqual({
       region: 'us-west-2',
       bucketName: 'app-bucket',
+      sesSenderEmail: 'sender@example.com',
     });
     expect(config.CognitoAuthConfig).toEqual({
       userPoolId: 'pool-id',
@@ -68,6 +71,7 @@ describe('aws-exports', () => {
 
   it('uses NX and VITE fallback env vars when primary vars are absent', async () => {
     process.env.BHCHP_AWS_BUCKET_NAME = 'fallback-bucket';
+    process.env.AWS_SES_SENDER_EMAIL = 'sender@example.com';
     process.env.VITE_COGNITO_APP_CLIENT_ID = 'vite-client';
     process.env.VITE_COGNITO_USER_POOL_ID = 'vite-pool';
     process.env.VITE_COGNITO_REGION = 'eu-west-1';
@@ -77,6 +81,7 @@ describe('aws-exports', () => {
     expect(config.AWSConfig).toEqual({
       region: 'eu-west-1',
       bucketName: 'fallback-bucket',
+      sesSenderEmail: 'sender@example.com',
     });
     expect(config.CognitoAuthConfig).toEqual({
       userPoolId: 'vite-pool',

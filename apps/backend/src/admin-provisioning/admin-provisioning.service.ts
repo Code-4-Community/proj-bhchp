@@ -413,10 +413,10 @@ export class AdminProvisioningService {
           responseNotes.push(
             'Admin creation email was skipped (PUBLIC_FRONTEND_URL missing).',
           );
-        } else if (!process.env.AWS_SES_SENDER_EMAIL) {
-          this.logger.warn('AWS_SES_SENDER_EMAIL is not configured.');
+        } else if (!envConfig.AWSConfig.sesSenderEmail) {
+          this.logger.warn('AWS SES sender email is not configured.');
           responseNotes.push(
-            'Admin creation email was skipped (AWS_SES_SENDER_EMAIL missing).',
+            'Admin creation email was skipped (AWS SES sender email missing).',
           );
         } else {
           const loginUrl = frontendUrl.endsWith('/')

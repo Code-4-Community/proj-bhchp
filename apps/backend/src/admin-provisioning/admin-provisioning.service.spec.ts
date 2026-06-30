@@ -22,6 +22,7 @@ jest.mock('../util/aws-exports', () => ({
     },
     AWSConfig: {
       region: 'us-east-1',
+      sesSenderEmail: 'sender@example.com',
     },
   },
 }));
