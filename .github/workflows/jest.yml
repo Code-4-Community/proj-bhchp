@@ -27,6 +27,8 @@ jobs:
         echo "AWS_SECRET_ACCESS_KEY=dummy" >> .env
         echo "AWS_ACCESS_KEY_ID=dummy" >> .env
         echo "AWS_REGION=us-east-2" >> .env
+        echo "COGNITO_APP_CLIENT_ID=dummy" >> .env
+        echo "COGNITO_USER_POOL_ID=dummy" >> .env
 
     - name: Install Dependencies
       run: yarn install
