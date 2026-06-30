@@ -8,6 +8,7 @@ import { AMAZON_SES_CLIENT } from './amazon-ses-client.factory';
 import MailComposer = require('nodemailer/lib/mail-composer');
 import * as dotenv from 'dotenv';
 import Mail from 'nodemailer/lib/mailer';
+import envConfig from '../aws-exports';
 dotenv.config();
 
 /**
@@ -59,9 +60,7 @@ export class AmazonSESWrapper {
     attachments?: EmailAttachment[],
   ) {
     const mailOptions: Mail.Options = {
-      from:
-        process.env.BHCHP_AWS_SES_SENDER_EMAIL ||
-        process.env.AWS_SES_SENDER_EMAIL,
+      from: envConfig.AWSConfig.sesSenderEmail,
       to: recipientEmails,
       subject: subject,
       html: bodyHtml,
@@ -79,9 +78,7 @@ export class AmazonSESWrapper {
 
     const params: SendRawEmailCommandInput = {
       Destinations: recipientEmails,
-      Source:
-        process.env.BHCHP_AWS_SES_SENDER_EMAIL ||
-        process.env.AWS_SES_SENDER_EMAIL,
+      Source: envConfig.AWSConfig.sesSenderEmail,
       RawMessage: { Data: messageData },
     };
 
@@ -89,7 +86,7 @@ export class AmazonSESWrapper {
     try {
       this.logger.debug(
         `SES send: from=${
-          process.env.AWS_SES_SENDER_EMAIL
+          envConfig.AWSConfig.sesSenderEmail
         }, to=${recipientEmails.join(',')}, subject=${subject}, attachments=${
           attachments?.length ?? 0
         }`,
