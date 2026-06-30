@@ -143,11 +143,16 @@ const Login: React.FC = () => {
         return;
       }
     } catch (err: unknown) {
-      const message =
+      const rawMessage =
         err instanceof Error
           ? err.message
           : 'Sign in failed. Verify your credentials and try again.';
-      setError(message);
+      const isDisabled = /disabled/i.test(rawMessage);
+      setError(
+        isDisabled
+          ? 'This account has been deactivated. Contact an administrator to regain access.'
+          : rawMessage,
+      );
       console.error('Cognito sign-in failed:', err);
       setLoading(false);
       return;

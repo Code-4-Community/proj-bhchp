@@ -177,6 +177,25 @@ export interface User {
   firstName: string;
   lastName: string;
   userType: UserType;
+  isActive?: boolean;
+}
+
+/**
+ * Summary of an admin account shown on the admin management screen.
+ */
+export interface AdminAccountSummary {
+  email: string;
+  firstName: string;
+  lastName: string;
+  isActive: boolean;
+}
+
+/**
+ * Result of a deactivate / reactivate operation.
+ */
+export interface AdminLifecycleResult {
+  email: string;
+  isActive: boolean;
 }
 
 export interface CandidateInfo {

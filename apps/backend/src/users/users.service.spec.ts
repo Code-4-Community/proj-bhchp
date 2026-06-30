@@ -19,6 +19,7 @@ const mockUser: User = {
   firstName: 'Test',
   lastName: 'User',
   userType: UserType.STANDARD,
+  isActive: true,
 };
 
 describe('UsersService', () => {

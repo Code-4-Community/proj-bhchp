@@ -17,6 +17,8 @@ import {
   DisciplineAdminMap,
   DisciplineCatalogItem,
   User,
+  AdminAccountSummary,
+  AdminLifecycleResult,
 } from './types';
 
 const defaultBaseUrl =
@@ -173,6 +175,24 @@ export class ApiClient {
       '/api/admins/provision',
       payload,
     ) as Promise<ProvisionAdminResponse>;
+  }
+
+  public async listAdmins(): Promise<AdminAccountSummary[]> {
+    return this.get('/api/admins') as Promise<AdminAccountSummary[]>;
+  }
+
+  public async deactivateAdmin(email: string): Promise<AdminLifecycleResult> {
+    return this.patch(
+      `/api/admins/${encodeURIComponent(email)}/deactivate`,
+      {},
+    ) as Promise<AdminLifecycleResult>;
+  }
+
+  public async reactivateAdmin(email: string): Promise<AdminLifecycleResult> {
+    return this.patch(
+      `/api/admins/${encodeURIComponent(email)}/reactivate`,
+      {},
+    ) as Promise<AdminLifecycleResult>;
   }
 
   public async updateAvailability(
