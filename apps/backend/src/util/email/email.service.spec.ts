@@ -5,6 +5,23 @@ import { mock } from 'jest-mock-extended';
 
 const mockAmazonSESWrapper = mock<AmazonSESWrapper>();
 
+jest.mock('../aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+      region: 'us-east-2',
+      bucketName: 'bucket',
+      sesSenderEmail: 'dummyemail@gmail.com',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
 describe('EmailService', () => {
   let service: EmailService;
 

@@ -9,6 +9,24 @@ const mockEmailService = {
   queueEmail: jest.fn(),
 };
 
+jest.mock('../aws-exports', () => ({
+  __esModule: true,
+  default: {
+    AWSConfig: {
+      accessKeyId: 'test-access-key',
+      secretAccessKey: 'test-secret-key',
+      region: 'us-east-2',
+      bucketName: 'bucket',
+      sesSenderEmail: 'dummyemail@gmail.com',
+    },
+    CognitoAuthConfig: {
+      userPoolId: 'test-user-pool-id',
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+    },
+  },
+}));
+
 describe('EmailController', () => {
   let controller: EmailController;
 
