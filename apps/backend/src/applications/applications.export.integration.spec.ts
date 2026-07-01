@@ -27,6 +27,7 @@ jest.mock('../util/aws-exports', () => ({
       secretAccessKey: 'test-secret-key',
       region: 'us-east-2',
       bucketName: 'bucket',
+      sesSenderEmail: 'dummyemail@gmail.com',
     },
     CognitoAuthConfig: {
       userPoolId: 'test-user-pool-id',
@@ -35,7 +36,6 @@ jest.mock('../util/aws-exports', () => ({
     },
   },
 }));
-
 describe('Applications CSV export integration', () => {
   let app: INestApplication;
 
