@@ -21,6 +21,7 @@ import ConfirmationPopoverContent from '@components/ConfirmationPopoverContent';
 import type { DisciplineCatalogItem, User } from '@api/types';
 import { UserType } from '@api/types';
 import apiClient from '@api/apiClient';
+import { signOutUser } from '../auth/cognito';
 import { getDisciplineAdminMapCached } from '@utils/disciplineAdminCache';
 
 const normalizeDisciplines = (values: string[]): string[] => {
@@ -56,6 +57,9 @@ const AdminSettings: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [isConfirmPopoverOpen, setIsConfirmPopoverOpen] = useState(false);
+  const [isDeactivatePopoverOpen, setIsDeactivatePopoverOpen] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
   const activeDisciplineKeys = useMemo(() => {
     return new Set(
@@ -251,6 +255,33 @@ const AdminSettings: React.FC = () => {
 
   const onCloseConfirmPopover = () => {
     setIsConfirmPopoverOpen(false);
+  };
+
+  const onConfirmDeactivate = async () => {
+    if (!currentUser?.email || isDeactivating) {
+      return;
+    }
+
+    setIsDeactivating(true);
+    setDeactivateError(null);
+
+    try {
+      await apiClient.deactivateAdmin(currentUser.email);
+      // The account is now disabled in Cognito; sign out and return to login.
+      await signOutUser().catch(() => undefined);
+      window.location.replace('/login');
+    } catch (error) {
+      const status =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { status?: number } }).response?.status
+          : undefined;
+      setDeactivateError(
+        status === 409
+          ? 'You are the last active admin and cannot deactivate your account.'
+          : 'Failed to deactivate your account. Please try again.',
+      );
+      setIsDeactivating(false);
+    }
   };
 
   const canSave =
@@ -502,6 +533,66 @@ const AdminSettings: React.FC = () => {
                   confirmLoading={isSaving}
                   cancelDisabled={isSaving}
                   errorMessage={saveError}
+                />
+              </Popover.Root>
+            </Flex>
+          </Box>
+        )}
+
+        {!isLoading && !loadError && (
+          <Box
+            borderWidth="1px"
+            borderRadius="10px"
+            bg="#F3F3F3"
+            p="8"
+            mt="8"
+            borderColor="#C53030"
+          >
+            <Text fontSize="20px" fontWeight="700" color="#C53030" mb="2">
+              Deactivate Account
+            </Text>
+            <Text fontSize="14px" color="#5E5E5E" mb="4">
+              Deactivating your account signs you out and blocks you from
+              logging in. You can regain access later through an email
+              reactivation link.
+            </Text>
+
+            <Flex justify="flex-end">
+              <Popover.Root
+                open={isDeactivatePopoverOpen}
+                onOpenChange={(details) => {
+                  setIsDeactivatePopoverOpen(details.open);
+                  setDeactivateError(null);
+                }}
+                positioning={{ placement: 'top' }}
+              >
+                <Popover.Trigger asChild>
+                  <Button
+                    bg="#C53030"
+                    color="white"
+                    _hover={{ bg: '#9B2C2C' }}
+                    borderRadius="6px"
+                    p="6"
+                    disabled={isDeactivating || !currentUser?.email}
+                  >
+                    Deactivate my account
+                  </Button>
+                </Popover.Trigger>
+
+                <ConfirmationPopoverContent
+                  variant="compact"
+                  titleLines={['Deactivate account?']}
+                  message="You will be signed out and unable to log in until your account is reactivated."
+                  confirmText="Yes"
+                  cancelText="No"
+                  onConfirm={onConfirmDeactivate}
+                  onCancel={() => {
+                    setIsDeactivatePopoverOpen(false);
+                    setDeactivateError(null);
+                  }}
+                  confirmLoading={isDeactivating}
+                  cancelDisabled={isDeactivating}
+                  errorMessage={deactivateError}
                 />
               </Popover.Root>
             </Flex>

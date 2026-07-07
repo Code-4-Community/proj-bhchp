@@ -6,6 +6,8 @@ import { UsersModule } from '../users/users.module';
 import { User } from '../users/user.entity';
 import { AdminProvisioningController } from './admin-provisioning.controller';
 import { AdminProvisioningService } from './admin-provisioning.service';
+import { AdminLifecycleController } from './admin-lifecycle.controller';
+import { AdminLifecycleService } from './admin-lifecycle.service';
 import { cognitoIdentityProviderFactory } from './cognito.provider';
 import { DisciplinesModule } from '../disciplines/disciplines.module';
 import { UtilModule } from '../util/util.module';
@@ -18,8 +20,12 @@ import { UtilModule } from '../util/util.module';
     DisciplinesModule,
     UtilModule,
   ],
-  controllers: [AdminProvisioningController],
-  providers: [AdminProvisioningService, cognitoIdentityProviderFactory],
-  exports: [AdminProvisioningService],
+  controllers: [AdminProvisioningController, AdminLifecycleController],
+  providers: [
+    AdminProvisioningService,
+    AdminLifecycleService,
+    cognitoIdentityProviderFactory,
+  ],
+  exports: [AdminProvisioningService, AdminLifecycleService],
 })
 export class AdminProvisioningModule {}

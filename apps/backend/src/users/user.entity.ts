@@ -39,4 +39,13 @@ export class User {
    */
   @Column({ type: 'enum', enum: UserType, default: UserType.STANDARD })
   userType: UserType;
+
+  /**
+   * Whether the account is active. Deactivated accounts are blocked from
+   * accessing protected routes and have their Cognito user disabled.
+   *
+   * Example: true.
+   */
+  @Column({ type: 'boolean', default: true })
+  isActive?: boolean;
 }

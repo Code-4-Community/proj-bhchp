@@ -7,6 +7,7 @@ import {
   FaRegFile,
   FaRightFromBracket,
   FaUserPlus,
+  FaUsersGear,
   FaGear,
 } from 'react-icons/fa6';
 import { UserType } from '@api/types';
@@ -60,6 +61,13 @@ export default function NavBar({ logo, userType }: NavBarProps) {
               href="/admin/create"
               label="Create New Admin"
               icon={<FaUserPlus />}
+            />
+          )}
+          {userType === UserType.ADMIN && (
+            <NavbarItem
+              href="/admin/manage"
+              label="Manage Admins"
+              icon={<FaUsersGear />}
             />
           )}
           {userType === UserType.ADMIN && (
