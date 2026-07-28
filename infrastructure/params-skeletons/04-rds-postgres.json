@@ -2,7 +2,7 @@
   { "ParameterKey": "VpcId", "ParameterValue": "" },
   { "ParameterKey": "SubnetIds", "ParameterValue": "" },
   { "ParameterKey": "DBPassword", "ParameterValue": "" },
-  { "ParameterKey": "ECSSecurityGroupId", "ParameterValue": "sg-ecs" },
-  { "ParameterKey": "AllowedCidr", "ParameterValue": "" },
+  { "ParameterKey": "ECSSecurityGroupId", "ParameterValue": "" },
+  { "ParameterKey": "AllowedCidr", "ParameterValue": "REPLACE_WITH_YOUR_PUBLIC_IP_32" },
   { "ParameterKey": "PubliclyAccessible", "ParameterValue": "false" }
 ]

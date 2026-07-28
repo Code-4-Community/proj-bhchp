@@ -29,7 +29,7 @@ Resources:
         Rules:
           - Id: TransitionToIAThenGlacier
             Status: Enabled
-            Filter: {}
+            Prefix: ''
             Transitions:
               - StorageClass: STANDARD_IA
                 TransitionInDays: 30

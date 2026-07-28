@@ -4,14 +4,13 @@ Description: ECR repository for bhchp-backend with lifecycle policy
 Parameters:
   Name:
     Type: String
-    Default: bhchp-bucket
+    Default: bhchp-backend
 
 Resources:
   BhchpBackendRepository:
     Type: AWS::ECR::Repository
     Properties:
-      BucketName: !Ref Name
-      RepositoryName: bhchp-backend
+      RepositoryName: !Ref Name
       ImageTagMutability: MUTABLE
       ImageScanningConfiguration:
         ScanOnPush: false

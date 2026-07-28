@@ -19,6 +19,7 @@
     "migration:create": "npm run typeorm -- migration:create apps/backend/src/migrations/$npm_config_name",
     "db:reset-and-seed": "node scripts/reset-db-and-seed.js",
     "seed": "ts-node --project typeorm.tsconfig.json apps/backend/src/seeds/seed.ts",
+    "seed:first-admin": "ts-node --project typeorm.tsconfig.json apps/backend/src/seeds/seed-first-admin.ts",
     "test": "jest",
     "test:noaws": "jest --coverage --coveragePathIgnorePatterns=\".*/src/(util/email|aws-s3)/.*\\.spec\\.ts\""
   },

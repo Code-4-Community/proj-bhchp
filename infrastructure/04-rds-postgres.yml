@@ -11,7 +11,7 @@ Parameters:
   AllowedCidr:
     Type: String
     Default: ""
-    Description: Optional CIDR allowed to reach Postgres (leave empty for none)
+    Description: Optional CIDR allowed to reach Postgres (for local migrations, set to your workstation public IP/32)
   ECSSecurityGroupId:
     Type: String
     Default: ""

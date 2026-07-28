@@ -16,6 +16,9 @@ import { AdminInfo } from '../admin-info/admin-info.entity';
 import { User } from '../users/user.entity';
 import { UserType } from '../users/types';
 
+const FIRST_ADMIN_EMAIL =
+  process.env.FIRST_ADMIN_EMAIL || 'nie.sa@northeastern.edu';
+
 const DISCIPLINE_KEYS = {
   mdMedicalStudentPreMed: 'md-medical-student-pre-med',
   medicalNpPa: 'medical-np-pa',
@@ -567,60 +570,38 @@ const LEARNER_INFO_SEED: LearnerInfo[] = [
 
 async function seed() {
   try {
-    console.log('🌱 Starting database seed...');
+    console.log('🌱 Starting first-admin seed...');
 
-    // Initialize the data source
     await dataSource.initialize();
     console.log('✅ Database connection established');
 
-    // Create disciplines
-    console.log('📚 Creating disciplines...');
-    await dataSource.getRepository(Discipline).save(DISCIPLINE_SEED);
-    console.log('✅ Disciplines created');
+    const adminInfoRepository = dataSource.getRepository(AdminInfo);
+    const userRepository = dataSource.getRepository(User);
 
-    // Create user test data
-    console.log('📋 Creating users...');
-    const userRepo: Repository<User> = dataSource.getRepository(User);
-    const users = await userRepo.save(USER_SEED as DeepPartial<User>[]);
-    console.log(`✅ Created ${users.length} users`);
+    const existingUser = await userRepository.findOne({
+      where: { email: FIRST_ADMIN_EMAIL },
+    });
 
-    // Create admin info test data
-    console.log('📋 Creating applicants...');
-    const adminRepo: Repository<AdminInfo> =
-      dataSource.getRepository(AdminInfo);
-    const admins = await adminRepo.save(
-      ADMIN_INFO_SEED as DeepPartial<AdminInfo>[],
-    );
-    console.log(`✅ Created ${admins.length} admin infos`);
+    if (existingUser) {
+      console.log(`ℹ️ Admin ${FIRST_ADMIN_EMAIL} already exists.`);
+      return;
+    }
 
-    // Create candidate info test data
-    console.log('📋 Creating applicants...');
-    const candidateRepo: Repository<CandidateInfo> =
-      dataSource.getRepository(CandidateInfo);
-    const candidates = await candidateRepo.save(
-      CANDIDATE_INFO_SEED as DeepPartial<CandidateInfo>[],
-    );
-    console.log(`✅ Created ${candidates.length} candidate infos`);
+    const adminInfo = adminInfoRepository.create({
+      email: FIRST_ADMIN_EMAIL,
+      disciplines: [],
+    });
+    await adminInfoRepository.save(adminInfo);
 
-    // Create application test data
-    console.log('📋 Creating applications...');
-    const applicationRepo: Repository<Application> =
-      dataSource.getRepository(Application);
-    const applications = await applicationRepo.save(
-      APPLICATION_SEED as DeepPartial<Application>[],
-    );
-    console.log(`✅ Created ${applications.length} applications`);
+    const user = userRepository.create({
+      email: FIRST_ADMIN_EMAIL,
+      firstName: 'Nie',
+      lastName: 'Sa',
+      userType: UserType.ADMIN,
+    });
+    await userRepository.save(user);
 
-    // Create learner info test data
-    console.log('📋 Creating applicants...');
-    const learnerInfoRepo: Repository<LearnerInfo> =
-      dataSource.getRepository(LearnerInfo);
-    const learnerInfos = await learnerInfoRepo.save(
-      LEARNER_INFO_SEED as DeepPartial<LearnerInfo>[],
-    );
-    console.log(`✅ Created ${learnerInfos.length} learner infos`);
-
-    console.log('🎉 Database seed completed successfully!');
+    console.log(`✅ Created first admin ${FIRST_ADMIN_EMAIL}`);
   } catch (error) {
     console.error('❌ Seed failed:', error);
     throw error;
@@ -632,7 +613,6 @@ async function seed() {
   }
 }
 
-// Run the seed
 seed().catch((error) => {
   console.error('❌ Fatal error during seed:', error);
   process.exit(1);

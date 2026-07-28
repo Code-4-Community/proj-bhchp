@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create a temporary IAM user that can push images to ECR
+
+Parameters:
+  UserName:
+    Type: String
+    Default: bhchp-ecr-push-temp
+    Description: IAM username to create for temporary ECR push access
+
+Resources:
+  EcrPushUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref UserName
+      Policies:
+        - PolicyName: EcrPushPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowEcrLoginAndPush
+                Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                Resource: "*"
+
+  EcrPushAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref EcrPushUser
+
+Outputs:
+  UserName:
+    Description: IAM username created for ECR pushes
+    Value: !Ref EcrPushUser
+  AccessKeyId:
+    Description: Access key ID for the temporary ECR push user
+    Value: !Ref EcrPushAccessKey
+  SecretAccessKey:
+    Description: Secret access key for the temporary ECR push user
+    Value: !GetAtt EcrPushAccessKey.SecretAccessKey
+    NoEcho: true
