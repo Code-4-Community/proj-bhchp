@@ -15,6 +15,7 @@ import { DisciplinesModule } from './disciplines/disciplines.module';
 import { AdminInfoModule } from './admin-info/admin-info.module';
 import { CandidateInfoModule } from './candidate-info/candidate-info.module';
 import { AdminProvisioningModule } from './admin-provisioning/admin-provisioning.module';
+import { PandadocWebhookModule } from './pandadoc-webhook/pandadoc-webhook.module';
 
 @Module({
   imports: [
@@ -36,6 +37,8 @@ import { AdminProvisioningModule } from './admin-provisioning/admin-provisioning
     AdminProvisioningModule,
     LearnerInfoModule,
     ApplicationsModule,
+    CandidateInfoModule,
+    PandadocWebhookModule,
   ],
   controllers: [AppController],
   providers: [AppService],

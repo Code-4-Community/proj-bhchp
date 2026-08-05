@@ -7,11 +7,28 @@ interface EmergencyContactFrameProps {
   relationship: string;
 }
 
+function formatBestEffortPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const normalizedDigits =
+    digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+
+  if (normalizedDigits.length !== 10) {
+    return phone;
+  }
+
+  return `${normalizedDigits.slice(0, 3)}-${normalizedDigits.slice(
+    3,
+    6,
+  )}-${normalizedDigits.slice(6)}`;
+}
+
 const EmergencyContactFrame = ({
   name,
   phone,
   relationship,
 }: EmergencyContactFrameProps) => {
+  const formattedPhone = formatBestEffortPhone(phone);
+
   return (
     <Flex
       align="center"
@@ -100,7 +117,7 @@ const EmergencyContactFrame = ({
           gridRow="3"
           gridColumn="1"
         >
-          {phone}
+          {formattedPhone}
         </Text>
       </Box>
     </Flex>

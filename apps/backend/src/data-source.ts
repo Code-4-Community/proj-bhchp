@@ -27,6 +27,7 @@ const AppDataSource = new DataSource({
         ca: sslCa,
       }
     : undefined,
+  // ssl: { rejectUnauthorized: false },
   entities: [
     Application,
     CandidateInfo,

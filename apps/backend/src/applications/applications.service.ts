@@ -21,6 +21,13 @@ import { LearnerInfo } from '../learner-info/learner-info.entity';
 import { PaginatedResult } from '../common/paginated-result.interface';
 import { ApplicationQueryDto } from './dto/application-query.dto';
 
+type CandidateCreateOptions = {
+  candidateName?: {
+    firstName?: string;
+    lastName?: string;
+  };
+};
+
 /**
  * Columns returned by the paginated list endpoints. Only the fields the admin
  * table renders are selected, so the bulk of each row (availability strings,
@@ -242,6 +249,8 @@ export class ApplicationsService {
     'Confidentiality_Form.pdf';
   private static readonly CONFIDENTIALITY_UPLOAD_FOLDER =
     'confidentiality-forms';
+  private static readonly PANDADOC_RESUBMISSION_LINK =
+    'https://eform.pandadoc.com/?eform=e27f6460-7fa2-40f2-825b-4a83c507b9fe';
 
   private static readonly APPLICATION_EXPORT_HEADERS =
     APPLICATION_EXPORT_COLUMNS.map(([, header]) => header).join(',');
@@ -387,9 +396,9 @@ export class ApplicationsService {
     }
 
     // Validate weeklyHours is positive
-    if (dto.weeklyHours <= 0 || dto.weeklyHours > 7 * 24) {
+    if (dto.weeklyHours > 7 * 24) {
       throw new BadRequestException(
-        'Weekly hours must be greater than 0 and less than 7 * 24 hours',
+        'Weekly hours must be less than 7 * 24 hours',
       );
     }
   }
@@ -886,6 +895,7 @@ export class ApplicationsService {
    */
   async create(
     createApplicationDto: CreateApplicationDto,
+    options?: CandidateCreateOptions,
   ): Promise<Application> {
     this.validateApplicationDto(createApplicationDto);
     const normalizedEmail = createApplicationDto.email.trim().toLowerCase();
@@ -902,10 +912,18 @@ export class ApplicationsService {
     });
     const saved = await this.applicationRepository.save(application);
 
-    await this.candidateProvisioningService.provisionSubmittedCandidate(
-      saved,
-      existingApplicationCount === 0,
-    );
+    if (options?.candidateName) {
+      await this.candidateProvisioningService.provisionSubmittedCandidate(
+        saved,
+        existingApplicationCount === 0,
+        options.candidateName,
+      );
+    } else {
+      await this.candidateProvisioningService.provisionSubmittedCandidate(
+        saved,
+        existingApplicationCount === 0,
+      );
+    }
 
     return saved;
   }
@@ -1117,6 +1135,31 @@ export class ApplicationsService {
       throw new NotFoundException(`Application with ID ${appId} not found`);
     }
     await this.applicationRepository.remove(application);
+  }
+
+  async sendSubmissionErrorEmail(
+    applicantDto: CreateApplicationDto,
+    errorMessage: string,
+    applicantName = 'Applicant',
+  ): Promise<void> {
+    const recipientEmail = applicantDto.email?.trim();
+
+    if (!recipientEmail) {
+      return;
+    }
+
+    const emailBody = this.buildApplicationSubmissionErrorEmailBody(
+      applicantName,
+      applicantDto,
+      errorMessage,
+      ApplicationsService.PANDADOC_RESUBMISSION_LINK,
+    );
+
+    await this.emailService.queueEmail(
+      recipientEmail,
+      'Action Required: Issue with Your Application Submission',
+      emailBody,
+    );
   }
 
   /**

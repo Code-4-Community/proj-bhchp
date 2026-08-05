@@ -7,6 +7,7 @@ import axios from 'axios';
 import {
   ApplicantType,
   Application,
+  DisciplineCatalogItem,
   LearnerInfo,
   User,
   UserType,
@@ -30,9 +31,15 @@ const CandidateViewApplication: React.FC = () => {
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [disciplines, setDisciplines] = useState<DisciplineCatalogItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const pronouns = application?.pronouns;
-  const discipline = application?.discipline;
+  const disciplineLabelByKey = new Map(
+    disciplines.map((d) => [d.key, d.label]),
+  );
+  const discipline = application?.discipline
+    ? disciplineLabelByKey.get(application.discipline) ?? application.discipline
+    : undefined;
   const formatDate = (iso?: string) => {
     if (!iso) return 'N/A';
     try {
@@ -124,9 +131,13 @@ const CandidateViewApplication: React.FC = () => {
           appId: latestAppId,
         });
 
-        const app = await apiClient.getCurrentApplication();
+        const [app, loadedDisciplines] = await Promise.all([
+          apiClient.getCurrentApplication(),
+          apiClient.getDisciplines(),
+        ]);
         if (cancelled) return;
         setApplication(app);
+        setDisciplines(loadedDisciplines);
 
         if (!app) {
           console.debug(
@@ -275,6 +286,7 @@ const CandidateViewApplication: React.FC = () => {
         <SchoolAffiliationFrame
           isLearner={application.applicantType === ApplicantType.LEARNER}
           schoolName={learnerInfo ? learnerInfo.school : 'N/A'}
+          otherSchool={learnerInfo?.otherSchool}
           schoolDepartment={
             (learnerInfo && learnerInfo.schoolDepartment) || 'N/A'
           }

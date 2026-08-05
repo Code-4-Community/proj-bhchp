@@ -12,6 +12,11 @@ import { CandidateInfoService } from '../candidate-info/candidate-info.service';
 import { UsersService } from '../users/users.service';
 import { UserType } from '../users/types';
 
+type CandidateName = {
+  firstName?: string;
+  lastName?: string;
+};
+
 @Injectable()
 export class CandidateProvisioningService {
   private readonly logger = new Logger(CandidateProvisioningService.name);
@@ -72,6 +77,28 @@ export class CandidateProvisioningService {
     return { firstName, lastName };
   }
 
+  private cleanNamePart(value: string | undefined): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed ? this.toTitleCase(trimmed) : undefined;
+  }
+
+  private resolveCandidateName(
+    email: string,
+    candidateName?: CandidateName,
+  ): { firstName: string; lastName: string } {
+    const derived = this.deriveNameParts(email);
+
+    return {
+      firstName:
+        this.cleanNamePart(candidateName?.firstName) ?? derived.firstName,
+      lastName: this.cleanNamePart(candidateName?.lastName) ?? derived.lastName,
+    };
+  }
+
   private generateTemporaryPassword(): string {
     const randomSegment = randomBytes(12).toString('base64url');
     return `Bhchp-${randomSegment}Aa1!`;
@@ -95,13 +122,19 @@ export class CandidateProvisioningService {
     await this.cognitoIdentityProvider.send(command);
   }
 
-  private async ensureStandardUser(email: string): Promise<void> {
+  private async ensureStandardUser(
+    email: string,
+    candidateName?: CandidateName,
+  ): Promise<void> {
     const existingUser = await this.usersService.findOne(email);
     if (existingUser) {
       return;
     }
 
-    const { firstName, lastName } = this.deriveNameParts(email);
+    const { firstName, lastName } = this.resolveCandidateName(
+      email,
+      candidateName,
+    );
     await this.usersService.create(
       email,
       firstName,
@@ -121,9 +154,10 @@ export class CandidateProvisioningService {
   private buildSubmissionEmailBody(
     email: string,
     loginUrl: string,
+    candidateName?: CandidateName,
     temporaryPassword?: string,
   ): string {
-    const { firstName } = this.deriveNameParts(email);
+    const { firstName } = this.resolveCandidateName(email, candidateName);
     const passwordBlock = temporaryPassword
       ? `<p><strong>Temporary password:</strong> ${temporaryPassword}</p>`
       : '';
@@ -147,6 +181,7 @@ export class CandidateProvisioningService {
   async provisionSubmittedCandidate(
     application: Application,
     isFirstApplication: boolean,
+    candidateName?: CandidateName,
   ): Promise<void> {
     const normalizedEmail = application.email.trim().toLowerCase();
     const loginUrl = this.getPublicLoginUrl();
@@ -160,20 +195,20 @@ export class CandidateProvisioningService {
           normalizedEmail,
           temporaryPassword,
         );
-        await this.ensureStandardUser(normalizedEmail);
+        await this.ensureStandardUser(normalizedEmail, candidateName);
       } catch (error) {
         if (this.isUsernameExistsError(error)) {
           this.logger.warn(
             `Candidate Cognito user already exists for ${normalizedEmail}; sending login link without temporary password.`,
           );
           temporaryPassword = undefined;
-          await this.ensureStandardUser(normalizedEmail);
+          await this.ensureStandardUser(normalizedEmail, candidateName);
         } else {
           throw error;
         }
       }
     } else {
-      await this.ensureStandardUser(normalizedEmail);
+      await this.ensureStandardUser(normalizedEmail, candidateName);
     }
 
     await this.candidateInfoService.create(application.appId, normalizedEmail);
@@ -184,6 +219,7 @@ export class CandidateProvisioningService {
       this.buildSubmissionEmailBody(
         normalizedEmail,
         loginUrl,
+        candidateName,
         temporaryPassword,
       ),
     );

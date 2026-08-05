@@ -36,5 +36,6 @@ import { cognitoIdentityProviderFactory } from '../admin-provisioning/cognito.pr
     ApplicationValidationEmailFilter,
     ApplicationCreationErrorFilter,
   ],
+  exports: [ApplicationsService],
 })
 export class ApplicationsModule {}

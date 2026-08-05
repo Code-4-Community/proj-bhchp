@@ -13,6 +13,7 @@ import { schoolEmblemPublicUrl } from '@utils/schoolEmblemUrl';
 
 export interface SchoolAffiliationProps {
   schoolName: string;
+  otherSchool?: string;
   schoolDepartment: string;
   license: string;
   desiredExperience: string;
@@ -31,6 +32,7 @@ export interface SchoolAffiliationProps {
 
 const SchoolAffiliationFrame = ({
   schoolName,
+  otherSchool,
   schoolDepartment,
   license,
   desiredExperience,
@@ -56,6 +58,12 @@ const SchoolAffiliationFrame = ({
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const displaySchoolName =
+    schoolName === 'Other'
+      ? otherSchool?.trim()
+        ? `Other - ${otherSchool.trim()}`
+        : 'Other'
+      : schoolName;
   const emblemUrl = schoolEmblemPublicUrl(schoolName);
   const showWhiteBg = schoolName !== 'Other' && schoolName !== 'Does not apply';
   const [emblemFailed, setEmblemFailed] = useState(false);
@@ -174,7 +182,7 @@ const SchoolAffiliationFrame = ({
             {/* University Column */}
             <Flex direction="column" gap="3" flex="1">
               <Heading as="h3" size="md" pb="3">
-                {schoolName}
+                {displaySchoolName}
               </Heading>
 
               <Text fontSize="sm" fontWeight="bold">
